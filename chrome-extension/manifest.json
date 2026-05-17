@@ -14,7 +14,8 @@
   ],
   "host_permissions": [
     "*://www.tecconcursos.com.br/*",
-    "*://cazuzaleo89-netizen.github.io/*"
+    "*://cazuzaleo89-netizen.github.io/*",
+    "https://api.anthropic.com/*"
   ],
   "content_scripts": [
     {

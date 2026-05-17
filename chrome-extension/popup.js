@@ -67,6 +67,7 @@ document.querySelectorAll('.tab').forEach(tab => {
     document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
     if (tab.dataset.tab === 'revisao' && appData) renderRevisao(appData);
     if (tab.dataset.tab === 'historico' && appData) renderHistorico(appData);
+    if (tab.dataset.tab === 'analise' && appData) renderAnalise(appData);
   });
 });
 
@@ -116,6 +117,146 @@ function accColor(rate) {
   if (rate >= 70) return '#22c55e';
   if (rate >= 50) return '#f59e0b';
   return '#ef4444';
+}
+
+// ── Alerta de fadiga ─────────────────────────────────────────────────────────
+function renderFatigueAlert(recentResults, todayStats) {
+  const el = document.getElementById('fatigue-alert-pop');
+  if (!el) return;
+  const total = (todayStats.acertos || 0) + (todayStats.erros || 0);
+  if (total < 6 || !recentResults || recentResults.length < 5) { el.style.display = 'none'; return; }
+  const overall = (todayStats.acertos || 0) / total;
+  const last5 = recentResults.slice(-5);
+  const recentRate = last5.filter(r => r === 'correct').length / 5;
+  if (overall >= 0.58 && recentRate <= 0.35) {
+    el.textContent = `⚠️ Queda de rendimento — últimas 5 questões: ${Math.round(recentRate * 100)}% acerto (geral: ${Math.round(overall * 100)}%). Pause 5-10 min. [×]`;
+    el.style.display = 'block';
+  } else {
+    el.style.display = 'none';
+  }
+}
+
+// ── Gráfico por hora do dia ───────────────────────────────────────────────────
+let _hrPopMode = 'q';
+function hrPopMode(mode) {
+  _hrPopMode = mode;
+  document.getElementById('hr-btn-q').style.background    = mode === 'q'    ? 'rgba(74,108,247,.15)' : 'transparent';
+  document.getElementById('hr-btn-q').style.color         = mode === 'q'    ? '#6366f1' : '#475569';
+  document.getElementById('hr-btn-rate').style.background = mode === 'rate' ? 'rgba(74,108,247,.15)' : 'transparent';
+  document.getElementById('hr-btn-rate').style.color      = mode === 'rate' ? '#6366f1' : '#475569';
+  if (appData) renderHourlyChart(appData.hourlyStats);
+}
+
+function renderHourlyChart(hourlyStats) {
+  const el  = document.getElementById('pop-hourly-chart');
+  const ins = document.getElementById('pop-hourly-insight');
+  if (!el || !hourlyStats) return;
+
+  // Only show hours 5–23
+  const buckets = [];
+  for (let h = 5; h <= 23; h++) {
+    const b = hourlyStats[h] || { q: 0, ace: 0 };
+    buckets.push({ h, q: b.q, rate: b.q > 0 ? Math.round(b.ace / b.q * 100) : null });
+  }
+
+  const isRate = _hrPopMode === 'rate';
+  const vals   = buckets.map(b => isRate ? (b.rate !== null ? b.rate : 0) : b.q);
+  const maxVal = isRate ? 100 : Math.max(...vals, 1);
+  const H = 42;
+
+  let html = `<div style="display:flex;align-items:flex-end;gap:1px;height:${H}px;">`;
+  buckets.forEach((b, i) => {
+    const v   = vals[i];
+    const pct = maxVal > 0 ? Math.max(v / maxVal, v > 0 ? 0.05 : 0) : 0;
+    const hPx = Math.round(pct * H);
+    const col = isRate
+      ? (b.rate !== null ? (b.rate >= 70 ? '#22c55e' : b.rate >= 50 ? '#f59e0b' : '#ef4444') : 'rgba(255,255,255,.04)')
+      : '#4a6cf7';
+    const hasData = isRate ? b.rate !== null : v > 0;
+    const tip = isRate ? `${b.h}h: ${b.rate !== null ? b.rate + '%' : '—'}` : `${b.h}h: ${v}q`;
+    html += `<div style="display:flex;flex-direction:column;align-items:center;flex:1;gap:1px;" title="${tip}">
+      <div style="width:100%;border-radius:2px 2px 0 0;height:${hPx}px;background:${hasData ? col : 'rgba(255,255,255,.04)'};"></div>
+      <div style="font-size:6px;color:#374151;font-family:monospace;">${b.h}</div>
+    </div>`;
+  });
+  html += '</div>';
+  el.innerHTML = html;
+
+  if (ins) {
+    if (isRate) {
+      const valid = buckets.filter(b => b.rate !== null && b.q >= 2);
+      if (valid.length) {
+        const best = valid.reduce((a, b) => b.rate > a.rate ? b : a, valid[0]);
+        ins.textContent = `Melhor aproveitamento: ${best.h}h (${best.rate}%)`;
+      } else ins.textContent = 'Resolva mais questões para ver análise';
+    } else {
+      const best = buckets.reduce((a, b) => b.q > a.q ? b : a, buckets[0]);
+      ins.textContent = best.q > 0 ? `Hora mais produtiva hoje: ${best.h}h (${best.q} questões)` : 'Sem questões registradas hoje';
+    }
+  }
+}
+
+// ── Timer Huberman Manual ─────────────────────────────────────────────────────
+let _manHubLabel = '';
+let _manHubLocal = null;  // interval para countdown local no popup
+
+function manHubStart(mins, label) {
+  if (!mins || isNaN(mins) || mins < 1) return;
+  _manHubLabel = label || (mins + ' min');
+  chrome.runtime.sendMessage({ type: 'MANUAL_HUB_START', mins, label: _manHubLabel }, resp => {
+    if (resp && resp.ok) {
+      document.getElementById('man-hub-result').style.display = 'none';
+      renderManHubTimer(resp.timer);
+      clearInterval(_manHubLocal);
+      _manHubLocal = setInterval(() => {
+        chrome.runtime.sendMessage({ type: 'MANUAL_HUB_GET' }, t => { if (t) renderManHubTimer(t); });
+      }, 1000);
+    }
+  });
+}
+
+function manHubCancel() {
+  clearInterval(_manHubLocal);
+  chrome.runtime.sendMessage({ type: 'MANUAL_HUB_CANCEL' }, () => {
+    document.getElementById('man-hub-active').style.display = 'none';
+    document.getElementById('man-hub-result').style.display = 'none';
+  });
+}
+
+function manHubResult(remembered) {
+  chrome.runtime.sendMessage({ type: 'HUB_REVIEW_RESULT', label: _manHubLabel, remembered }, () => {});
+  document.getElementById('man-hub-result').style.display = 'none';
+  // Pequeno flash visual
+  const active = document.getElementById('man-hub-active');
+  if (active) active.style.display = 'none';
+}
+
+function renderManHubTimer(t) {
+  const activeEl = document.getElementById('man-hub-active');
+  const resultEl = document.getElementById('man-hub-result');
+  if (!activeEl) return;
+  if (!t || !t.running) {
+    if (t && t.running === false && _manHubLocal) {
+      // Timer terminou
+      clearInterval(_manHubLocal); _manHubLocal = null;
+      activeEl.style.display = 'none';
+      if (resultEl) resultEl.style.display = 'block';
+    }
+    return;
+  }
+  activeEl.style.display = 'flex';
+  const lbl  = document.getElementById('man-hub-lbl');
+  const disp = document.getElementById('man-hub-display');
+  const m    = Math.floor(t.remaining / 60);
+  const s    = t.remaining % 60;
+  if (lbl)  lbl.textContent  = t.label || '';
+  if (disp) disp.textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  // Detectar conclusão
+  if (t.remaining === 0) {
+    clearInterval(_manHubLocal); _manHubLocal = null;
+    activeEl.style.display = 'none';
+    if (resultEl) resultEl.style.display = 'block';
+  }
 }
 
 // ── Gráfico semanal ──────────────────────────────────────────────────────────
@@ -320,6 +461,48 @@ function renderHoje(data) {
 }
 
 // ── Renderização: Revisão ───────────────────────────────────────────────────
+function simImpIcon(imp) {
+  return imp === 3 ? '🔴' : imp === 2 ? '🟡' : '🟢';
+}
+
+function simPanelHtml(related) {
+  if (!related || !related.length) return '';
+  const uid = 'sim-' + Math.random().toString(36).slice(2, 7);
+  const itemsHtml = related.map(r => {
+    const url = (r.url || '').replace(/'/g, "\\'");
+    return `<div class="sim-item">
+      <span class="sim-imp">${simImpIcon(r.importance)}</span>
+      <div class="sim-body">
+        <div class="sim-assunto">${r.assunto || r.materia || '—'}</div>
+        <div class="sim-desc" title="${r.desc || ''}">${(r.desc || r.qid).slice(0, 52)}</div>
+        <div class="sim-stats">✅ ${r.acertos} · ❌ ${r.erros} · sim. ${Math.round((r.score||0)*100)}%</div>
+      </div>
+      ${url ? `<button class="sim-open" data-action="open-question" data-url="${url}">↗</button>` : ''}
+    </div>`;
+  }).join('');
+
+  const allUrls = related.filter(r => r.url).map(r => r.url);
+  const blockBtn = allUrls.length > 1
+    ? `<button class="sim-block-btn" data-action="open-sim-block" data-urls="${encodeURIComponent(JSON.stringify(allUrls))}">🔗 Revisar bloco (${allUrls.length} questões similares)</button>`
+    : '';
+
+  return `<div class="sim-panel">
+    <div class="sim-toggle" onclick="
+      const l=this.nextElementSibling;
+      const open=l.style.display!=='none';
+      l.style.display=open?'none':'block';
+      this.children[1].textContent=open?'▶':'▼';
+    ">
+      <span>📎 ${related.length} questão(ões) similar(es) encontrada(s)</span>
+      <span style="font-size:8px;color:#475569;">▼</span>
+    </div>
+    <div style="display:none;">
+      <div class="sim-list">${itemsHtml}</div>
+      ${blockBtn}
+    </div>
+  </div>`;
+}
+
 function qCardHtml(q, sessionMode) {
   const today = new Date().toISOString().split('T')[0];
   const isDue  = !q.nextReview || q.nextReview <= today;
@@ -330,6 +513,12 @@ function qCardHtml(q, sessionMode) {
       ? `<span class="badge due-now">⏰ Revisar hoje</span>`
       : `<span class="badge future">📅 ${fmtDate(q.nextReview)}</span>`;
   const difBadge = q.dificuldade ? `<span class="badge dif">${q.dificuldade}</span>` : '';
+  const simBadge = q.relatedQuestions?.length
+    ? `<span class="badge" style="background:rgba(99,102,241,.15);color:#818cf8;">📎 ${q.relatedQuestions.length} similares</span>`
+    : '';
+  const semBadge = q.semanticConcepts?.concepts?.length
+    ? `<span class="badge" style="background:rgba(34,197,94,.1);color:#4ade80;" title="${q.semanticConcepts.concepts.slice(0,3).join(', ')}">🤖 ${q.semanticConcepts.concepts.length} conceitos</span>`
+    : '';
   const desc = (q.desc || 'Questão #' + q.qid).slice(0, 55);
   const url  = (q.url || '').replace(/'/g, "\\'");
   const assuntoHtml = q.assunto ? `<div style="font-size:9px;color:#6366f1;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${q.assunto}</div>` : '';
@@ -343,12 +532,13 @@ function qCardHtml(q, sessionMode) {
         <div class="qcard-desc" title="${q.desc || ''}">${desc}</div>
       </div>
     </div>
-    <div class="qcard-badges">${errBadge}${dateBadge}${difBadge}</div>
+    <div class="qcard-badges">${errBadge}${dateBadge}${difBadge}${simBadge}${semBadge}</div>
     <div class="qcard-btns">
       <button class="qbtn review" data-action="open-question" data-url="${url}">📖 Abrir</button>
       <button class="qbtn acertei" data-action="mark-review" data-qid="${q.qid}" data-quality="4">✓ Acertei</button>
       <button class="qbtn errei" data-action="mark-review" data-qid="${q.qid}" data-quality="1">✕ Errei</button>
     </div>
+    ${simPanelHtml(q.relatedQuestions)}
   </div>`;
 }
 
@@ -449,15 +639,20 @@ function renderRevisao(data) {
     html += sessionErrors.map(q => qCardHtml(q, true)).join('');
   }
 
-  // 3. Seção SM-2 agendadas
+  // 3. Seção SM-2 agendadas — renderiza em clusters por assunto
   if (due.length > 0) {
     if (hubItems.length > 0 || sessionErrors.length > 0) {
       html += `<div style="font-size:10px;color:#475569;font-weight:700;letter-spacing:.8px;margin:10px 0 7px;">📅 AGENDADAS (SM-2)</div>`;
     }
-    html += due.map(q => qCardHtml(q, false)).join('');
+    if (data.clusteredReviews && data.clusteredReviews.length > 0) {
+      html += renderClusters(data.clusteredReviews);
+    } else {
+      html += due.map(q => qCardHtml(q, false)).join('');
+    }
   }
 
   document.getElementById('rev-list').innerHTML = html;
+  renderRevPreAlert(data.preAlert);
 }
 
 // ── Renderização: Histórico ─────────────────────────────────────────────────
@@ -515,7 +710,103 @@ function renderConfig(data) {
   document.getElementById('cfg-goal').value = cfgSettings.dailyGoal || 30;
   setToggle('notifications', cfgSettings.notifications !== false);
   setToggle('autoReveal', cfgSettings.autoReveal !== false);
+  const keyEl = document.getElementById('cfg-claude-key');
+  if (keyEl) keyEl.value = cfgSettings.claudeApiKey ? '••••••••' : '';
   renderQBankStats(data.questionBankStats);
+}
+
+// ── Renderização: Revisão com clusters e pré-alerta ─────────────────────────
+function renderRevPreAlert(preAlert) {
+  const el = document.getElementById('rev-prealert');
+  if (!el) return;
+  if (!preAlert || !preAlert.count) { el.style.display = 'none'; return; }
+  el.style.display = '';
+  el.innerHTML = `⚠️ <strong>${preAlert.count} questão(ões)</strong> de <em>${preAlert.materia}</em> aguardando revisão antes desta sessão.`;
+}
+
+function renderClusters(clusteredReviews) {
+  if (!clusteredReviews || !clusteredReviews.length) return '';
+  let html = '';
+  for (const cluster of clusteredReviews) {
+    if (cluster.items.length === 1) {
+      html += qCardHtml(cluster.items[0], false);
+    } else {
+      html += `<div class="cluster-hdr">📚 ${cluster.label} (${cluster.items.length} questões)</div>`;
+      html += cluster.items.map(q => qCardHtml(q, false)).join('');
+    }
+  }
+  return html;
+}
+
+// ── Renderização: Análise ────────────────────────────────────────────────────
+function renderAnalise(data) {
+  renderPreAlertAnalise(data.preAlert);
+  renderConfusionPatterns(data.confusionPatterns || []);
+  renderArticleCoverage(data.articleCoverage || {});
+  renderSemanticStatus(data.settings || {});
+}
+
+function renderPreAlertAnalise(preAlert) {
+  const el = document.getElementById('pre-alert-pop');
+  const txt = document.getElementById('pre-alert-pop-text');
+  if (!el || !txt) return;
+  if (!preAlert || !preAlert.count) { el.style.display = 'none'; return; }
+  el.style.display = '';
+  const items = (preAlert.items || []).map(i => `• ${i.assunto || i.desc || i.qid}`).join('<br>');
+  txt.innerHTML = `<strong>${preAlert.count} questão(ões)</strong> pendente(s) de <em>${preAlert.materia}</em>:<br>${items}`;
+}
+
+function renderConfusionPatterns(patterns) {
+  const el = document.getElementById('confusion-list');
+  if (!el) return;
+  if (!patterns.length) {
+    el.innerHTML = '<div style="font-size:11px;color:#475569;padding:8px 0;">Ainda sem dados suficientes.<br>Erre pelo menos 3 questões relacionadas para detectar padrões.</div>';
+    return;
+  }
+  el.innerHTML = patterns.map(p => `
+    <div class="conf-item">
+      <div class="conf-pair">⚠️ ${p.a} ↔ ${p.b}</div>
+      <div class="conf-meta">${p.materia ? p.materia + ' · ' : ''}Confundido <strong>${p.count}×</strong></div>
+    </div>`).join('');
+}
+
+function renderArticleCoverage(coverage) {
+  const el = document.getElementById('article-coverage-list');
+  if (!el) return;
+  const allMats = Object.entries(coverage);
+  if (!allMats.length) {
+    el.innerHTML = '<div style="font-size:11px;color:#475569;padding:8px 0;">Nenhuma questão com referência legal registrada ainda.</div>';
+    return;
+  }
+  let html = '';
+  for (const [mat, refs] of allMats) {
+    const ranked = Object.entries(refs)
+      .map(([ref, v]) => ({ ref, ...v, total: v.correct + v.wrong, pct: v.correct + v.wrong > 0 ? Math.round(v.correct / (v.correct + v.wrong) * 100) : 0 }))
+      .filter(r => r.total > 0)
+      .sort((a, b) => a.pct - b.pct || b.total - a.total)
+      .slice(0, 8);
+    if (!ranked.length) continue;
+    html += `<div class="cov-mat-hdr">${mat.replace(/_/g, ' ').toUpperCase()}</div>`;
+    for (const r of ranked) {
+      const color = r.pct >= 70 ? '#22c55e' : r.pct >= 40 ? '#f59e0b' : '#ef4444';
+      html += `<div class="cov-bar-wrap">
+        <span class="cov-bar-ref" title="${r.ref}">${r.ref}</span>
+        <div class="cov-bar-bg"><div class="cov-bar-fill" style="width:${r.pct}%;background:${color};"></div></div>
+        <span class="cov-bar-pct" style="color:${color};">${r.pct}%</span>
+      </div>`;
+    }
+  }
+  el.innerHTML = html || '<div style="font-size:11px;color:#475569;padding:8px 0;">Sem artigos rastreados ainda.</div>';
+}
+
+function renderSemanticStatus(settings) {
+  const el = document.getElementById('semantic-status');
+  if (!el) return;
+  if (settings.claudeApiKey) {
+    el.innerHTML = '<span style="color:#22c55e;font-weight:700;">✓ API Claude configurada.</span> Conceitos semânticos são extraídos automaticamente ao errar questões.';
+  } else {
+    el.innerHTML = 'Configure a chave da API Claude em <strong>CONFIG → Chave API Claude</strong> para ativar análise semântica de conceitos jurídicos.';
+  }
 }
 
 function setToggle(id, on) {
@@ -582,8 +873,12 @@ async function loadAll() {
   try { renderRevisao(appData); }  catch(e) { console.error('renderRevisao', e); }
   try { renderHistorico(appData); }catch(e) { console.error('renderHistorico', e); }
   try { renderConfig(appData); }   catch(e) { console.error('renderConfig', e); }
+  try { renderAnalise(appData); }  catch(e) { /* */ }
   try { initPopTimer(appData.timer); } catch(e) { console.error('initPopTimer', e); }
   try { if (appData.pomodoro) initPomodoro(appData.pomodoro); } catch(e) { console.error('initPomodoro', e); }
+  try { renderHourlyChart(appData.hourlyStats); } catch(e) { /* */ }
+  try { renderFatigueAlert(appData.recentResults || [], appData.todayStats || {}); } catch(e) { /* */ }
+  try { renderManHubTimer(appData.manualHubTimer); } catch(e) { /* */ }
   updateStatusBar(); // dispara async sem bloquear o resto do loadAll
 
   // Badge de revisões (banco + sessão atual)
@@ -633,6 +928,8 @@ async function markReview(qid, quality) {
 
 function saveConfig() {
   cfgSettings.dailyGoal = parseInt(document.getElementById('cfg-goal').value) || 30;
+  const keyEl = document.getElementById('cfg-claude-key');
+  if (keyEl && keyEl.value && !keyEl.value.startsWith('•')) cfgSettings.claudeApiKey = keyEl.value.trim();
   chrome.runtime.sendMessage({ type: 'SAVE_SETTINGS', settings: cfgSettings }, () => {
     const btn = document.querySelector('.cfg-btn.primary');
     const orig = btn.textContent;
@@ -862,11 +1159,15 @@ async function softRefresh(force = false) {
     // Atualiza só os contadores Huberman (sem reconstruir DOM)
     updateHubCountdowns(fresh.hubQueue || []);
 
-    // Atualiza aprovação, prioridade e gráfico semanal
+    // Atualiza aprovação, prioridade, gráficos e alertas
     try { renderAprovacao(fresh.todayStats || {}, fresh.settings); } catch (e) { /* */ }
     try { renderPriorityList(fresh.subjectStats || []); } catch (e) { /* */ }
     try { renderWeekChart(fresh.weekStats); } catch (e) { /* */ }
     try { renderQBankStats(fresh.questionBankStats); } catch (e) { /* */ }
+    try { renderHourlyChart(fresh.hourlyStats); } catch (e) { /* */ }
+    try { renderFatigueAlert(fresh.recentResults || [], fresh.todayStats || {}); } catch (e) { /* */ }
+    try { if (fresh.manualHubTimer && !_manHubLocal) renderManHubTimer(fresh.manualHubTimer); } catch (e) { /* */ }
+    try { renderRevPreAlert(fresh.preAlert); } catch (e) { /* */ }
 
     // Atualiza pomodoro se mudou estado
     if (fresh.pomodoro && fresh.pomodoro.active !== pomData.active) {
@@ -951,6 +1252,13 @@ document.addEventListener('click', e => {
     case 'hub-wrong': hubWrong(qid); break;
     case 'hub-dismiss': hubDismiss(qid); break;
     case 'hub-add-custom': hubAddCustom(); break;
+    case 'open-sim-block': {
+      try {
+        const urls = JSON.parse(decodeURIComponent(btn.dataset.urls || '[]'));
+        urls.forEach(u => chrome.tabs.create({ url: u, active: false }));
+      } catch(e) {}
+      break;
+    }
   }
 });
 

@@ -15,6 +15,23 @@ let tecTabId    = null;
 let filaCount   = 0;
 let activeSession = null;  // sessão corrente (não persistida ainda)
 
+// ── Estatísticas por hora do dia (em memória, reset diário) ──────────────
+let _hourlyDay = '';
+let hourlyStats = Array(24).fill(null).map(() => ({ q: 0, ace: 0 }));
+function _ensureHourlyDay() {
+  const today = todayKey();
+  if (_hourlyDay !== today) { _hourlyDay = today; hourlyStats = Array(24).fill(null).map(() => ({ q: 0, ace: 0 })); }
+}
+
+// ── Timer Huberman Manual (5/9/11min) ────────────────────────────────────
+let manualHubTimer = { running: false, label: '', totalSecs: 0, startTs: null };
+const MAN_HUB_ALARM = 'pf_manual_hub_review';
+function manualHubSnapshot() {
+  if (!manualHubTimer.running) return { running: false };
+  const remaining = Math.max(0, manualHubTimer.totalSecs - Math.floor((Date.now() - manualHubTimer.startTs) / 1000));
+  return { running: true, label: manualHubTimer.label, totalSecs: manualHubTimer.totalSecs, remaining };
+}
+
 // ════════════════════════════════════════════════════════
 // MÉTODO HUBERMAN — Fila de revisão em curto prazo
 // Protocolo: 5min → 9min → 11min → custom → SM-2 longo prazo
@@ -400,16 +417,209 @@ async function reviewWrongQuestion(qid, quality) {
   return bank;
 }
 
+// ════════════════════════════════════════════════════════════════════════════
+// MOTOR DE SIMILARIDADE — detecta questões parecidas pelo conteúdo jurídico
+// Usa extração de palavras-chave legais + índice Jaccard (sem API externa)
+// ════════════════════════════════════════════════════════════════════════════
+
+const PT_STOPWORDS = new Set([
+  'para','com','uma','ser','que','não','por','mais','como','mas','foi','ele',
+  'ela','seu','sua','dos','das','nas','nos','num','uns','umas','lhe','nós',
+  'isso','esse','esta','este','essa','pelo','pela','depois','mesmo','entre',
+  'sobre','ainda','porque','quando','quem','está','caso','seja','deve','cada',
+  'todo','toda','todos','todas','assim','desde','durante','apenas','podem',
+  'pode','fazer','feita','feito','tendo','sendo','foram','teria','seria',
+  'também','onde','qual','quais','quanto','sem','após','ante','perante',
+  'salvo','exceto','inclusive','mediante','conforme','segundo','artigo',
+  'inciso','parágrafo','alínea','mediante','qualquer','quando','razão',
+  'forma','vista','valor','prazo','cujas','cujos','cuja','cujo','deste',
+  'desta','desse','desse','nesse','nesta','neste','aquele','aquela','tanto',
+]);
+
+function extractKeywords(text, materia, assunto) {
+  const src = ((text || '') + ' ' + (materia || '') + ' ' + (assunto || '')).toLowerCase();
+  const kws = new Set();
+
+  // 1. Referências a artigos de lei (alto peso — marcadores jurídicos específicos)
+  const artRefs = src.match(/art(?:igo)?\.?\s*\d+[oº°]?(?:-[a-z])?/g) || [];
+  artRefs.forEach(a => kws.add(a.replace(/\s+/g, '').replace('artigo', 'art.')));
+
+  // 2. Parágrafos
+  const parRefs = src.match(/§\s*\d+[oº°]?/g) || [];
+  parRefs.forEach(p => kws.add(p.replace(/\s+/g, '')));
+
+  // 3. Incisos
+  const incRefs = src.match(/inciso\s+(?:[ivxlcdmIVXLCDM]+|\d+)/g) || [];
+  incRefs.forEach(i => kws.add(i.replace(/\s+/g, '_')));
+
+  // 4. Leis específicas mencionadas (CTN, CF, CLT, CPC etc.)
+  const lawRefs = src.match(/\b(?:ctn|cf\/?\d{2}|crfb|clt|cpc|cp\b|cpp|cdc|lei\s+\d[\d.\/]+)\b/g) || [];
+  lawRefs.forEach(l => kws.add(l.replace(/\s+/g, '_')));
+
+  // 5. Palavras jurídicas significativas (>4 chars, sem stopwords)
+  const words = src.replace(/[^\wáàâãéêíóôõúçñü\s]/g, ' ').split(/\s+/);
+  words.forEach(w => {
+    if (w.length > 4 && !PT_STOPWORDS.has(w) && !/^\d+$/.test(w)) kws.add(w);
+  });
+
+  return kws;
+}
+
+function jaccardSim(setA, setB) {
+  if (!setA.size || !setB.size) return 0;
+  let inter = 0;
+  for (const k of setA) if (setB.has(k)) inter++;
+  return inter / (setA.size + setB.size - inter);
+}
+
+async function findSimilarQuestions(payload, limit = 5) {
+  const bank = await loadQuestionBank();
+  const targetKw = extractKeywords(payload.desc || payload.enunciado, payload.materia, payload.assunto);
+  if (!targetKw.size) return [];
+
+  const results = [];
+
+  for (const [disc, subjects] of Object.entries(bank)) {
+    for (const [assunto, qmap] of Object.entries(subjects)) {
+      for (const [qid, q] of Object.entries(qmap)) {
+        if (qid === (payload.qid || payload.pos?.toString())) continue;
+
+        const sameAssunto = assunto === payload.assunto;
+        const sameDisc    = disc === (payload.materia || payload.disciplina);
+
+        const qKw  = extractKeywords(q.desc, disc, assunto);
+        const sim  = jaccardSim(targetKw, qKw);
+        const score = sim + (sameAssunto ? 0.28 : 0) + (sameDisc ? 0.08 : 0);
+
+        // Mostra se: score suficiente OU mesmo assunto com histórico de erro
+        if (score >= 0.15 || (sameAssunto && q.erros > 0)) {
+          results.push({
+            qid, url: q.url || '', desc: q.desc || assunto,
+            materia: disc, assunto,
+            importance: q.importance || 1,
+            acertos: q.acertos || 0, erros: q.erros || 0,
+            score: Math.round(score * 100) / 100,
+          });
+        }
+      }
+    }
+  }
+
+  return results.sort((a, b) => b.score - a.score || b.erros - a.erros).slice(0, limit);
+}
+
 async function getDueReviews() {
   const bank = await loadWrongBank();
   const today = todayKey();
   return Object.values(bank)
     .filter(q => q.nextReview <= today)
     .sort((a, b) => {
-      // Prioridade: mais erros primeiro, depois mais antiga
       if (b.errorCount !== a.errorCount) return b.errorCount - a.errorCount;
       return a.nextReview.localeCompare(b.nextReview);
     });
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// COBERTURA POR ARTIGO — mapeia acertos/erros por referência jurídica
+// ════════════════════════════════════════════════════════════════════════════
+
+function extractArticleRefs(text, materia) {
+  const src = ((text || '') + ' ' + (materia || '')).toLowerCase();
+  const refs = new Set();
+  const artRefs = src.match(/art(?:igo)?\.?\s*\d+[oº°]?(?:-[a-z])?/g) || [];
+  artRefs.forEach(a => refs.add(a.replace(/\s+/g, '').replace('artigo', 'art.')));
+  const parRefs = src.match(/§\s*\d+[oº°]?/g) || [];
+  parRefs.forEach(p => refs.add(p.replace(/\s+/g, '')));
+  return [...refs];
+}
+
+async function updateArticleCoverage(payload, result) {
+  const refs = extractArticleRefs(payload.desc || payload.enunciado, payload.materia);
+  if (!refs.length) return;
+  const stored = await new Promise(r => chrome.storage.local.get('pf_article_coverage', r));
+  const cov = stored['pf_article_coverage'] || {};
+  const key = (payload.materia || 'geral').toLowerCase().replace(/\s+/g, '_');
+  if (!cov[key]) cov[key] = {};
+  for (const ref of refs) {
+    if (!cov[key][ref]) cov[key][ref] = { correct: 0, wrong: 0 };
+    if (result === 'correct') cov[key][ref].correct++;
+    else cov[key][ref].wrong++;
+  }
+  await new Promise(r => chrome.storage.local.set({ pf_article_coverage: cov }, r));
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// PADRÕES DE CONFUSÃO — detecta artigos que o usuário confunde
+// ════════════════════════════════════════════════════════════════════════════
+
+async function updateConfusionPatterns(payload) {
+  const refs = extractArticleRefs(payload.desc || payload.enunciado, payload.materia);
+  if (refs.length < 2) return;
+  const stored = await new Promise(r => chrome.storage.local.get('pf_confusion_patterns', r));
+  const patterns = stored['pf_confusion_patterns'] || {};
+  for (let i = 0; i < refs.length; i++) {
+    for (let j = i + 1; j < refs.length; j++) {
+      const pairKey = [refs[i], refs[j]].sort().join('||');
+      if (!patterns[pairKey]) patterns[pairKey] = { a: refs[i], b: refs[j], count: 0, materia: payload.materia || '' };
+      patterns[pairKey].count++;
+    }
+  }
+  await new Promise(r => chrome.storage.local.set({ pf_confusion_patterns: patterns }, r));
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// CLUSTER DE REVISÕES — agrupa revisões pendentes por assunto
+// ════════════════════════════════════════════════════════════════════════════
+
+function clusterDueReviews(dueReviews) {
+  const clusters = {};
+  for (const q of dueReviews) {
+    const key = (q.assunto || q.materia || 'geral').toLowerCase();
+    if (!clusters[key]) clusters[key] = { label: q.assunto || q.materia || 'Geral', materia: q.materia || '', items: [] };
+    clusters[key].items.push(q);
+  }
+  return Object.values(clusters).sort((a, b) => b.items.length - a.items.length);
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// CLAUDE API — extração semântica de conceitos jurídicos
+// ════════════════════════════════════════════════════════════════════════════
+
+async function callClaudeForConcepts(text, apiKey) {
+  if (!apiKey || !text) return null;
+  const cacheKey = 'sem_' + Array.from(text.slice(0, 200)).reduce((h, c) => (Math.imul(31, h) + c.charCodeAt(0)) | 0, 0).toString(36);
+  const stored = await new Promise(r => chrome.storage.local.get('pf_semantic_cache', r));
+  const cache = stored['pf_semantic_cache'] || {};
+  if (cache[cacheKey]) return cache[cacheKey];
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 256,
+        messages: [{
+          role: 'user',
+          content: `Extraia conceitos jurídicos e artigos desta questão. Responda APENAS com JSON: {"concepts":["conceito1"],"articles":["art.X"]}\n\nQuestão: ${text.slice(0, 600)}`,
+        }],
+      }),
+    });
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    const raw = data.content?.[0]?.text || '';
+    const match = raw.match(/\{[\s\S]*\}/);
+    if (!match) return null;
+    const parsed = JSON.parse(match[0]);
+    cache[cacheKey] = parsed;
+    const keys = Object.keys(cache);
+    if (keys.length > 500) keys.slice(0, 50).forEach(k => delete cache[k]);
+    await new Promise(r => chrome.storage.local.set({ pf_semantic_cache: cache }, r));
+    return parsed;
+  } catch { return null; }
 }
 
 // ── Histórico de sessões ──────────────────────────────────────────────────────
@@ -587,7 +797,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         await updateQuestionBank(payload, 'correct');
         if (payload.materia) await updateSubjectStats(payload.materia, 1, 0, payload.assunto);
         await checkDailyGoal(today);
-        // Atualiza sessão ativa
+        _ensureHourlyDay(); const _h1 = new Date().getHours(); hourlyStats[_h1].q++; hourlyStats[_h1].ace++;
+        updateArticleCoverage(payload, 'correct').catch(() => {});
         if (activeSession) {
           activeSession.acertos = (activeSession.acertos || 0) + 1;
           activeSession.questions = activeSession.questions || [];
@@ -603,11 +814,48 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         await updateQuestionBank(payload, 'wrong');
         if (payload.materia) await updateSubjectStats(payload.materia, 0, 1, payload.assunto);
         await addToWrongBank(payload);
-        // Inicia ciclo Huberman (fase 1 = 5 min)
         if (payload.qid) hubSchedule(payload, 1);
-        // Badge = total de revisões devidas
+        // Busca questões similares em segundo plano (não bloqueia a resposta)
+        if (payload.qid) {
+          findSimilarQuestions(payload).then(async similar => {
+            if (!similar.length) return;
+            const wb = await loadWrongBank();
+            if (wb[payload.qid]) {
+              wb[payload.qid].relatedQuestions = similar;
+              await setStorage({ wrongBank: wb });
+              // Notifica se há questões críticas similares
+              const criticals = similar.filter(s => s.importance === 3 || s.erros >= 2);
+              if (criticals.length > 0) {
+                const settings = await getSettings();
+                if (settings.notifications !== false) {
+                  showNotification(
+                    `📎 ${similar.length} questão(ões) similar(es) encontrada(s)`,
+                    `"${(payload.desc||payload.assunto||'').slice(0,60)}" — abra o popup para ver o bloco`,
+                    'sim-found-' + payload.qid
+                  );
+                }
+              }
+            }
+          }).catch(() => {});
+        }
         const due = await getDueReviews();
         updateBadge(due.length + hubQueue.length);
+        _ensureHourlyDay(); const _h2 = new Date().getHours(); hourlyStats[_h2].q++;
+        updateArticleCoverage(payload, 'wrong').catch(() => {});
+        updateConfusionPatterns(payload).catch(() => {});
+        // Enriquecimento semântico via Claude API (se configurado)
+        if (payload.qid && (payload.desc || payload.enunciado)) {
+          getSettings().then(async s => {
+            if (!s.claudeApiKey) return;
+            const concepts = await callClaudeForConcepts(payload.desc || payload.enunciado, s.claudeApiKey);
+            if (!concepts) return;
+            const wb = await loadWrongBank();
+            if (wb[payload.qid]) {
+              wb[payload.qid].semanticConcepts = concepts;
+              await setStorage({ wrongBank: wb });
+            }
+          }).catch(() => {});
+        }
         if (activeSession) {
           activeSession.erros = (activeSession.erros || 0) + 1;
           activeSession.questions = activeSession.questions || [];
@@ -632,6 +880,31 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         };
         // Auto-inicia cronômetro ao começar sessão
         if (!timer.running) timerStart();
+        // Pré-alerta: verifica se há erros pendentes da mesma matéria/assunto
+        if (payload.materia || payload.assunto) {
+          getDueReviews().then(async dueList => {
+            const related = dueList.filter(q =>
+              (payload.materia && q.materia === payload.materia) ||
+              (payload.assunto && q.assunto === payload.assunto)
+            );
+            if (related.length > 0) {
+              const settings = await getSettings();
+              if (settings.notifications !== false) {
+                showNotification(
+                  `⚠️ ${related.length} revisão(ões) pendente(s)`,
+                  `Você tem erros de ${payload.materia || payload.assunto} para revisar antes de continuar.`,
+                  'pf-prealert-' + Date.now()
+                );
+              }
+              // Guarda para exibir no popup
+              activeSession._preAlert = {
+                count: related.length,
+                materia: payload.materia || payload.assunto,
+                items: related.slice(0, 3).map(q => ({ qid: q.qid, desc: q.desc, assunto: q.assunto })),
+              };
+            }
+          }).catch(() => {});
+        }
         break;
       }
 
@@ -771,8 +1044,44 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       }
 
       // ── Popup: solicita dados completos ────────────────────────────────────
+      // ── Busca de questões similares sob demanda ───────────────────────────
+      case 'FIND_SIMILAR': {
+        const similar = await findSimilarQuestions(msg.payload || {}, msg.limit || 5);
+        sendResponse({ similar });
+        return;
+      }
+
+      // ── Timer Huberman manual (5/9/11min) ─────────────────────────────────
+      case 'MANUAL_HUB_START': {
+        const mins = Math.max(1, Math.min(120, msg.mins || 5));
+        manualHubTimer = { running: true, label: msg.label || (mins + ' min'), totalSecs: mins * 60, startTs: Date.now() };
+        chrome.alarms.clear(MAN_HUB_ALARM);
+        chrome.alarms.create(MAN_HUB_ALARM, { delayInMinutes: mins });
+        sendResponse({ ok: true, timer: manualHubSnapshot() });
+        return;
+      }
+      case 'MANUAL_HUB_CANCEL': {
+        chrome.alarms.clear(MAN_HUB_ALARM);
+        manualHubTimer.running = false;
+        sendResponse({ ok: true });
+        return;
+      }
+      case 'MANUAL_HUB_GET': {
+        sendResponse(manualHubSnapshot());
+        return;
+      }
+      // ── Resultado de revisão Huberman manual ──────────────────────────────
+      case 'HUB_REVIEW_RESULT': {
+        const stored = (await new Promise(r => chrome.storage.local.get('pf_hub_reviews', r)))['pf_hub_reviews'] || [];
+        stored.push({ ts: Date.now(), label: msg.label || '', remembered: !!msg.remembered });
+        if (stored.length > 300) stored.splice(0, stored.length - 300);
+        await new Promise(r => chrome.storage.local.set({ pf_hub_reviews: stored }, r));
+        sendResponse({ ok: true });
+        return;
+      }
+
       case 'GET_POPUP_DATA': {
-        const [todayStats, globalStats, wrongBank, sessions, subjectStats, settings, dueReviews, weekStats, questionBank] = await Promise.all([
+        const [todayStats, globalStats, wrongBank, sessions, subjectStats, settings, dueReviews, weekStats, questionBank, artCovStored, confStored] = await Promise.all([
           getTodayStats(),
           loadStats(),
           loadWrongBank(),
@@ -782,8 +1091,16 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           getDueReviews(),
           getWeekStats(),
           loadQuestionBank(),
+          new Promise(r => chrome.storage.local.get('pf_article_coverage', r)),
+          new Promise(r => chrome.storage.local.get('pf_confusion_patterns', r)),
         ]);
         const qbItems = Object.values(questionBank);
+        const articleCoverage = artCovStored['pf_article_coverage'] || {};
+        const confusionPatterns = Object.values(confStored['pf_confusion_patterns'] || {})
+          .filter(p => p.count >= 3)
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 10);
+        const clusteredReviews = clusterDueReviews(dueReviews);
         sendResponse({
           todayStats,
           globalStats,
@@ -792,6 +1109,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           subjectStats,
           settings,
           dueReviews,
+          clusteredReviews,
           filaCount,
           panelTabId,
           tecTabId,
@@ -800,6 +1118,12 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           hubQueue: hubGetStatus(),
           weekStats,
           pomodoro: pomodoroSnapshot(),
+          hourlyStats,
+          manualHubTimer: manualHubSnapshot(),
+          recentResults: activeSession ? (activeSession.questions || []).slice(-10).map(q => q.result) : [],
+          preAlert: activeSession?._preAlert || null,
+          articleCoverage,
+          confusionPatterns,
           questionBankStats: {
             total: qbItems.length,
             dominadas: qbItems.filter(q => q.importance === 1).length,
@@ -807,6 +1131,39 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             criticas: qbItems.filter(q => q.importance === 3).length,
           },
         });
+        return;
+      }
+
+      // ── Popup: solicita dados de análise avançada ─────────────────────────
+      case 'GET_ANALISE_DATA': {
+        const [artCov, confPatt, settings2] = await Promise.all([
+          new Promise(r => chrome.storage.local.get('pf_article_coverage', r)),
+          new Promise(r => chrome.storage.local.get('pf_confusion_patterns', r)),
+          getSettings(),
+        ]);
+        const topWeak = {};
+        const covData = artCov['pf_article_coverage'] || {};
+        for (const [mat, refs] of Object.entries(covData)) {
+          const ranked = Object.entries(refs)
+            .map(([ref, v]) => ({ ref, ...v, total: v.correct + v.wrong, pct: v.correct + v.wrong > 0 ? Math.round(v.correct / (v.correct + v.wrong) * 100) : 0 }))
+            .filter(r => r.total > 0)
+            .sort((a, b) => a.pct - b.pct || b.total - a.total);
+          if (ranked.length) topWeak[mat] = ranked.slice(0, 10);
+        }
+        const confusions = Object.values(confPatt['pf_confusion_patterns'] || {})
+          .filter(p => p.count >= 2)
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 20);
+        // Try Claude semantic enhancement if API key is set
+        sendResponse({ topWeak, confusions, apiKeySet: !!(settings2.claudeApiKey) });
+        return;
+      }
+
+      // ── Popup: chama Claude para conceitos de questão ──────────────────────
+      case 'GET_SEMANTIC_CONCEPTS': {
+        const settings3 = await getSettings();
+        const concepts = await callClaudeForConcepts(msg.text, settings3.claudeApiKey);
+        sendResponse({ concepts });
         return;
       }
 
@@ -908,6 +1265,14 @@ chrome.runtime.onInstalled.addListener(async () => {
 // ════════════════════════════════════════════════════════
 
 chrome.alarms.onAlarm.addListener(async alarm => {
+
+  // ── Huberman manual: timer concluído ─────────────────────────────────────
+  if (alarm.name === MAN_HUB_ALARM) {
+    const lbl = manualHubTimer.label || 'Revisão';
+    manualHubTimer.running = false;
+    showNotification('🧠 Revisão Huberman Manual', `Hora de revisar! ${lbl} concluídos.`, 'hub-manual-done');
+    return;
+  }
 
   // ── Huberman: alarme de revisão disparou ──────────────────────────────────
   if (alarm.name.startsWith('hub-')) {

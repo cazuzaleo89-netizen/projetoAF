@@ -63,8 +63,8 @@ body{
   background:#141728;
 }
 .tab{
-  flex:1;padding:9px 4px;font-size:11px;font-weight:700;
-  color:#475569;cursor:pointer;text-align:center;letter-spacing:.4px;
+  flex:1;padding:9px 2px;font-size:10px;font-weight:700;
+  color:#475569;cursor:pointer;text-align:center;letter-spacing:.3px;
   border-bottom:2px solid transparent;transition:all .15s;
 }
 .tab:hover{color:#94a3b8;}
@@ -240,6 +240,18 @@ body{
 .qbtn.errei{background:rgba(185,28,28,.15);border-color:#ef444444;color:#ef4444;}
 .qbtn.errei:hover{background:rgba(185,28,28,.25);}
 
+/* ── SEÇÃO: Análise ── */
+.cov-bar-wrap{display:flex;align-items:center;gap:7px;margin-bottom:6px;}
+.cov-bar-ref{font-size:10px;color:#94a3b8;width:72px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cov-bar-bg{flex:1;height:7px;background:#1e2338;border-radius:4px;overflow:hidden;}
+.cov-bar-fill{height:100%;border-radius:4px;transition:width .4s;}
+.cov-bar-pct{font-size:10px;font-weight:700;width:30px;text-align:right;flex-shrink:0;}
+.cov-mat-hdr{font-size:9.5px;color:#6366f1;font-weight:800;letter-spacing:.7px;margin:10px 0 5px;}
+.conf-item{background:#20243a;border:1px solid rgba(239,68,68,.2);border-radius:8px;padding:8px 10px;margin-bottom:6px;}
+.conf-pair{font-size:11px;color:#fca5a5;font-weight:700;margin-bottom:2px;}
+.conf-meta{font-size:10px;color:#64748b;}
+.cluster-hdr{font-size:10px;font-weight:800;color:#818cf8;letter-spacing:.6px;margin:10px 0 6px;padding:5px 8px;background:rgba(99,102,241,.08);border-radius:6px;border-left:3px solid #6366f1;}
+
 /* ── SEÇÃO: Histórico ── */
 .hist-empty{text-align:center;padding:30px;color:#475569;}
 .scard{
@@ -404,6 +416,7 @@ body{
 <div class="tabs">
   <div class="tab active" data-tab="hoje">HOJE</div>
   <div class="tab" data-tab="revisao">REVISÃO</div>
+  <div class="tab" data-tab="analise">ANÁLISE</div>
   <div class="tab" data-tab="historico">HISTÓRICO</div>
   <div class="tab" data-tab="config">CONFIG</div>
 </div>
@@ -501,6 +514,7 @@ body{
 <!-- ══════════════════════════════════════════════ -->
 <div class="panel" id="panel-revisao">
   <button id="btn-simulado" class="cfg-btn primary" style="margin-bottom:10px;">🎯 Simulado com Erros (10 questões)</button>
+  <div id="rev-prealert" style="display:none;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.3);border-radius:8px;padding:9px 11px;margin-bottom:9px;font-size:11px;color:#fbbf24;"></div>
   <div class="rev-header">
     <div class="rev-count"><strong id="due-count">0</strong> questões para revisar</div>
   </div>
@@ -510,6 +524,37 @@ body{
       <p>Nenhuma revisão pendente!<br>Continue resolvendo questões.</p>
     </div>
   </div>
+</div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- PAINEL: ANÁLISE                               -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="panel" id="panel-analise">
+  <!-- Pré-alerta de sessão -->
+  <div id="pre-alert-pop" style="display:none;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);border-radius:9px;padding:10px 12px;margin-bottom:10px;">
+    <div style="font-size:10px;font-weight:700;color:#ef4444;margin-bottom:4px;">⚠️ ALERTA PRÉ-SESSÃO</div>
+    <div id="pre-alert-pop-text" style="font-size:11px;color:#fca5a5;line-height:1.5;"></div>
+  </div>
+
+  <!-- Padrões de confusão -->
+  <div style="font-size:10px;color:#64748b;font-weight:700;letter-spacing:.8px;margin-bottom:7px;">🔀 PADRÕES DE CONFUSÃO</div>
+  <div id="confusion-list">
+    <div style="font-size:11px;color:#475569;padding:8px 0;">Ainda sem dados suficientes.<br>Resolva mais questões para detectar padrões.</div>
+  </div>
+
+  <div style="height:14px;"></div>
+
+  <!-- Score de cobertura por artigo -->
+  <div style="font-size:10px;color:#64748b;font-weight:700;letter-spacing:.8px;margin-bottom:7px;">📊 COBERTURA POR ARTIGO</div>
+  <div id="article-coverage-list">
+    <div style="font-size:11px;color:#475569;padding:8px 0;">Nenhuma questão com referência legal registrada ainda.</div>
+  </div>
+
+  <div style="height:14px;"></div>
+
+  <!-- Conceitos semânticos (Claude API) -->
+  <div style="font-size:10px;color:#64748b;font-weight:700;letter-spacing:.8px;margin-bottom:7px;">🤖 ANÁLISE SEMÂNTICA (CLAUDE)</div>
+  <div id="semantic-status" style="font-size:11px;color:#475569;padding:8px 0;">Configure a chave da API Claude em CONFIG para ativar análise semântica.</div>
 </div>
 
 <!-- ══════════════════════════════════════════════ -->
@@ -531,6 +576,12 @@ body{
   <div class="cfg-group">
     <label class="cfg-label">META DIÁRIA (questões)</label>
     <input class="cfg-input" type="number" id="cfg-goal" min="5" max="500" value="30">
+  </div>
+
+  <div class="cfg-group">
+    <label class="cfg-label">CHAVE API CLAUDE (opcional)</label>
+    <input class="cfg-input" type="password" id="cfg-claude-key" placeholder="sk-ant-..." autocomplete="off">
+    <div style="font-size:10px;color:#475569;margin-top:4px;">Habilita análise semântica de questões na aba ANÁLISE.</div>
   </div>
 
   <div class="cfg-group">
