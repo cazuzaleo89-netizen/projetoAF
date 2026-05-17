@@ -755,7 +755,7 @@ select.inp{appearance:none;cursor:pointer;}
 /* ══ FLOATING TIMER WINDOW ════════════════════════ */
 .fw-win{
   position:fixed;
-  width:300px;
+  width:260px;
   background:var(--surf);
   border:1px solid var(--border2);
   border-radius:12px;
@@ -835,22 +835,29 @@ select.inp{appearance:none;cursor:pointer;}
 
 /* Digits */
 .fw-digits{
-  font-family:var(--mono);font-size:2.8rem;font-weight:300;
+  font-family:var(--mono);font-size:1.65rem;font-weight:400;
   letter-spacing:1px;color:var(--text);line-height:1;
-  text-align:center;margin:.2rem 0;transition:color .3s;
+  text-align:center;transition:color .3s;
 }
 .fw-digits.running{color:var(--green);}
 .fw-digits.paused{color:var(--gold);}
 .fw-digits.urgent{color:var(--red);}
 
+/* inline timer row: dot + digits + pause/stop buttons */
+.fw-timer-row{display:flex;align-items:center;justify-content:center;gap:.5rem;margin:.3rem 0;}
+.fw-dot-ind{width:8px;height:8px;border-radius:50%;background:var(--muted2);flex-shrink:0;transition:background .3s,box-shadow .3s;}
+.fw-dot-ind.running{background:var(--green);box-shadow:0 0 6px var(--green);}
+.fw-dot-ind.paused{background:var(--gold);box-shadow:0 0 6px var(--gold);}
+.fw-inline-btns{display:flex;gap:.3rem;}
+
 .fw-disc{font-size:.58rem;letter-spacing:2.5px;text-transform:uppercase;color:var(--muted2);font-family:var(--mono);text-align:center;margin-bottom:.2rem;transition:color .3s;min-height:1em;}
 .fw-disc.active{color:var(--green);}
 .fw-disc.paused{color:var(--gold);}
 
-.fw-status{font-size:.52rem;color:var(--muted2);letter-spacing:2px;text-transform:uppercase;font-family:var(--mono);text-align:center;margin-bottom:.65rem;}
+.fw-status{font-size:.5rem;color:var(--muted2);letter-spacing:2px;text-transform:uppercase;font-family:var(--mono);text-align:center;margin-bottom:.4rem;}
 
 .fw-btns{display:flex;gap:.35rem;justify-content:center;flex-wrap:wrap;margin:.1rem 0;}
-.fw-btn{padding:.42rem .75rem!important;font-size:.7rem!important;}
+.fw-btn{padding:.38rem .65rem!important;font-size:.68rem!important;}
 
 .fw-disc-lbl{font-size:.5rem;text-transform:uppercase;letter-spacing:2.5px;color:var(--muted2);font-weight:700;margin-bottom:.3rem;font-family:var(--display);}
 .fw-select{font-size:.75rem!important;padding:.45rem .7rem!important;}
@@ -4739,13 +4746,18 @@ select.inp{appearance:none;cursor:pointer;}
     <!-- CRONÔMETRO VIEW -->
     <div id="fw-chrono-view">
       <div class="fw-disc" id="fw-disc-label">Selecione uma disciplina</div>
-      <div class="fw-digits" id="fw-digits">00:00:00</div>
+      <div class="fw-timer-row">
+        <div class="fw-dot-ind" id="fw-dot-ind"></div>
+        <div class="fw-digits" id="fw-digits">00:00:00</div>
+        <div class="fw-inline-btns">
+          <button class="btn btn-amber fw-btn" id="fw-btn-pause" onclick="pauseTimer()" style="display:none">⏸</button>
+          <button class="btn btn-ghost fw-btn" id="fw-btn-resume" onclick="resumeTimer()" style="display:none">▶</button>
+          <button class="btn btn-danger fw-btn" id="fw-btn-stop" onclick="stopTimer()" style="display:none">■</button>
+        </div>
+      </div>
       <div class="fw-status" id="fw-status">Pronto</div>
       <div class="fw-btns">
-        <button class="btn btn-green fw-btn" id="fw-btn-start" onclick="startTimer()">▶</button>
-        <button class="btn btn-amber fw-btn" id="fw-btn-pause" onclick="pauseTimer()" style="display:none">⏸</button>
-        <button class="btn btn-ghost fw-btn" id="fw-btn-resume" onclick="resumeTimer()" style="display:none">▶</button>
-        <button class="btn btn-danger fw-btn" id="fw-btn-stop" onclick="stopTimer()" style="display:none">■</button>
+        <button class="btn btn-green fw-btn" id="fw-btn-start" onclick="startTimer()">▶ Iniciar</button>
       </div>
     </div>
 
@@ -9180,15 +9192,21 @@ function fwSyncAll(){
   const statusEl=document.getElementById('fw-status');
   if(statusEl)statusEl.textContent=timer.running?(timer.paused?'Pausado':'Estudando…'):'Pronto';
 
+  // sync dot indicator
+  const dotInd=document.getElementById('fw-dot-ind');
+  if(dotInd){
+    dotInd.className='fw-dot-ind'+(timer.running&&!timer.paused?' running':timer.paused?' paused':'');
+  }
+
   // sync chrono buttons
   const fs=document.getElementById('fw-btn-start'),fp=document.getElementById('fw-btn-pause'),
         fr=document.getElementById('fw-btn-resume'),fst=document.getElementById('fw-btn-stop');
   if(!timer.running){
     if(fs)fs.style.display='';if(fp)fp.style.display='none';if(fr)fr.style.display='none';if(fst)fst.style.display='none';
   } else if(timer.paused){
-    if(fs)fs.style.display='none';if(fp)fp.style.display='none';if(fr)fr.style.display='';if(fst)fst.style.display='';
+    if(fs)fs.style.display='none';if(fp)fp.style.display='none';if(fr)fr.style.display='flex';if(fst)fst.style.display='flex';
   } else {
-    if(fs)fs.style.display='none';if(fp)fp.style.display='';if(fr)fr.style.display='none';if(fst)fst.style.display='';
+    if(fs)fs.style.display='none';if(fp)fp.style.display='flex';if(fr)fr.style.display='none';if(fst)fst.style.display='flex';
   }
 
   // ── COUNTDOWN sync ──
