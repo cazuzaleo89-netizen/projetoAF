@@ -460,6 +460,48 @@ function renderHoje(data) {
 }
 
 // ── Renderização: Revisão ───────────────────────────────────────────────────
+function simImpIcon(imp) {
+  return imp === 3 ? '🔴' : imp === 2 ? '🟡' : '🟢';
+}
+
+function simPanelHtml(related) {
+  if (!related || !related.length) return '';
+  const uid = 'sim-' + Math.random().toString(36).slice(2, 7);
+  const itemsHtml = related.map(r => {
+    const url = (r.url || '').replace(/'/g, "\\'");
+    return `<div class="sim-item">
+      <span class="sim-imp">${simImpIcon(r.importance)}</span>
+      <div class="sim-body">
+        <div class="sim-assunto">${r.assunto || r.materia || '—'}</div>
+        <div class="sim-desc" title="${r.desc || ''}">${(r.desc || r.qid).slice(0, 52)}</div>
+        <div class="sim-stats">✅ ${r.acertos} · ❌ ${r.erros} · sim. ${Math.round((r.score||0)*100)}%</div>
+      </div>
+      ${url ? `<button class="sim-open" data-action="open-question" data-url="${url}">↗</button>` : ''}
+    </div>`;
+  }).join('');
+
+  const allUrls = related.filter(r => r.url).map(r => r.url);
+  const blockBtn = allUrls.length > 1
+    ? `<button class="sim-block-btn" data-action="open-sim-block" data-urls="${encodeURIComponent(JSON.stringify(allUrls))}">🔗 Revisar bloco (${allUrls.length} questões similares)</button>`
+    : '';
+
+  return `<div class="sim-panel">
+    <div class="sim-toggle" onclick="
+      const l=this.nextElementSibling;
+      const open=l.style.display!=='none';
+      l.style.display=open?'none':'block';
+      this.children[1].textContent=open?'▶':'▼';
+    ">
+      <span>📎 ${related.length} questão(ões) similar(es) encontrada(s)</span>
+      <span style="font-size:8px;color:#475569;">▼</span>
+    </div>
+    <div style="display:none;">
+      <div class="sim-list">${itemsHtml}</div>
+      ${blockBtn}
+    </div>
+  </div>`;
+}
+
 function qCardHtml(q, sessionMode) {
   const today = new Date().toISOString().split('T')[0];
   const isDue  = !q.nextReview || q.nextReview <= today;
@@ -470,6 +512,9 @@ function qCardHtml(q, sessionMode) {
       ? `<span class="badge due-now">⏰ Revisar hoje</span>`
       : `<span class="badge future">📅 ${fmtDate(q.nextReview)}</span>`;
   const difBadge = q.dificuldade ? `<span class="badge dif">${q.dificuldade}</span>` : '';
+  const simBadge = q.relatedQuestions?.length
+    ? `<span class="badge" style="background:rgba(99,102,241,.15);color:#818cf8;">📎 ${q.relatedQuestions.length} similares</span>`
+    : '';
   const desc = (q.desc || 'Questão #' + q.qid).slice(0, 55);
   const url  = (q.url || '').replace(/'/g, "\\'");
   const assuntoHtml = q.assunto ? `<div style="font-size:9px;color:#6366f1;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${q.assunto}</div>` : '';
@@ -483,12 +528,13 @@ function qCardHtml(q, sessionMode) {
         <div class="qcard-desc" title="${q.desc || ''}">${desc}</div>
       </div>
     </div>
-    <div class="qcard-badges">${errBadge}${dateBadge}${difBadge}</div>
+    <div class="qcard-badges">${errBadge}${dateBadge}${difBadge}${simBadge}</div>
     <div class="qcard-btns">
       <button class="qbtn review" data-action="open-question" data-url="${url}">📖 Abrir</button>
       <button class="qbtn acertei" data-action="mark-review" data-qid="${q.qid}" data-quality="4">✓ Acertei</button>
       <button class="qbtn errei" data-action="mark-review" data-qid="${q.qid}" data-quality="1">✕ Errei</button>
     </div>
+    ${simPanelHtml(q.relatedQuestions)}
   </div>`;
 }
 
@@ -1097,6 +1143,13 @@ document.addEventListener('click', e => {
     case 'hub-wrong': hubWrong(qid); break;
     case 'hub-dismiss': hubDismiss(qid); break;
     case 'hub-add-custom': hubAddCustom(); break;
+    case 'open-sim-block': {
+      try {
+        const urls = JSON.parse(decodeURIComponent(btn.dataset.urls || '[]'));
+        urls.forEach(u => chrome.tabs.create({ url: u, active: false }));
+      } catch(e) {}
+      break;
+    }
   }
 });
 

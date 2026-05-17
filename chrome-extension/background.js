@@ -417,7 +417,98 @@ async function reviewWrongQuestion(qid, quality) {
   return bank;
 }
 
-async function getDueReviews() {
+// ════════════════════════════════════════════════════════════════════════════
+// MOTOR DE SIMILARIDADE — detecta questões parecidas pelo conteúdo jurídico
+// Usa extração de palavras-chave legais + índice Jaccard (sem API externa)
+// ════════════════════════════════════════════════════════════════════════════
+
+const PT_STOPWORDS = new Set([
+  'para','com','uma','ser','que','não','por','mais','como','mas','foi','ele',
+  'ela','seu','sua','dos','das','nas','nos','num','uns','umas','lhe','nós',
+  'isso','esse','esta','este','essa','pelo','pela','depois','mesmo','entre',
+  'sobre','ainda','porque','quando','quem','está','caso','seja','deve','cada',
+  'todo','toda','todos','todas','assim','desde','durante','apenas','podem',
+  'pode','fazer','feita','feito','tendo','sendo','foram','teria','seria',
+  'também','onde','qual','quais','quanto','sem','após','ante','perante',
+  'salvo','exceto','inclusive','mediante','conforme','segundo','artigo',
+  'inciso','parágrafo','alínea','mediante','qualquer','quando','razão',
+  'forma','vista','valor','prazo','cujas','cujos','cuja','cujo','deste',
+  'desta','desse','desse','nesse','nesta','neste','aquele','aquela','tanto',
+]);
+
+function extractKeywords(text, materia, assunto) {
+  const src = ((text || '') + ' ' + (materia || '') + ' ' + (assunto || '')).toLowerCase();
+  const kws = new Set();
+
+  // 1. Referências a artigos de lei (alto peso — marcadores jurídicos específicos)
+  const artRefs = src.match(/art(?:igo)?\.?\s*\d+[oº°]?(?:-[a-z])?/g) || [];
+  artRefs.forEach(a => kws.add(a.replace(/\s+/g, '').replace('artigo', 'art.')));
+
+  // 2. Parágrafos
+  const parRefs = src.match(/§\s*\d+[oº°]?/g) || [];
+  parRefs.forEach(p => kws.add(p.replace(/\s+/g, '')));
+
+  // 3. Incisos
+  const incRefs = src.match(/inciso\s+(?:[ivxlcdmIVXLCDM]+|\d+)/g) || [];
+  incRefs.forEach(i => kws.add(i.replace(/\s+/g, '_')));
+
+  // 4. Leis específicas mencionadas (CTN, CF, CLT, CPC etc.)
+  const lawRefs = src.match(/\b(?:ctn|cf\/?\d{2}|crfb|clt|cpc|cp\b|cpp|cdc|lei\s+\d[\d.\/]+)\b/g) || [];
+  lawRefs.forEach(l => kws.add(l.replace(/\s+/g, '_')));
+
+  // 5. Palavras jurídicas significativas (>4 chars, sem stopwords)
+  const words = src.replace(/[^\wáàâãéêíóôõúçñü\s]/g, ' ').split(/\s+/);
+  words.forEach(w => {
+    if (w.length > 4 && !PT_STOPWORDS.has(w) && !/^\d+$/.test(w)) kws.add(w);
+  });
+
+  return kws;
+}
+
+function jaccardSim(setA, setB) {
+  if (!setA.size || !setB.size) return 0;
+  let inter = 0;
+  for (const k of setA) if (setB.has(k)) inter++;
+  return inter / (setA.size + setB.size - inter);
+}
+
+async function findSimilarQuestions(payload, limit = 5) {
+  const bank = await loadQuestionBank();
+  const targetKw = extractKeywords(payload.desc || payload.enunciado, payload.materia, payload.assunto);
+  if (!targetKw.size) return [];
+
+  const results = [];
+
+  for (const [disc, subjects] of Object.entries(bank)) {
+    for (const [assunto, qmap] of Object.entries(subjects)) {
+      for (const [qid, q] of Object.entries(qmap)) {
+        if (qid === (payload.qid || payload.pos?.toString())) continue;
+
+        const sameAssunto = assunto === payload.assunto;
+        const sameDisc    = disc === (payload.materia || payload.disciplina);
+
+        const qKw  = extractKeywords(q.desc, disc, assunto);
+        const sim  = jaccardSim(targetKw, qKw);
+        const score = sim + (sameAssunto ? 0.28 : 0) + (sameDisc ? 0.08 : 0);
+
+        // Mostra se: score suficiente OU mesmo assunto com histórico de erro
+        if (score >= 0.15 || (sameAssunto && q.erros > 0)) {
+          results.push({
+            qid, url: q.url || '', desc: q.desc || assunto,
+            materia: disc, assunto,
+            importance: q.importance || 1,
+            acertos: q.acertos || 0, erros: q.erros || 0,
+            score: Math.round(score * 100) / 100,
+          });
+        }
+      }
+    }
+  }
+
+  return results.sort((a, b) => b.score - a.score || b.erros - a.erros).slice(0, limit);
+}
+
+
   const bank = await loadWrongBank();
   const today = todayKey();
   return Object.values(bank)
@@ -621,6 +712,29 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         if (payload.materia) await updateSubjectStats(payload.materia, 0, 1, payload.assunto);
         await addToWrongBank(payload);
         if (payload.qid) hubSchedule(payload, 1);
+        // Busca questões similares em segundo plano (não bloqueia a resposta)
+        if (payload.qid) {
+          findSimilarQuestions(payload).then(async similar => {
+            if (!similar.length) return;
+            const wb = await loadWrongBank();
+            if (wb[payload.qid]) {
+              wb[payload.qid].relatedQuestions = similar;
+              await setStorage({ wrongBank: wb });
+              // Notifica se há questões críticas similares
+              const criticals = similar.filter(s => s.importance === 3 || s.erros >= 2);
+              if (criticals.length > 0) {
+                const settings = await getSettings();
+                if (settings.notifications !== false) {
+                  showNotification(
+                    `📎 ${similar.length} questão(ões) similar(es) encontrada(s)`,
+                    `"${(payload.desc||payload.assunto||'').slice(0,60)}" — abra o popup para ver o bloco`,
+                    'sim-found-' + payload.qid
+                  );
+                }
+              }
+            }
+          }).catch(() => {});
+        }
         const due = await getDueReviews();
         updateBadge(due.length + hubQueue.length);
         _ensureHourlyDay(); const _h2 = new Date().getHours(); hourlyStats[_h2].q++;
@@ -787,6 +901,13 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       }
 
       // ── Popup: solicita dados completos ────────────────────────────────────
+      // ── Busca de questões similares sob demanda ───────────────────────────
+      case 'FIND_SIMILAR': {
+        const similar = await findSimilarQuestions(msg.payload || {}, msg.limit || 5);
+        sendResponse({ similar });
+        return;
+      }
+
       // ── Timer Huberman manual (5/9/11min) ─────────────────────────────────
       case 'MANUAL_HUB_START': {
         const mins = Math.max(1, Math.min(120, msg.mins || 5));
