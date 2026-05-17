@@ -1134,6 +1134,13 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         return;
       }
 
+      // ── Content: contagem leve de revisões pendentes (usado pelo widget TEC) ──
+      case 'GET_DUE_COUNT': {
+        const due = await getDueReviews();
+        sendResponse({ dueCount: due.length, hubCount: hubQueue.length });
+        return;
+      }
+
       // ── Popup: solicita dados de análise avançada ─────────────────────────
       case 'GET_ANALISE_DATA': {
         const [artCov, confPatt, settings2] = await Promise.all([
