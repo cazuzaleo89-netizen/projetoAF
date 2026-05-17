@@ -17213,7 +17213,7 @@ async function cronOpenPiP() {
     cronPipWin = await window.documentPictureInPicture.requestWindow({width:270, height: hasInv ? 500 : 340});
 
     const style = cronPipWin.document.createElement('style');
-    style.textContent=`*{margin:0;padding:0;box-sizing:border-box;}body{background:#111827;color:#f9fafb;font-family:'Segoe UI',system-ui,sans-serif;display:flex;flex-direction:column;height:100vh;padding:12px;gap:9px;overflow:hidden;}.timer{font-family:'Courier New',monospace;font-size:48px;font-weight:200;letter-spacing:5px;text-align:center;line-height:1;transition:color .3s;}.stats{display:grid;grid-template-columns:1fr 1fr 1fr;border:1px solid rgba(255,255,255,.08);border-radius:10px;overflow:hidden;}.stat{padding:7px 4px;text-align:center;}.stat+.stat{border-left:1px solid rgba(255,255,255,.07);}.val{font-family:monospace;font-size:18px;font-weight:700;}.lbl{font-size:7px;color:#6b7280;letter-spacing:1.5px;text-transform:uppercase;margin-top:2px;}.cbts{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;}.cb{padding:6px 0;border-radius:7px;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit;border:none;}.main{display:grid;grid-template-columns:1fr 1fr;gap:7px;}.mb{padding:9px;border-radius:9px;font-size:11px;font-weight:800;cursor:pointer;font-family:inherit;}.inv{background:linear-gradient(135deg,#0a1628,#0d1a35);border:1px solid rgba(34,211,238,.25);border-radius:12px;padding:10px 11px;position:relative;overflow:hidden;}.inv-stripe{position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#22d3ee,#8b5cf6,#10b981,#8b5cf6,#22d3ee);background-size:300% 100%;animation:pulse 3s linear infinite;}@keyframes pulse{0%{background-position:0%}100%{background-position:300%}}.inv-hdr{font-size:7px;font-weight:800;letter-spacing:2px;color:#22d3ee;text-transform:uppercase;margin-bottom:5px;display:flex;align-items:center;justify-content:space-between;}.inv-badge{font-size:7.5px;font-weight:700;color:#94a3b8;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:1px 8px;}.inv-name{font-size:.68rem;font-weight:700;color:#f1f5f9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}.inv-sub{font-size:.55rem;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:7px;}.inv-bar-wrap{background:rgba(255,255,255,.05);border-radius:5px;height:4px;margin-bottom:8px;overflow:hidden;}.inv-bar{height:100%;border-radius:5px;width:0%;transition:width .5s ease;background:linear-gradient(90deg,#22d3ee,#8b5cf6);}.inv-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;text-align:center;}.inv-sc{border-radius:7px;padding:5px 2px;}.inv-v{font-size:1rem;font-weight:800;font-family:monospace;line-height:1.1;}.inv-l{font-size:5.5px;color:#475569;letter-spacing:1.5px;text-transform:uppercase;margin-top:1px;}.inv-rate{margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:space-between;font-size:.57rem;}.inv-rate-lbl{color:#64748b;}.inv-rate-val{font-weight:800;font-family:monospace;}`;
+    style.textContent=`*{margin:0;padding:0;box-sizing:border-box;}body{background:#111827;color:#f9fafb;font-family:'Segoe UI',system-ui,sans-serif;display:flex;flex-direction:column;height:100vh;padding:12px;gap:8px;overflow:hidden;}.timer-row{display:flex;align-items:center;justify-content:center;gap:8px;}.timer-dot{width:8px;height:8px;border-radius:50%;background:#475569;flex-shrink:0;transition:background .3s,box-shadow .3s;}.timer-dot.run{background:#34d399;box-shadow:0 0 6px #34d399;}.timer-dot.pau{background:#f0b429;box-shadow:0 0 6px #f0b429;}.timer{font-family:'Courier New',monospace;font-size:26px;font-weight:400;letter-spacing:2px;line-height:1;transition:color .3s;}.timer-ibtns{display:flex;gap:5px;}.stats{display:grid;grid-template-columns:1fr 1fr 1fr;border:1px solid rgba(255,255,255,.08);border-radius:10px;overflow:hidden;}.stat{padding:7px 4px;text-align:center;}.stat+.stat{border-left:1px solid rgba(255,255,255,.07);}.val{font-family:monospace;font-size:18px;font-weight:700;}.lbl{font-size:7px;color:#6b7280;letter-spacing:1.5px;text-transform:uppercase;margin-top:2px;}.cbts{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;}.cb{padding:6px 0;border-radius:7px;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit;border:none;}.main{display:grid;grid-template-columns:1fr 1fr;gap:7px;}.mb{padding:9px;border-radius:9px;font-size:11px;font-weight:800;cursor:pointer;font-family:inherit;}.inv{background:linear-gradient(135deg,#0a1628,#0d1a35);border:1px solid rgba(34,211,238,.25);border-radius:12px;padding:10px 11px;position:relative;overflow:hidden;}.inv-stripe{position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#22d3ee,#8b5cf6,#10b981,#8b5cf6,#22d3ee);background-size:300% 100%;animation:pulse 3s linear infinite;}@keyframes pulse{0%{background-position:0%}100%{background-position:300%}}.inv-hdr{font-size:7px;font-weight:800;letter-spacing:2px;color:#22d3ee;text-transform:uppercase;margin-bottom:5px;display:flex;align-items:center;justify-content:space-between;}.inv-badge{font-size:7.5px;font-weight:700;color:#94a3b8;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:1px 8px;}.inv-name{font-size:.68rem;font-weight:700;color:#f1f5f9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}.inv-sub{font-size:.55rem;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:7px;}.inv-bar-wrap{background:rgba(255,255,255,.05);border-radius:5px;height:4px;margin-bottom:8px;overflow:hidden;}.inv-bar{height:100%;border-radius:5px;width:0%;transition:width .5s ease;background:linear-gradient(90deg,#22d3ee,#8b5cf6);}.inv-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;text-align:center;}.inv-sc{border-radius:7px;padding:5px 2px;}.inv-v{font-size:1rem;font-weight:800;font-family:monospace;line-height:1.1;}.inv-l{font-size:5.5px;color:#475569;letter-spacing:1.5px;text-transform:uppercase;margin-top:1px;}.inv-rate{margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:space-between;font-size:.57rem;}.inv-rate-lbl{color:#64748b;}.inv-rate-val{font-weight:800;font-family:monospace;}`;
     cronPipWin.document.head.appendChild(style);
 
     const isTimer = cronState.mode==='timer';
@@ -17224,7 +17224,14 @@ async function cronOpenPiP() {
         <div style="font-size:9px;color:#9ca3af;font-weight:700;letter-spacing:.5px;">Painel Fiscal · Cronômetro</div>
         <div style="font-size:12px;font-weight:700;margin-top:2px;">${cronState.discName||'Sem disciplina'}</div>
       </div>
-      <div class="timer" id="pip-t">${cronFmt(secs)}</div>
+      <div class="timer-row">
+        <div class="timer-dot${cronState.running&&!cronState.paused?' run':cronState.paused?' pau':''}" id="pip-dot"></div>
+        <div class="timer" id="pip-t">${cronFmt(secs)}</div>
+        <div class="timer-ibtns">
+          <button class="mb" id="pip-pause" style="padding:5px 9px;font-size:12px;border:1.5px solid rgba(255,255,255,.15);background:rgba(255,255,255,.07);color:#f9fafb;">${cronState.paused?'▶':'⏸'}</button>
+          <button class="mb" id="pip-stop" style="padding:5px 9px;font-size:12px;border:none;background:#ef4444;color:#fff;">■</button>
+        </div>
+      </div>
       <div class="stats">
         <div class="stat"><div class="val" id="pip-r">0</div><div class="lbl">Resolvidas</div></div>
         <div class="stat"><div class="val" id="pip-a" style="color:#34d399">0</div><div class="lbl">Acertos</div></div>
@@ -17260,18 +17267,16 @@ async function cronOpenPiP() {
           <span class="inv-rate-val" id="pip-inv-rate">—</span>
         </div>
       </div>
-      <div class="main">
-        <button class="mb" id="pip-pause" style="border:1.5px solid rgba(255,255,255,.15);background:rgba(255,255,255,.07);color:#f9fafb;">⏸ PAUSAR</button>
-        <button class="mb" id="pip-stop" style="border:none;background:#ef4444;color:#fff;">■ ENCERRAR</button>
-      </div>`;
+      `;
 
     const pd = cronPipWin.document;
     pd.getElementById('pb1').onclick=()=>{cronCount('res');cronPipSync();};
     pd.getElementById('pb2').onclick=()=>{cronCount('ace');cronPipSync();};
     pd.getElementById('pb3').onclick=()=>{cronCount('err');cronPipSync();};
     pd.getElementById('pip-pause').onclick=()=>{
-      if(cronState.paused){cronResume();pd.getElementById('pip-pause').innerHTML='⏸ PAUSAR';}
-      else{cronPause();pd.getElementById('pip-pause').innerHTML='▶ RETOMAR';}
+      if(cronState.paused){cronResume();}
+      else{cronPause();}
+      cronPipSync();
     };
     pd.getElementById('pip-stop').onclick=()=>{cronStop();if(cronPipWin&&!cronPipWin.closed)cronPipWin.close();};
 
@@ -17290,6 +17295,10 @@ function cronPipSync() {
   const secs = isTimer ? (cronState.total-cronState.elapsed) : cronState.elapsed;
   const t=pd.getElementById('pip-t');
   if(t){t.textContent=cronFmt(secs);const pct=isTimer?secs/cronState.total:1;t.style.color=pct<.15?'#f87171':pct<.3?'#fbbf24':'#f9fafb';}
+  const dot=pd.getElementById('pip-dot');
+  if(dot){dot.className='timer-dot'+(cronState.running&&!cronState.paused?' run':cronState.paused?' pau':'');}
+  const pauseBtn=pd.getElementById('pip-pause');
+  if(pauseBtn){pauseBtn.textContent=cronState.paused?'▶':'⏸';}
   const r=pd.getElementById('pip-r');if(r)r.textContent=cronState.resolved;
   const a=pd.getElementById('pip-a');if(a)a.textContent=cronState.acertos;
   const e=pd.getElementById('pip-e');if(e)e.textContent=cronState.erros;
@@ -17335,15 +17344,13 @@ function cronOpenPopup() {
   const popup=window.open('','cronPF','width=264,height=340,toolbar=no,menubar=no,location=no,status=no,resizable=no');
   if(!popup){flash('Permita popups para usar o modo flutuante.','#f0b429');return;}
   popup.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Cronômetro · Painel Fiscal</title>
-  <style>*{margin:0;padding:0;box-sizing:border-box;}body{background:#111827;color:#f9fafb;font-family:Segoe UI,sans-serif;display:flex;flex-direction:column;height:100vh;padding:14px;gap:10px;overflow:hidden;}
-  .t{font-family:'Courier New',monospace;font-size:50px;font-weight:200;letter-spacing:5px;text-align:center;}.s{display:grid;grid-template-columns:1fr 1fr 1fr;border:1px solid rgba(255,255,255,.08);border-radius:10px;overflow:hidden;}.si{padding:8px 4px;text-align:center;}.si+.si{border-left:1px solid rgba(255,255,255,.07);}.v{font-family:monospace;font-size:19px;font-weight:700;}.l{font-size:8px;color:#6b7280;letter-spacing:1.5px;text-transform:uppercase;margin-top:2px;}.m{display:grid;grid-template-columns:1fr 1fr;gap:7px;}.mb{padding:10px;border-radius:9px;font-size:12px;font-weight:800;cursor:pointer;border:none;font-family:inherit;}</style>
+  <style>*{margin:0;padding:0;box-sizing:border-box;}body{background:#111827;color:#f9fafb;font-family:Segoe UI,sans-serif;display:flex;flex-direction:column;height:100vh;padding:12px;gap:8px;overflow:hidden;}
+  .tr{display:flex;align-items:center;justify-content:center;gap:8px;}.td{width:8px;height:8px;border-radius:50%;background:#475569;flex-shrink:0;}.t{font-family:'Courier New',monospace;font-size:26px;font-weight:400;letter-spacing:2px;transition:color .3s;}.tib{display:flex;gap:5px;}.s{display:grid;grid-template-columns:1fr 1fr 1fr;border:1px solid rgba(255,255,255,.08);border-radius:10px;overflow:hidden;}.si{padding:8px 4px;text-align:center;}.si+.si{border-left:1px solid rgba(255,255,255,.07);}.v{font-family:monospace;font-size:19px;font-weight:700;}.l{font-size:8px;color:#6b7280;letter-spacing:1.5px;text-transform:uppercase;margin-top:2px;}.m{display:grid;grid-template-columns:1fr 1fr;gap:7px;}.mb{padding:8px 10px;border-radius:9px;font-size:12px;font-weight:800;cursor:pointer;border:none;font-family:inherit;}</style>
   </head><body>
   <div><div style="font-size:9px;color:#9ca3af;font-weight:700;">Painel Fiscal · Cronômetro</div><div style="font-size:12px;font-weight:700;margin-top:2px;">${cronState.discName||'Sem disciplina'}</div></div>
-  <div class="t" id="pt">${cronFmt(secs)}</div>
+  <div class="tr"><div class="td" id="pdot"></div><div class="t" id="pt">${cronFmt(secs)}</div><div class="tib"><button class="mb" id="ppause" style="border:1.5px solid rgba(255,255,255,.15);background:rgba(255,255,255,.07);color:#f9fafb;">${cronState.paused?'▶':'⏸'}</button><button class="mb" style="background:#ef4444;color:#fff;" onclick="try{window.opener.cronStop&&window.opener.cronStop()}catch(e){};window.close()">■</button></div></div>
   <div class="s"><div class="si"><div class="v" id="pr">0</div><div class="l">Resolvidas</div></div><div class="si"><div class="v" id="pa" style="color:#34d399">0</div><div class="l">Acertos</div></div><div class="si"><div class="v" id="pe" style="color:#f87171">0</div><div class="l">Erros</div></div></div>
-  <div class="m"><button class="mb" style="border:1.5px solid rgba(255,255,255,.15);background:rgba(255,255,255,.07);color:#f9fafb;" onclick="try{window.opener.cronPause&&window.opener.cronPause()}catch(e){}">⏸ PAUSAR</button>
-  <button class="mb" style="background:#ef4444;color:#fff;" onclick="try{window.opener.cronStop&&window.opener.cronStop()}catch(e){};window.close()">■ ENCERRAR</button></div>
-  <script>setInterval(()=>{try{const o=window.opener;if(!o||o.closed){window.close();return;}const c=o.cronState;if(!c.running){return;}const it=c.mode==='timer',s=it?(c.total-c.elapsed):c.elapsed;const t=document.getElementById('pt');if(t){const m=Math.floor(s/3600),mn=Math.floor(s%3600/60),sc=s%60;t.textContent=String(m).padStart(2,'0')+':'+String(mn).padStart(2,'0')+':'+String(sc).padStart(2,'0');const p=it?s/c.total:1;t.style.color=p<.15?'#f87171':p<.3?'#fbbf24':'#f9fafb';}const r=document.getElementById('pr');if(r)r.textContent=c.resolved;const a=document.getElementById('pa');if(a)a.textContent=c.acertos;const e=document.getElementById('pe');if(e)e.textContent=c.erros;}catch(ex){}},1000);<\/script></body></html>`);
+  <script>document.getElementById('ppause').onclick=function(){try{const o=window.opener;if(o&&!o.closed){if(o.cronState.paused){o.cronResume&&o.cronResume();}else{o.cronPause&&o.cronPause();}}}catch(e){}};setInterval(()=>{try{const o=window.opener;if(!o||o.closed){window.close();return;}const c=o.cronState;const it=c.mode==='timer',s=it?(c.total-c.elapsed):c.elapsed;const t=document.getElementById('pt');if(t){const m=Math.floor(s/3600),mn=Math.floor(s%3600/60),sc=s%60;t.textContent=String(m).padStart(2,'0')+':'+String(mn).padStart(2,'0')+':'+String(sc).padStart(2,'0');const p=it?s/c.total:1;t.style.color=p<.15?'#f87171':p<.3?'#fbbf24':'#f9fafb';}const dot=document.getElementById('pdot');if(dot){dot.style.background=c.running&&!c.paused?'#34d399':c.paused?'#f0b429':'#475569';}const pp=document.getElementById('ppause');if(pp)pp.textContent=c.paused?'▶':'⏸';const r=document.getElementById('pr');if(r)r.textContent=c.resolved;const a=document.getElementById('pa');if(a)a.textContent=c.acertos;const e=document.getElementById('pe');if(e)e.textContent=c.erros;}catch(ex){}},1000);<\/script></body></html>`);
   popup.document.close();
   flash('⧉ Cronômetro em janela flutuante!','#22d3ee');
 }
