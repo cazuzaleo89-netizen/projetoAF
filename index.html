@@ -1609,8 +1609,8 @@ select.inp{appearance:none;cursor:pointer;}
 .cron-preset{padding:5px 11px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:#1f2937;color:#9ca3af;cursor:pointer;font-size:11px;font-weight:700;font-family:inherit;transition:all .15s;}
 .cron-preset:hover,.cron-preset.active{background:rgba(74,108,247,.12);border-color:rgba(74,108,247,.4);color:#4a6cf7;}
 .cron-segmented{display:flex;align-items:center;justify-content:center;gap:6px;font-family:'JetBrains Mono','Fira Code','Courier New',monospace;line-height:1;font-variant-numeric:tabular-nums;}
-.cron-seg{display:inline-flex;align-items:center;justify-content:center;min-width:1.7em;padding:8px 10px;border-radius:12px;background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.015));border:1px solid rgba(255,255,255,.07);box-shadow:inset 0 1px 0 rgba(255,255,255,.04),0 4px 18px rgba(0,0,0,.35);font-size:clamp(34px,9.5vw,52px);font-weight:300;color:#f1f5f9;letter-spacing:1px;text-shadow:0 0 22px rgba(74,108,247,.32);transition:transform .25s ease;}
-.cron-sep{font-size:clamp(28px,8vw,44px);font-weight:200;color:#475569;opacity:.7;animation:cronTick 1s steps(2,end) infinite paused;}
+.cron-seg{display:inline-flex;align-items:center;justify-content:center;min-width:1.7em;padding:5px 8px;border-radius:9px;background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.015));border:1px solid rgba(255,255,255,.07);box-shadow:inset 0 1px 0 rgba(255,255,255,.04),0 2px 10px rgba(0,0,0,.35);font-size:clamp(22px,5.5vw,30px);font-weight:400;color:#f1f5f9;letter-spacing:1px;text-shadow:0 0 16px rgba(74,108,247,.32);transition:transform .25s ease;}
+.cron-sep{font-size:clamp(18px,4.5vw,24px);font-weight:200;color:#475569;opacity:.7;animation:cronTick 1s steps(2,end) infinite paused;}
 .cron-running .cron-sep{animation-play-state:running;}
 .cron-running .cron-seg-s{color:#a5b4fc;text-shadow:0 0 26px rgba(165,180,252,.55);}
 .cron-paused .cron-seg{opacity:.55;filter:saturate(.5);}
@@ -2546,7 +2546,7 @@ select.inp{appearance:none;cursor:pointer;}
         </div>
 
         <!-- Timer display -->
-        <div style="padding:24px 14px 14px;text-align:center;position:relative;">
+        <div style="padding:12px 14px 10px;text-align:center;position:relative;">
           <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 55%,rgba(74,108,247,.08) 0%,transparent 65%);pointer-events:none;"></div>
           <div id="cron-digits" class="cron-segmented" style="position:relative;">
             <span class="cron-seg" id="cron-seg-h">00</span>
@@ -2555,7 +2555,7 @@ select.inp{appearance:none;cursor:pointer;}
             <span class="cron-sep">:</span>
             <span class="cron-seg cron-seg-s" id="cron-seg-s">00</span>
           </div>
-          <div id="cron-status-lbl" style="font-size:9px;color:#64748b;margin-top:10px;letter-spacing:2.5px;text-transform:uppercase;font-weight:600;">PRONTO PARA ESTUDAR</div>
+          <div id="cron-status-lbl" style="font-size:9px;color:#64748b;margin-top:6px;letter-spacing:2.5px;text-transform:uppercase;font-weight:600;">PRONTO PARA ESTUDAR</div>
         </div>
 
         <!-- Countdown ring (timer mode only) -->
@@ -2591,38 +2591,38 @@ select.inp{appearance:none;cursor:pointer;}
         </div>
 
         <!-- Stats row (visible during session) -->
-        <div id="cron-stats-row" style="display:none;margin:0 14px 12px;">
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;">
-            <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:11px 6px;text-align:center;">
-              <div id="cron-s-res" style="font-family:monospace;font-size:24px;font-weight:800;color:#f1f5f9;line-height:1;">0</div>
-              <div style="font-size:7.5px;color:#64748b;letter-spacing:1.5px;text-transform:uppercase;margin-top:3px;">RESOLVIDAS</div>
+        <div id="cron-stats-row" style="display:none;margin:0 14px 10px;">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;">
+            <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:9px;padding:7px 6px;text-align:center;">
+              <div id="cron-s-res" style="font-family:monospace;font-size:16px;font-weight:800;color:#f1f5f9;line-height:1;">0</div>
+              <div style="font-size:7px;color:#64748b;letter-spacing:1.5px;text-transform:uppercase;margin-top:3px;">RESOLVIDAS</div>
             </div>
-            <div style="background:rgba(52,211,153,.07);border:1px solid rgba(52,211,153,.18);border-radius:12px;padding:11px 6px;text-align:center;">
-              <div id="cron-s-ace" style="font-family:monospace;font-size:24px;font-weight:800;color:#34d399;line-height:1;text-shadow:0 0 14px rgba(52,211,153,.5);">0</div>
-              <div style="font-size:7.5px;color:#64748b;letter-spacing:1.5px;text-transform:uppercase;margin-top:3px;">ACERTOS</div>
+            <div style="background:rgba(52,211,153,.07);border:1px solid rgba(52,211,153,.18);border-radius:9px;padding:7px 6px;text-align:center;">
+              <div id="cron-s-ace" style="font-family:monospace;font-size:16px;font-weight:800;color:#34d399;line-height:1;">0</div>
+              <div style="font-size:7px;color:#64748b;letter-spacing:1.5px;text-transform:uppercase;margin-top:3px;">ACERTOS</div>
             </div>
-            <div style="background:rgba(248,113,113,.07);border:1px solid rgba(248,113,113,.18);border-radius:12px;padding:11px 6px;text-align:center;">
-              <div id="cron-s-err" style="font-family:monospace;font-size:24px;font-weight:800;color:#f87171;line-height:1;text-shadow:0 0 14px rgba(248,113,113,.5);">0</div>
-              <div style="font-size:7.5px;color:#64748b;letter-spacing:1.5px;text-transform:uppercase;margin-top:3px;">ERROS</div>
+            <div style="background:rgba(248,113,113,.07);border:1px solid rgba(248,113,113,.18);border-radius:9px;padding:7px 6px;text-align:center;">
+              <div id="cron-s-err" style="font-family:monospace;font-size:16px;font-weight:800;color:#f87171;line-height:1;">0</div>
+              <div style="font-size:7px;color:#64748b;letter-spacing:1.5px;text-transform:uppercase;margin-top:3px;">ERROS</div>
             </div>
           </div>
         </div>
 
         <!-- Count buttons (visible during session) -->
-        <div id="cron-count-row" style="display:none;padding:0 14px 14px;">
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;">
+        <div id="cron-count-row" style="display:none;padding:0 14px 10px;">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;">
             <button onclick="cronCount('res')"
-              style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:11px;color:#cbd5e1;font-size:11px;font-weight:700;padding:9px 0;cursor:pointer;font-family:inherit;transition:all .15s;"
+              style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#cbd5e1;font-size:11px;font-weight:700;padding:7px 0;cursor:pointer;font-family:inherit;transition:all .15s;"
               onmouseover="this.style.background='rgba(255,255,255,.1)'" onmouseout="this.style.background='rgba(255,255,255,.05)'">
-              + Quest.
+              +Quest.
             </button>
             <button onclick="cronCount('ace')"
-              style="background:rgba(52,211,153,.1);border:1px solid rgba(52,211,153,.25);border-radius:11px;color:#34d399;font-size:11px;font-weight:700;padding:9px 0;cursor:pointer;font-family:inherit;transition:all .15s;"
+              style="background:rgba(52,211,153,.1);border:1px solid rgba(52,211,153,.25);border-radius:8px;color:#34d399;font-size:11px;font-weight:700;padding:7px 0;cursor:pointer;font-family:inherit;transition:all .15s;"
               onmouseover="this.style.background='rgba(52,211,153,.2)'" onmouseout="this.style.background='rgba(52,211,153,.1)'">
               ✓ Acerto
             </button>
             <button onclick="cronCount('err')"
-              style="background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.25);border-radius:11px;color:#f87171;font-size:11px;font-weight:700;padding:9px 0;cursor:pointer;font-family:inherit;transition:all .15s;"
+              style="background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.25);border-radius:8px;color:#f87171;font-size:11px;font-weight:700;padding:7px 0;cursor:pointer;font-family:inherit;transition:all .15s;"
               onmouseover="this.style.background='rgba(248,113,113,.2)'" onmouseout="this.style.background='rgba(248,113,113,.1)'">
               ✕ Erro
             </button>
@@ -2630,17 +2630,17 @@ select.inp{appearance:none;cursor:pointer;}
         </div>
 
         <!-- Action buttons -->
-        <div style="padding:0 14px 18px;display:flex;flex-direction:column;gap:7px;">
+        <div style="padding:0 14px 14px;display:flex;flex-direction:column;gap:6px;">
           <button id="cron-btn-start" onclick="cronStart()"
-            style="width:100%;padding:14px;border-radius:13px;border:none;background:linear-gradient(135deg,#4a6cf7,#6366f1);color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:.5px;box-shadow:0 4px 22px rgba(74,108,247,.35);transition:all .2s;"
-            onmouseover="this.style.boxShadow='0 6px 28px rgba(74,108,247,.5)';this.style.transform='translateY(-1px)'"
-            onmouseout="this.style.boxShadow='0 4px 22px rgba(34,211,238,.35)';this.style.transform=''">
+            style="width:100%;padding:10px;border-radius:10px;border:none;background:linear-gradient(135deg,#4a6cf7,#6366f1);color:#fff;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:.5px;box-shadow:0 3px 16px rgba(74,108,247,.35);transition:all .2s;"
+            onmouseover="this.style.boxShadow='0 5px 22px rgba(74,108,247,.5)';this.style.transform='translateY(-1px)'"
+            onmouseout="this.style.boxShadow='0 3px 16px rgba(74,108,247,.35)';this.style.transform=''">
             ▶ INICIAR SESSÃO
           </button>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;">
-            <button id="cron-btn-pause" style="display:none;padding:11px;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:#f1f5f9;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;" onclick="cronPause()">⏸ PAUSAR</button>
-            <button id="cron-btn-resume" style="display:none;padding:11px;border-radius:12px;border:1px solid rgba(34,211,238,.35);background:rgba(34,211,238,.08);color:#22d3ee;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;" onclick="cronResume()">▶ RETOMAR</button>
-            <button id="cron-btn-stop" style="display:none;padding:11px;border-radius:12px;border:none;background:linear-gradient(135deg,#ef4444,#b91c1c);color:#fff;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 3px 14px rgba(239,68,68,.3);" onclick="cronStop()">■ ENCERRAR</button>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+            <button id="cron-btn-pause" style="display:none;padding:9px;border-radius:9px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:#f1f5f9;font-size:11px;font-weight:800;cursor:pointer;font-family:inherit;" onclick="cronPause()">⏸ PAUSAR</button>
+            <button id="cron-btn-resume" style="display:none;padding:9px;border-radius:9px;border:1px solid rgba(34,211,238,.35);background:rgba(34,211,238,.08);color:#22d3ee;font-size:11px;font-weight:800;cursor:pointer;font-family:inherit;" onclick="cronResume()">▶ RETOMAR</button>
+            <button id="cron-btn-stop" style="display:none;padding:9px;border-radius:9px;border:none;background:linear-gradient(135deg,#ef4444,#b91c1c);color:#fff;font-size:11px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 2px 10px rgba(239,68,68,.3);" onclick="cronStop()">■ ENCERRAR</button>
           </div>
         </div>
 
