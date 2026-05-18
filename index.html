@@ -2285,6 +2285,30 @@ select.inp{appearance:none;cursor:pointer;}
     </div>
   </div>
 
+  <!-- TEC Ranking widget -->
+  <div id="dash-tec-ranking" style="display:none;margin-bottom:1rem;">
+    <div style="background:linear-gradient(135deg,rgba(245,158,11,.05),rgba(239,68,68,.04));border:1px solid rgba(245,158,11,.18);border-radius:var(--r3);padding:.85rem 1.1rem;position:relative;overflow:hidden;">
+      <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),#ef4444,transparent);"></div>
+      <!-- Header -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;gap:.5rem;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:.5rem;">
+          <span style="font-size:.65rem;font-weight:800;color:var(--gold);letter-spacing:.8px;text-transform:uppercase;">🏆 Ranking TEC</span>
+          <span id="rank-updated-lbl" style="font-size:.55rem;color:var(--muted2);"></span>
+        </div>
+        <div style="display:flex;gap:.4rem;align-items:center;">
+          <span id="rank-group-lbl" style="font-size:.58rem;color:var(--muted2);"></span>
+          <a id="rank-open-link" href="https://www.tecconcursos.com.br/estatisticas/comparar/" target="_blank" style="font-size:.62rem;color:var(--gold);font-weight:700;text-decoration:none;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.25);border-radius:6px;padding:.2rem .55rem;transition:background .15s;" onmouseover="this.style.background='rgba(245,158,11,.2)'" onmouseout="this.style.background='rgba(245,158,11,.1)'">↗ Atualizar</a>
+        </div>
+      </div>
+      <!-- Metrics row -->
+      <div id="rank-metrics" style="display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;margin-bottom:.75rem;"></div>
+      <!-- Vs média bars -->
+      <div id="rank-bars" style="display:flex;flex-direction:column;gap:.35rem;margin-bottom:.75rem;"></div>
+      <!-- Goal projection -->
+      <div id="rank-goal" style="background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.12);border-radius:8px;padding:.6rem .85rem;"></div>
+    </div>
+  </div>
+
   <div id="dash-quick-actions" style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1.1rem;">
     <button class="btn btn-gold" onclick="goPage('cronometro',document.querySelector('.nav-item[onclick*=cronometro]'))" style="flex:1;min-width:140px;justify-content:center;font-size:.78rem;padding:.55rem .9rem;">▶ Iniciar Sessão</button>
     <button id="dash-qa-fila" class="btn" onclick="goPage('filarev',document.querySelector('.nav-item[onclick*=filarev]'))" style="flex:1;min-width:140px;justify-content:center;font-size:.78rem;padding:.55rem .9rem;">📋 Fila de Revisão</button>
@@ -5536,10 +5560,148 @@ function checkExtStatus() {
   // Widget dot
   const wDot = document.getElementById('dash-tec-ext-dot');
   if (wDot) { wDot.style.background = active ? '#22c55e' : '#f59e0b'; wDot.style.boxShadow = active ? '0 0 6px #22c55e' : '0 0 6px #f59e0b'; }
+
+  // Refresh ranking widget on each heartbeat (extension may have just synced new data)
+  try { renderDashTecRanking(); } catch(e) {}
 }
 
 // Poll extension heartbeat every 10s
 setInterval(checkExtStatus, 10000);
+
+// ── TEC Ranking widget ────────────────────────────────────────────────────────
+function renderDashTecRanking() {
+  const el = document.getElementById('dash-tec-ranking');
+  if (!el) return;
+
+  let ranking = null;
+  try { ranking = JSON.parse(localStorage.getItem('_pf_tec_ranking') || 'null'); } catch(e) {}
+
+  if (!ranking || !ranking.metrics || !Object.keys(ranking.metrics).length) {
+    el.style.display = 'none';
+    return;
+  }
+  el.style.display = '';
+
+  const { metrics, totalUsers, groupId, scrapedAt, subjects } = ranking;
+  const N = totalUsers || 614;
+
+  // Update/group labels
+  const updLbl = document.getElementById('rank-updated-lbl');
+  if (updLbl && scrapedAt) {
+    const mins = Math.round((Date.now() - scrapedAt) / 60000);
+    updLbl.textContent = mins < 60 ? `(${mins}min atrás)` : `(${Math.round(mins/60)}h atrás)`;
+  }
+  const grpLbl = document.getElementById('rank-group-lbl');
+  if (grpLbl) grpLbl.textContent = groupId ? `Grupo #${groupId} · ${N} participantes` : `${N} participantes`;
+  const openLink = document.getElementById('rank-open-link');
+  if (openLink && groupId) openLink.href = `https://www.tecconcursos.com.br/estatisticas/comparar/${groupId}`;
+
+  // ── Metric cards (Resoluções / Acertos / Desempenho) ──
+  const metricDefs = [
+    { key: 'resolucoes', label: 'Resoluções', fmt: v => Math.round(v), unit: '' },
+    { key: 'acertos',    label: 'Acertos',    fmt: v => Math.round(v), unit: '' },
+    { key: 'desempenho', label: 'Desempenho', fmt: v => v.toFixed(1).replace('.',','), unit: '%' },
+  ];
+  const metricsEl = document.getElementById('rank-metrics');
+  if (metricsEl) {
+    metricsEl.innerHTML = metricDefs.map(({ key, label, fmt, unit }) => {
+      const m = metrics[key];
+      if (!m) return '';
+      const pos = m.posicao;
+      const pctile = pos && N ? Math.round((N - pos) / N * 100) : null;
+      const posColor = pos && pos <= 20 ? '#22c55e' : pos && pos <= 100 ? '#f59e0b' : '#94a3b8';
+      return `<div style="background:rgba(0,0,0,.15);border:1px solid rgba(255,255,255,.06);border-radius:8px;padding:.5rem .6rem;text-align:center;">
+        <div style="font-size:.52rem;color:var(--muted2);font-weight:700;letter-spacing:.6px;text-transform:uppercase;margin-bottom:.2rem;">${label}</div>
+        <div style="font-size:1rem;font-weight:800;font-family:var(--mono);color:var(--text);">${m.voce !== null ? fmt(m.voce) + unit : '—'}</div>
+        <div style="font-size:.55rem;color:var(--muted2);margin-top:1px;">méd: ${m.media !== null ? fmt(m.media) + unit : '—'}</div>
+        ${pos ? `<div style="margin-top:.3rem;font-size:.62rem;font-weight:800;color:${posColor};">${pos}° ${pctile !== null ? `<span style="color:var(--muted2);font-weight:400;">(top ${100-pctile}%)</span>` : ''}</div>` : ''}
+      </div>`;
+    }).join('');
+  }
+
+  // ── Barras VOCÊ vs MÉDIA ──
+  const barsEl = document.getElementById('rank-bars');
+  if (barsEl) {
+    barsEl.innerHTML = metricDefs.map(({ key, label, fmt, unit }) => {
+      const m = metrics[key];
+      if (!m || m.voce === null || m.media === null) return '';
+      const maxVal = Math.max(m.voce, m.media) * 1.15 || 1;
+      const youPct = Math.min(100, m.voce / maxVal * 100);
+      const avgPct = Math.min(100, m.media / maxVal * 100);
+      const ahead = m.voce >= m.media;
+      const youColor = ahead ? '#22c55e' : '#f59e0b';
+      return `<div>
+        <div style="display:flex;justify-content:space-between;font-size:.58rem;color:var(--muted2);margin-bottom:2px;">
+          <span style="font-weight:700;">${label}</span>
+          <span style="color:${youColor};font-weight:800;">VOCÊ ${fmt(m.voce)}${unit} ${ahead ? '▲' : '▼'} MÉDIA ${fmt(m.media)}${unit}</span>
+        </div>
+        <div style="position:relative;height:6px;background:rgba(255,255,255,.05);border-radius:3px;overflow:hidden;">
+          <div style="position:absolute;left:0;top:0;height:100%;width:${avgPct}%;background:rgba(148,163,184,.3);border-radius:3px;"></div>
+          <div style="position:absolute;left:0;top:0;height:100%;width:${youPct}%;background:${youColor};border-radius:3px;transition:width .5s;"></div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // ── Projeção de metas: top 20 ──
+  const goalEl = document.getElementById('rank-goal');
+  if (goalEl) {
+    const des = metrics.desempenho;
+    const res = metrics.resolucoes;
+    const ace = metrics.acertos;
+    const pos = des?.posicao || res?.posicao || null;
+    const gap = pos ? Math.max(0, pos - 20) : null;
+
+    if (gap !== null) {
+      // Estima precisão necessária: assumimos ~90%+ para top 20 (heurística)
+      const curTaxa = des?.voce;
+      const estimatedTop20Taxa = 90; // estimativa conservadora
+      const accGap = curTaxa ? Math.max(0, estimatedTop20Taxa - curTaxa) : null;
+
+      // Questões/dia necessárias para subir no ranking de resoluções
+      const curRes = res?.voce || 0;
+      const avgRes = res?.media || 0;
+      const dailyNeeded = Math.max(5, Math.ceil((avgRes * 1.5 - curRes) / 30));
+
+      // Sessões no painel dos últimos 7 dias (taxa atual)
+      const weekSess = (state.questionSessions || []).filter(s => {
+        const d = new Date(s.date); return (Date.now() - d) < 7 * 86400000;
+      });
+      const weekQ = weekSess.reduce((a, s) => a + (s.total || 0), 0);
+      const dailyAvg = Math.round(weekQ / 7) || 0;
+      const daysNeeded = dailyAvg > 0 && dailyNeeded > dailyAvg
+        ? Math.ceil(((curRes * dailyNeeded / dailyAvg) - curRes) / dailyNeeded)
+        : null;
+
+      const isOnTrack = dailyAvg >= dailyNeeded;
+
+      goalEl.innerHTML = `
+        <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.45rem;">
+          <span style="font-size:.65rem;font-weight:800;color:var(--gold);">🎯 Meta: Top 20 de ${N}</span>
+          <span style="font-size:.58rem;color:var(--muted2);">— ${gap} posições para subir</span>
+          <span style="margin-left:auto;font-size:.58rem;font-weight:700;color:${isOnTrack ? 'var(--green)' : 'var(--gold)'};">${isOnTrack ? '✓ No ritmo' : '⚡ Acelerar'}</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.4rem;">
+          <div style="text-align:center;background:rgba(0,0,0,.12);border-radius:6px;padding:.35rem .4rem;">
+            <div style="font-size:.75rem;font-weight:800;font-family:var(--mono);color:var(--gold);">${dailyNeeded}+</div>
+            <div style="font-size:.5rem;color:var(--muted2);">questões/dia</div>
+          </div>
+          <div style="text-align:center;background:rgba(0,0,0,.12);border-radius:6px;padding:.35rem .4rem;">
+            <div style="font-size:.75rem;font-weight:800;font-family:var(--mono);color:${accGap && accGap > 5 ? 'var(--red)' : 'var(--green)'};">${accGap ? '≥' + estimatedTop20Taxa + '%' : '—'}</div>
+            <div style="font-size:.5rem;color:var(--muted2);">desempenho alvo</div>
+          </div>
+          <div style="text-align:center;background:rgba(0,0,0,.12);border-radius:6px;padding:.35rem .4rem;">
+            <div style="font-size:.75rem;font-weight:800;font-family:var(--mono);color:var(--cyan);">${dailyAvg > 0 ? dailyAvg : '—'}</div>
+            <div style="font-size:.5rem;color:var(--muted2);">sua média/dia</div>
+          </div>
+        </div>
+        ${daysNeeded ? `<div style="margin-top:.4rem;font-size:.57rem;color:var(--muted2);">Mantendo <strong style="color:var(--text);">${dailyNeeded}+ questões/dia</strong>, você pode alcançar o Top 20 em aproximadamente <strong style="color:var(--gold);">${daysNeeded} dias</strong></div>` : ''}
+        ${subjects && subjects.length ? `<div style="margin-top:.45rem;font-size:.55rem;color:var(--muted2);">📊 Disciplinas capturadas: ${subjects.slice(0,4).map(s=>`<span style="color:var(--text);font-weight:700;">${s.name.split(' ')[0]}</span> ${s.pct}%`).join(' · ')}</div>` : ''}`;
+    } else {
+      goalEl.innerHTML = `<div style="font-size:.62rem;color:var(--muted2);">Visite <a href="https://www.tecconcursos.com.br/estatisticas/comparar/" target="_blank" style="color:var(--gold);">sua página de ranking TEC</a> com a extensão ativa para capturar metas automáticas.</div>`;
+    }
+  }
+}
 
 function renderDashEdital(){
   editalEnsure();
@@ -9116,7 +9278,7 @@ function consWeekScore(days, secs, qs, rate) {
 }
 
 // ═══ RENDER ALL ════════════════════════════════
-function renderAll(){updateStats();renderDisciplines();renderWeekGrid();renderLog();renderProgress();renderQPerf();renderQLog();renderQGoalsList();mwInit();renderSpeedSettings();dashInitWeekSelector();renderDashTecHoje();checkExtStatus();}
+function renderAll(){updateStats();renderDisciplines();renderWeekGrid();renderLog();renderProgress();renderQPerf();renderQLog();renderQGoalsList();mwInit();renderSpeedSettings();dashInitWeekSelector();renderDashTecHoje();renderDashTecRanking();checkExtStatus();}
 function updateAll(){updateStats();renderDisciplines();renderProgress();renderQPerf();renderLog();}
 
 function goPage(name,el){
@@ -19307,7 +19469,7 @@ window.addEventListener('beforeunload', function() {
     cronPersist();
   }
 });
-loadTheme();loadState();ensureDisciplines();renderColorPicker();renderAll();updateTimerUI();checkExtStatus();
+loadTheme();loadState();ensureDisciplines();renderColorPicker();renderAll();updateTimerUI();checkExtStatus();renderDashTecRanking();
 try{ wrongHistoryUpdateBadge(); }catch(e){}
 initModalBackdrops();
 try{ renderProvaCountdown(); }catch(e){}

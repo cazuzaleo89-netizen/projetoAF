@@ -1216,6 +1216,19 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         sendResponse({ ok: true });
         return;
 
+      // ── Ranking TEC: salva dados do scraper ──────────────────────────────
+      case 'SAVE_TEC_RANKING':
+        await setStorage({ tec_ranking: msg.data });
+        sendResponse({ ok: true });
+        return;
+
+      // ── Ranking TEC: retorna dados para o painel ──────────────────────────
+      case 'GET_TEC_RANKING': {
+        const { tec_ranking = null } = await getStorage({ tec_ranking: null });
+        sendResponse({ data: tec_ranking });
+        return;
+      }
+
       // ── Status geral ──────────────────────────────────────────────────────
       case 'GET_STATUS':
         sendResponse({ filaCount, panelTabId, tecTabId });
