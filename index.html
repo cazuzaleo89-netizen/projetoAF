@@ -5004,15 +5004,16 @@ select.inp{appearance:none;cursor:pointer;}
 
     <!-- Import bar -->
     <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:.6rem .9rem;">
-      <span style="font-size:.75rem;color:var(--text-dim);font-weight:600;">Importar dados:</span>
-      <label class="btn btn-ghost" style="font-size:.72rem;padding:.3rem .7rem;cursor:pointer;">
-        📂 Arquivo JSON
+      <span style="font-size:.7rem;color:var(--text-dim);font-weight:700;letter-spacing:.5px;text-transform:uppercase;">Importar:</span>
+      <label class="btn btn-ghost" style="font-size:.72rem;padding:.3rem .7rem;cursor:pointer;gap:.3rem;">
+        📂 JSON
         <input type="file" id="repo-file-input" accept=".json" style="display:none;" onchange="repoImportFile(event)">
       </label>
-      <button class="btn btn-ghost" style="font-size:.72rem;padding:.3rem .7rem;" onclick="repoImportClipboard()">📋 Colar JSON</button>
+      <button class="btn btn-ghost" style="font-size:.72rem;padding:.3rem .7rem;" onclick="repoImportClipboard()">📋 Clipboard</button>
+      <div style="width:1px;height:16px;background:var(--border);margin:0 .2rem;"></div>
       <button class="btn btn-ghost" style="font-size:.72rem;padding:.3rem .7rem;" onclick="repoExport()">⬇ Exportar</button>
-      <button class="btn btn-ghost" style="font-size:.72rem;padding:.3rem .7rem;color:var(--red);" onclick="repoClear()">🗑 Limpar</button>
-      <span id="repo-stats-lbl" style="margin-left:auto;font-size:.72rem;color:var(--text-dim);"></span>
+      <button class="btn btn-ghost" style="font-size:.72rem;padding:.3rem .7rem;color:var(--red);" onclick="repoClear()">🗑</button>
+      <span id="repo-stats-lbl" style="margin-left:auto;font-size:.7rem;color:var(--text-dim);font-family:var(--mono);"></span>
     </div>
 
     <!-- Cards area -->
@@ -13722,8 +13723,19 @@ function backupImport(event){
         `⚠️ Isso VAI SUBSTITUIR todos os dados atuais.`
       )) return;
 
-      // Merge carefully — preserve disciplines and edital if imported doesn't have them
+      // Save current disciplines before overwriting
+      const prevDiscs = state.disciplines ? [...state.disciplines] : [];
       Object.assign(state, imported);
+
+      // Merge disciplines: keep existing ones absent from backup
+      if(prevDiscs.length && state.disciplines?.length){
+        const impIds   = new Set(state.disciplines.map(d=>d.id));
+        const impNames = new Set(state.disciplines.map(d=>d.name.toLowerCase()));
+        for(const d of prevDiscs){
+          if(!impIds.has(d.id) && !impNames.has(d.name.toLowerCase()))
+            state.disciplines.push(d);
+        }
+      }
 
       // Ensure required arrays exist
       if(!state.disciplines?.length) ensureDisciplines();
@@ -19302,21 +19314,63 @@ async function pwaInstall(){
 
   /* ── Load / Save ─────────────────────────────────────── */
   function repoLoad(){
-    try { _repoData = JSON.parse(localStorage.getItem(LS_KEY) || '{}'); } catch(e){ _repoData={}; }
+    try {
+      _repoData = JSON.parse(localStorage.getItem(LS_KEY) || '{}');
+      // Clean up old garbage numeric keys from array-format imports
+      for(const k of Object.keys(_repoData)){
+        if(!isNaN(k)) delete _repoData[k];
+      }
+    } catch(e){ _repoData={}; }
   }
   function repoSave(){
     localStorage.setItem(LS_KEY, JSON.stringify(_repoData));
   }
 
+  /* ── Normalize incoming to nested format ─────────────── */
+  function repoNormalize(incoming){
+    // Extension exports array: [{qid, materia, assunto, desc, acertos, erros, importance, lastSeen, url}]
+    if(Array.isArray(incoming)){
+      const nested = {};
+      for(const q of incoming){
+        const disc    = (q.materia||'Sem Disciplina').trim();
+        const assunto = (q.assunto||'Sem Assunto').trim();
+        const qid     = q.qid || q.id || String(Date.now()+Math.random());
+        if(!nested[disc]) nested[disc] = {};
+        if(!nested[disc][assunto]) nested[disc][assunto] = {};
+        nested[disc][assunto][qid] = {
+          enunciado : q.desc || q.enunciado || '',
+          acertos   : Number(q.acertos)||0,
+          erros     : Number(q.erros)||0,
+          importance: Number(q.importance)||1,
+          lastSeen  : q.lastSeen || null,
+          url       : q.url || ''
+        };
+      }
+      return nested;
+    }
+    // Already nested format — validate top-level values are objects
+    if(typeof incoming === 'object'){
+      const clean = {};
+      for(const [disc, val] of Object.entries(incoming)){
+        if(typeof val === 'object' && !Array.isArray(val) && val !== null && !isNaN(disc) === false)
+          clean[disc] = val;
+      }
+      return Object.keys(clean).length ? clean : incoming;
+    }
+    return {};
+  }
+
   /* ── Merge incoming data ──────────────────────────────── */
   function repoMerge(incoming){
     if(!incoming || typeof incoming !== 'object') return 0;
+    const normalized = repoNormalize(incoming);
     let count = 0;
-    for(const disc of Object.keys(incoming)){
+    for(const disc of Object.keys(normalized)){
       if(!_repoData[disc]) _repoData[disc] = {};
-      for(const assunto of Object.keys(incoming[disc])){
+      for(const assunto of Object.keys(normalized[disc])){
         if(!_repoData[disc][assunto]) _repoData[disc][assunto] = {};
-        for(const [qid, q] of Object.entries(incoming[disc][assunto])){
+        for(const [qid, q] of Object.entries(normalized[disc][assunto])){
+          if(typeof q !== 'object' || q === null) continue;
           const existing = _repoData[disc][assunto][qid];
           if(!existing){
             _repoData[disc][assunto][qid] = q;
@@ -19337,9 +19391,23 @@ async function pwaInstall(){
 
   /* ── Importance badge ─────────────────────────────────── */
   function impBadge(imp){
-    if(imp===3) return '<span style="color:#ef4444;font-weight:700;">🔴 Crítica</span>';
-    if(imp===2) return '<span style="color:#f59e0b;font-weight:700;">🟡 Atenção</span>';
-    return '<span style="color:#22c55e;font-weight:700;">🟢 Dominada</span>';
+    if(imp===3) return '<span style="background:#ef444422;color:#ef4444;font-size:.62rem;font-weight:800;padding:2px 7px;border-radius:8px;border:1px solid #ef444433;">🔴 Crítica</span>';
+    if(imp===2) return '<span style="background:#f59e0b22;color:#f59e0b;font-size:.62rem;font-weight:800;padding:2px 7px;border-radius:8px;border:1px solid #f59e0b33;">🟡 Atenção</span>';
+    return '<span style="background:#22c55e22;color:#22c55e;font-size:.62rem;font-weight:800;padding:2px 7px;border-radius:8px;border:1px solid #22c55e33;">🟢 Dominada</span>';
+  }
+
+  /* ── Mini acerto rate bar ─────────────────────────────── */
+  function ratebar(ac, er){
+    const tot = ac + er;
+    if(!tot) return '';
+    const pct = Math.round(ac / tot * 100);
+    const col = pct >= 70 ? '#22c55e' : pct >= 50 ? '#f59e0b' : '#ef4444';
+    return `<div style="display:flex;align-items:center;gap:5px;margin-top:4px;">
+      <div style="flex:1;height:3px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden;">
+        <div style="height:100%;width:${pct}%;background:${col};border-radius:2px;transition:width .4s;"></div>
+      </div>
+      <span style="font-size:.6rem;color:${col};font-weight:700;min-width:28px;text-align:right;">${pct}%</span>
+    </div>`;
   }
 
   /* ── Flatten & filter questions ───────────────────────── */
@@ -19403,43 +19471,63 @@ async function pwaInstall(){
     // Sort: importance desc, then erros desc
     function sortQ(a,b){ return (b.importance||1)-(a.importance||1) || (b.erros||0)-(a.erros||0); }
 
+    // Disc color palette (cycles)
+    const DISC_COLORS = ['#4a6cf7','#8b5cf6','#10b981','#f59e0b','#ef4444','#22d3ee','#ec4899','#a78bfa'];
     let html = '';
     const discs = Object.keys(grouped).sort();
-    for(const disc of discs){
+    for(let di=0; di<discs.length; di++){
+      const disc = discs[di];
       const assuntos = grouped[disc];
       const discTotal = Object.values(assuntos).flat();
       const dc3 = discTotal.filter(q=>q.importance===3).length;
       const dc2 = discTotal.filter(q=>q.importance===2).length;
+      const dc1 = discTotal.filter(q=>q.importance===1).length;
+      const dcAc = discTotal.reduce((s,q)=>s+(q.acertos||0),0);
+      const dcEr = discTotal.reduce((s,q)=>s+(q.erros||0),0);
+      const dcTot = dcAc + dcEr;
+      const dcPct = dcTot ? Math.round(dcAc/dcTot*100) : null;
+      const dcol  = DISC_COLORS[di % DISC_COLORS.length];
       html += `<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;">`;
-      html += `<div style="display:flex;align-items:center;gap:.6rem;padding:.7rem 1rem;background:rgba(74,108,247,.07);border-bottom:1px solid var(--border);cursor:pointer;" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">`;
-      html += `<span style="font-weight:700;font-size:.92rem;">📁 ${esc(disc)}</span>`;
-      html += `<span style="margin-left:auto;display:flex;gap:.35rem;">`;
-      if(dc3) html += `<span style="background:#ef4444;color:#fff;font-size:.6rem;font-weight:800;padding:2px 7px;border-radius:10px;">${dc3} críticas</span>`;
-      if(dc2) html += `<span style="background:#f59e0b;color:#fff;font-size:.6rem;font-weight:800;padding:2px 7px;border-radius:10px;">${dc2} atenção</span>`;
-      html += `<span style="background:var(--border);color:var(--text-dim);font-size:.6rem;font-weight:700;padding:2px 7px;border-radius:10px;">${discTotal.length} questões</span>`;
+      // Discipline header
+      html += `<div style="display:flex;align-items:center;gap:.6rem;padding:.75rem 1rem;background:linear-gradient(90deg,${dcol}18,transparent);border-bottom:1px solid var(--border);cursor:pointer;border-left:3px solid ${dcol};" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'':'none'">`;
+      html += `<span style="font-weight:800;font-size:.88rem;color:var(--text);">📁 ${esc(disc)}</span>`;
+      html += `<span style="margin-left:auto;display:flex;gap:.35rem;align-items:center;flex-wrap:wrap;">`;
+      if(dc3) html += `<span style="background:#ef444422;color:#ef4444;font-size:.58rem;font-weight:800;padding:1px 6px;border-radius:8px;">${dc3} críticas</span>`;
+      if(dc2) html += `<span style="background:#f59e0b22;color:#f59e0b;font-size:.58rem;font-weight:800;padding:1px 6px;border-radius:8px;">${dc2} atenção</span>`;
+      if(dc1) html += `<span style="background:#22c55e22;color:#22c55e;font-size:.58rem;font-weight:800;padding:1px 6px;border-radius:8px;">${dc1} dom.</span>`;
+      if(dcPct!==null) html += `<span style="background:${dcol}22;color:${dcol};font-size:.58rem;font-weight:800;padding:1px 6px;border-radius:8px;">${dcPct}% acerto</span>`;
+      html += `<span style="background:rgba(255,255,255,.06);color:var(--text-dim);font-size:.58rem;font-weight:700;padding:1px 6px;border-radius:8px;">${discTotal.length}q</span>`;
       html += `</span></div>`;
       html += `<div>`;
       for(const assunto of Object.keys(assuntos).sort()){
         const qs = assuntos[assunto].sort(sortQ);
-        html += `<div style="border-bottom:1px solid var(--border);">`;
-        html += `<div style="display:flex;align-items:center;gap:.5rem;padding:.5rem 1.2rem;background:rgba(255,255,255,.02);cursor:pointer;" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">`;
-        html += `<span style="font-size:.82rem;font-weight:600;color:var(--text-dim);">📂 ${esc(assunto)}</span>`;
-        html += `<span style="margin-left:auto;font-size:.68rem;color:var(--text-dim);">${qs.length} questões</span>`;
+        const asAc = qs.reduce((s,q)=>s+(q.acertos||0),0);
+        const asEr = qs.reduce((s,q)=>s+(q.erros||0),0);
+        const asPct = (asAc+asEr) ? Math.round(asAc/(asAc+asEr)*100) : null;
+        html += `<div style="border-bottom:1px solid rgba(255,255,255,.04);">`;
+        html += `<div style="display:flex;align-items:center;gap:.5rem;padding:.45rem 1.2rem;background:rgba(255,255,255,.015);cursor:pointer;" onclick="const b=this.nextElementSibling;b.style.display=b.style.display==='none'?'':'none'">`;
+        html += `<span style="font-size:.8rem;font-weight:600;color:var(--text);">📂 ${esc(assunto)}</span>`;
+        html += `<span style="margin-left:auto;display:flex;gap:.4rem;align-items:center;">`;
+        if(asPct!==null) html += `<span style="font-size:.6rem;color:${asPct>=70?'#22c55e':asPct>=50?'#f59e0b':'#ef4444'};font-weight:700;">${asPct}%</span>`;
+        html += `<span style="font-size:.62rem;color:var(--text-dim);">${qs.length}q</span></span>`;
         html += `</div>`;
-        html += `<div style="display:none;">`;
+        html += `<div style="display:none;padding:.4rem .6rem;display:flex;flex-direction:column;gap:.35rem;">`;
         for(const q of qs){
           const imp = q.importance || 1;
           const borderColor = imp===3?'#ef4444':imp===2?'#f59e0b':'#22c55e';
-          html += `<div style="border-left:3px solid ${borderColor};margin:.4rem .8rem .4rem 1.6rem;padding:.55rem .8rem;background:var(--bg);border-radius:var(--r);font-size:.78rem;">`;
-          html += `<div style="display:flex;gap:.5rem;align-items:flex-start;flex-wrap:wrap;">`;
-          html += `<span style="flex:1;">${esc((q.enunciado||q.qid||'Questão').substring(0,180))}${(q.enunciado||'').length>180?'…':''}</span>`;
+          const enun = (q.enunciado||'').trim();
+          html += `<div style="border-left:3px solid ${borderColor};padding:.5rem .75rem;background:var(--bg);border-radius:6px;font-size:.78rem;">`;
+          html += `<div style="display:flex;gap:.5rem;align-items:flex-start;flex-wrap:wrap;margin-bottom:.3rem;">`;
+          html += `<span style="flex:1;line-height:1.4;color:var(--text);">${esc(enun.substring(0,200))}${enun.length>200?'…':''}</span>`;
           html += `${impBadge(imp)}`;
           html += `</div>`;
-          html += `<div style="display:flex;gap:.8rem;margin-top:.35rem;font-size:.7rem;color:var(--text-dim);flex-wrap:wrap;align-items:center;">`;
-          html += `<span>✅ ${q.acertos||0} acertos</span><span>❌ ${q.erros||0} erros</span>`;
+          html += `<div style="display:flex;gap:.7rem;font-size:.68rem;color:var(--text-dim);flex-wrap:wrap;align-items:center;">`;
+          html += `<span style="color:#22c55e;">✅ ${q.acertos||0}</span><span style="color:#ef4444;">❌ ${q.erros||0}</span>`;
           if(q.lastSeen) html += `<span>📅 ${new Date(q.lastSeen).toLocaleDateString('pt-BR')}</span>`;
-          if(q.url) html += `<a href="${q.url}" target="_blank" style="color:var(--accent);text-decoration:none;font-size:.68rem;">🔗 Ver no TEC</a>`;
-          html += `</div></div>`;
+          if(q.url) html += `<a href="${q.url}" target="_blank" style="color:var(--accent);text-decoration:none;margin-left:auto;">🔗 Ver</a>`;
+          html += `</div>`;
+          html += ratebar(q.acertos||0, q.erros||0);
+          html += `</div>`;
         }
         html += `</div></div>`;
       }
