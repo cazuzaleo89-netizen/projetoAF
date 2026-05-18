@@ -14,7 +14,8 @@
   ],
   "host_permissions": [
     "*://www.tecconcursos.com.br/*",
-    "*://cazuzaleo89-netizen.github.io/*"
+    "*://cazuzaleo89-netizen.github.io/*",
+    "https://api.anthropic.com/*"
   ],
   "content_scripts": [
     {
@@ -22,6 +23,11 @@
       "js": ["content.js"],
       "run_at": "document_idle",
       "all_frames": true
+    },
+    {
+      "matches": ["*://cazuzaleo89-netizen.github.io/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
     }
   ],
   "background": {

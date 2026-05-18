@@ -10,6 +10,14 @@
 
   const PANEL_URL = 'https://cazuzaleo89-netizen.github.io/projetofiscal/';
 
+  // ── Heartbeat para o painel detectar extensão ativa ──
+  if (location.hostname === 'cazuzaleo89-netizen.github.io') {
+    const beat = () => localStorage.setItem('_pf_ext_heartbeat', Date.now());
+    beat();
+    setInterval(beat, 8000);
+    return; // não rodar widget TEC aqui
+  }
+
   // ════════════════════════════════════════════════════════
   // ESTADO
   // ════════════════════════════════════════════════════════
@@ -48,6 +56,12 @@
   let timerInterval = null;   // setInterval do cronômetro
   let timerElapsed  = 0;      // segundos (cache local do background)
   let timerRunning  = false;
+
+  // Novas vars: drag, hub e revisões pendentes
+  let _pfDragPos  = null;   // {left, top} em px (null = posição default)
+  let _pfHubNext  = null;   // próximo item Huberman ativo
+  let _pfDueCount = 0;      // revisões SM-2 pendentes
+  let _syncTick   = 0;      // contador para sincronizações periódicas
 
   // ════════════════════════════════════════════════════════
   // COMUNICAÇÃO COM PAINEL
@@ -122,13 +136,102 @@
 
   function startTimerTick() {
     if (timerInterval) clearInterval(timerInterval);
-    // Poll background a cada 5 s para sincronizar; atualiza display a cada 1 s localmente
     syncTimerFromBg();
     timerInterval = setInterval(() => {
-      updateTimerDisplay();           // incremento local instantâneo
+      updateTimerDisplay();
+      _syncTick++;
+      // Atualiza countdown do hub mini a cada segundo sem re-render completo
+      updateHubCd();
+      if (_syncTick % 15 === 0) syncHubStatus();
+      if (_syncTick % 30 === 0) { syncDueCount(); _syncTick = 0; }
     }, 1000);
-    // Re-sincroniza com background a cada 10 s
     setInterval(syncTimerFromBg, 10000);
+  }
+
+  // ── Sincronização: Huberman ─────────────────────────────────────────────────
+  function syncHubStatus() {
+    try {
+      chrome.runtime.sendMessage({ type: 'HUBERMAN_GET' }, resp => {
+        if (!resp) return;
+        const queue = (resp.hub || []).filter(h => !h.isDue || true); // inclui todos
+        if (!queue.length) { if (_pfHubNext) { _pfHubNext = null; renderWidget(); } return; }
+        const next = queue.sort((a, b) => a.reviewAt - b.reviewAt)[0];
+        const wasNull = !_pfHubNext;
+        _pfHubNext = next;
+        if (wasNull) renderWidget(); // mostrar o novo banner
+      });
+    } catch (x) {}
+  }
+
+  function updateHubCd() {
+    const cdEl = document.getElementById('_pf2hubcd');
+    if (!cdEl || !_pfHubNext) return;
+    const remNow = Math.max(0, Math.round((_pfHubNext.reviewAt - Date.now()) / 1000));
+    const cdTxt = remNow > 0 ? `⏱ ${Math.floor(remNow/60)}:${String(remNow%60).padStart(2,'0')}` : '⚡ REVISAR';
+    const cdColor = remNow <= 0 ? '#f59e0b' : '#a78bfa';
+    cdEl.textContent = cdTxt;
+    cdEl.style.color = cdColor;
+  }
+
+  // ── Sincronização: revisões SM-2 pendentes ──────────────────────────────────
+  function syncDueCount() {
+    try {
+      chrome.runtime.sendMessage({ type: 'GET_DUE_COUNT' }, resp => {
+        if (!resp) return;
+        const total = (resp.dueCount || 0);
+        if (total !== _pfDueCount) { _pfDueCount = total; renderWidget(); }
+      });
+    } catch (x) {}
+  }
+
+  // ── Drag & drop do widget ───────────────────────────────────────────────────
+  function initDrag() {
+    if (!widgetEl) return;
+    let dragging = false, ox = 0, oy = 0, sl = 0, st = 0;
+
+    widgetEl.addEventListener('mousedown', e => {
+      if (!e.target.closest('._pf2h') || e.target.closest('button')) return;
+      dragging = true;
+      const r = widgetEl.getBoundingClientRect();
+      ox = e.clientX; oy = e.clientY;
+      sl = r.left;    st = r.top;
+      widgetEl.style.right  = 'auto';
+      widgetEl.style.bottom = 'auto';
+      widgetEl.style.left   = sl + 'px';
+      widgetEl.style.top    = st + 'px';
+      widgetEl.style.cursor = 'grabbing';
+      e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', e => {
+      if (!dragging) return;
+      const nl = Math.max(0, Math.min(window.innerWidth - widgetEl.offsetWidth, sl + e.clientX - ox));
+      const nt = Math.max(0, Math.min(window.innerHeight - 40, st + e.clientY - oy));
+      widgetEl.style.left = nl + 'px';
+      widgetEl.style.top  = nt + 'px';
+    }, { passive: true });
+
+    document.addEventListener('mouseup', () => {
+      if (!dragging) return;
+      dragging = false;
+      widgetEl.style.cursor = '';
+      _pfDragPos = { left: parseFloat(widgetEl.style.left), top: parseFloat(widgetEl.style.top) };
+      try { localStorage.setItem('_pfPos', JSON.stringify(_pfDragPos)); } catch (x) {}
+    });
+  }
+
+  function applyDragPos() {
+    if (!widgetEl) return;
+    try {
+      const saved = _pfDragPos || JSON.parse(localStorage.getItem('_pfPos') || 'null');
+      if (saved && saved.left != null) {
+        _pfDragPos = saved;
+        widgetEl.style.right  = 'auto';
+        widgetEl.style.bottom = 'auto';
+        widgetEl.style.left   = Math.min(saved.left, window.innerWidth - 50)  + 'px';
+        widgetEl.style.top    = Math.min(saved.top,  window.innerHeight - 50) + 'px';
+      }
+    } catch (x) {}
   }
 
   function timerControl(action) {
@@ -394,6 +497,56 @@
       #_pfWidget2.pf2-min ._pf2h{
         border-radius:50px;border:none;padding:8px 14px;gap:10px;
       }
+
+      /* ── Drag handle ── */
+      ._pf2h{cursor:grab;}
+      ._pf2h:active{cursor:grabbing;}
+      ._pf2drag{
+        display:flex;flex-direction:column;gap:2.5px;flex-shrink:0;
+        opacity:.35;pointer-events:none;
+      }
+      ._pf2drag span{display:block;width:14px;height:2px;background:#94a3b8;border-radius:1px;}
+
+      /* ── Taxa ao vivo ── */
+      ._pf2taxa{
+        display:flex;background:#0f1220;border:1px solid rgba(255,255,255,.07);
+        border-radius:9px;margin-bottom:9px;overflow:hidden;
+      }
+      ._pf2taxa-it{
+        flex:1;display:flex;flex-direction:column;align-items:center;
+        justify-content:center;padding:7px 4px;
+      }
+      ._pf2taxa-it+._pf2taxa-it{border-left:1px solid rgba(255,255,255,.06);}
+      ._pf2taxa-v{font-size:16px;font-weight:800;line-height:1;}
+      ._pf2taxa-l{font-size:8px;color:#475569;font-weight:700;letter-spacing:.7px;margin-top:2px;}
+
+      /* ── Mini histórico ── */
+      ._pf2mhist{display:flex;align-items:center;gap:3px;margin-bottom:9px;}
+      ._pf2mhist-lbl{font-size:9px;color:#475569;font-weight:700;margin-right:2px;flex-shrink:0;}
+      ._pf2mhd{width:10px;height:10px;border-radius:3px;flex-shrink:0;}
+      ._pf2mhd.c{background:#15803d;border:1px solid rgba(34,197,94,.25);}
+      ._pf2mhd.w{background:#b91c1c;border:1px solid rgba(239,68,68,.25);}
+      ._pf2mhd.p{background:#252a42;border:1px solid rgba(255,255,255,.06);}
+
+      /* ── Hub mini ── */
+      ._pf2hub-min{
+        display:flex;align-items:center;gap:6px;
+        background:rgba(139,92,246,.07);border:1px solid rgba(139,92,246,.18);
+        border-radius:7px;padding:5px 9px;margin-bottom:8px;cursor:pointer;transition:background .15s;
+      }
+      ._pf2hub-min:hover{background:rgba(139,92,246,.14);}
+      ._pf2hub-min-txt{flex:1;font-size:10px;color:#c4b5fd;font-weight:700;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+      ._pf2hub-min-cd{font-size:10px;font-weight:800;flex-shrink:0;font-family:monospace;}
+
+      /* ── Revisões SM-2 pendentes ── */
+      ._pf2due{
+        display:flex;align-items:center;gap:6px;
+        background:rgba(99,102,241,.07);border:1px solid rgba(99,102,241,.15);
+        border-radius:7px;padding:5px 9px;margin-bottom:8px;cursor:pointer;transition:background .15s;
+      }
+      ._pf2due:hover{background:rgba(99,102,241,.14);}
+      ._pf2due-dot{width:5px;height:5px;border-radius:50%;background:#6366f1;flex-shrink:0;}
+      ._pf2due-txt{flex:1;font-size:10px;color:#818cf8;font-weight:700;}
     `;
     document.head.appendChild(st);
   }
@@ -459,8 +612,53 @@
         <kbd class="_pf2filakbd">Alt+R</kbd>
       </div>` : '';
 
+    // ── Novos elementos ──────────────────────────────────────────────────────
+    const taxaColor = pct >= 70 ? '#22c55e' : pct >= 50 ? '#f59e0b' : '#ef4444';
+    const ritmo = timerElapsed >= 60 ? Math.round(answered / (timerElapsed / 3600)) : 0;
+    const taxaRow = answered > 0 ? `
+      <div class="_pf2taxa">
+        <div class="_pf2taxa-it">
+          <div class="_pf2taxa-v" style="color:${taxaColor}">${pct}%</div>
+          <div class="_pf2taxa-l">TAXA</div>
+        </div>
+        <div class="_pf2taxa-it">
+          <div class="_pf2taxa-v" style="color:#94a3b8">${answered}</div>
+          <div class="_pf2taxa-l">RESPONDIDAS</div>
+        </div>
+        <div class="_pf2taxa-it">
+          <div class="_pf2taxa-v" style="color:#64748b">${ritmo > 0 ? '~' + ritmo : '—'}</div>
+          <div class="_pf2taxa-l">Q/HORA</div>
+        </div>
+      </div>` : '';
+
+    const lastAnswered = S.questions.filter(q => q.result !== null).slice(-9);
+    const histDots = lastAnswered.map(q => `<div class="_pf2mhd ${q.result === 'correct' ? 'c' : 'w'}"></div>`).join('');
+    const miniHist = lastAnswered.length > 0 ? `
+      <div class="_pf2mhist">
+        <span class="_pf2mhist-lbl">Últimas:</span>
+        ${histDots}
+      </div>` : '';
+
+    const hubMini = _pfHubNext ? (() => {
+      const remNow = Math.max(0, Math.round((_pfHubNext.reviewAt - Date.now()) / 1000));
+      const cdTxt = remNow > 0 ? `⏱ ${Math.floor(remNow/60)}:${String(remNow%60).padStart(2,'0')}` : '⚡ REVISAR';
+      const cdColor = remNow <= 0 ? '#f59e0b' : '#a78bfa';
+      return `<div class="_pf2hub-min" id="_pf2hubmin">
+        <span style="font-size:13px;flex-shrink:0;">🧠</span>
+        <span class="_pf2hub-min-txt">Fase ${_pfHubNext.phase} · ${(_pfHubNext.desc || '').slice(0, 28)}</span>
+        <span class="_pf2hub-min-cd" id="_pf2hubcd" style="color:${cdColor}">${cdTxt}</span>
+      </div>`;
+    })() : '';
+
+    const dueBanner = _pfDueCount > 0 ? `
+      <div class="_pf2due" id="_pf2duebanner">
+        <div class="_pf2due-dot"></div>
+        <span class="_pf2due-txt">📅 ${_pfDueCount} revisão${_pfDueCount !== 1 ? 'ões' : ''} SM-2 pendente${_pfDueCount !== 1 ? 's' : ''}</span>
+      </div>` : '';
+
     widgetEl.innerHTML = `
       <div class="_pf2h">
+        <div class="_pf2drag"><span></span><span></span><span></span></div>
         <div class="_pf2logo">≡</div>
         <div class="_pf2title">Painel Fiscal</div>
         <button class="_pf2hbtn" id="_pf2min" title="Minimizar">−</button>
@@ -475,6 +673,9 @@
           <button class="_pf2syncbtn" id="_pf2sync" title="Sincronizar com painel">↺</button>
         </div>
 
+        ${taxaRow}
+        ${miniHist}
+
         <!-- Cronômetro -->
         <div class="_pf2timer">
           <div class="_pf2timerdot" id="_pf2timerDot" style="background:${timerRunning ? '#22c55e' : '#f59e0b'};box-shadow:0 0 6px ${timerRunning ? '#22c55e' : '#f59e0b'};"></div>
@@ -483,9 +684,10 @@
           <button class="_pf2timerbtn" id="_pf2timerReset" title="Zerar">⏹</button>
         </div>
 
-        ${answered > 0 ? `<div class="_pf2bar"><div class="_pf2barfill" style="width:${pct}%"></div></div>` : ''}
         <div class="_pf2pos">◆ ${curQ || '?'}/${showTotal || '?'}</div>
         <div class="_pf2grid">${circlesHtml}</div>
+        ${hubMini}
+        ${dueBanner}
         ${filaBanner}
         <div class="_pf2nav">
           <button class="_pf2navbtn" id="_pf2ant">← Ant</button>
@@ -546,6 +748,16 @@
     // Banner de fila
     const filaRow = document.getElementById('_pf2filarow');
     if (filaRow && S.fila[0]) filaRow.onclick = () => window.open(S.fila[0].link || S.fila[0].url, '_self');
+
+    // Hub mini: clica para abrir a questão
+    const hubMinEl = document.getElementById('_pf2hubmin');
+    if (hubMinEl && _pfHubNext) {
+      hubMinEl.onclick = () => { if (_pfHubNext.url) window.open(_pfHubNext.url, '_self'); };
+    }
+
+    // Due banner: clica para abrir popup
+    const dueEl = document.getElementById('_pf2duebanner');
+    if (dueEl) dueEl.onclick = () => { try { chrome.runtime.sendMessage({ type: 'OPEN_POPUP' }); } catch (x) {} };
   }
 
   // ════════════════════════════════════════════════════════
@@ -945,14 +1157,18 @@
       widgetEl = document.createElement('div');
       widgetEl.id = '_pfWidget2';
       document.body.appendChild(widgetEl);
+      applyDragPos();
       renderWidget();
+      initDrag();
     }
 
     observer = new MutationObserver(check);
     observer.observe(document.body, { childList: true, subtree: true, characterData: true });
 
-    // Inicia tick do cronômetro (sincroniza com background + atualiza display a cada 1s)
+    // Inicia tick do cronômetro + syncs periódicas
     startTimerTick();
+    syncHubStatus();
+    syncDueCount();
 
     try { chrome.runtime.sendMessage({ type: 'CONTENT_READY', connected, url: window.location.href }); } catch (x) { /* */ }
   }
