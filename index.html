@@ -2286,19 +2286,58 @@ select.inp{appearance:none;cursor:pointer;}
   </div>
 
   <!-- TEC Ranking widget -->
-  <div id="dash-tec-ranking" style="display:none;margin-bottom:1rem;">
+  <div id="dash-tec-ranking" style="margin-bottom:1rem;">
     <div style="background:linear-gradient(135deg,rgba(245,158,11,.05),rgba(239,68,68,.04));border:1px solid rgba(245,158,11,.18);border-radius:var(--r3);padding:.85rem 1.1rem;position:relative;overflow:hidden;">
       <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),#ef4444,transparent);"></div>
       <!-- Header -->
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;gap:.5rem;flex-wrap:wrap;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem;gap:.5rem;flex-wrap:wrap;">
         <div style="display:flex;align-items:center;gap:.5rem;">
           <span style="font-size:.65rem;font-weight:800;color:var(--gold);letter-spacing:.8px;text-transform:uppercase;">🏆 Ranking TEC</span>
           <span id="rank-updated-lbl" style="font-size:.55rem;color:var(--muted2);"></span>
         </div>
         <div style="display:flex;gap:.4rem;align-items:center;">
           <span id="rank-group-lbl" style="font-size:.58rem;color:var(--muted2);"></span>
-          <a id="rank-open-link" href="https://www.tecconcursos.com.br/estatisticas/comparar/" target="_blank" style="font-size:.62rem;color:var(--gold);font-weight:700;text-decoration:none;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.25);border-radius:6px;padding:.2rem .55rem;transition:background .15s;" onmouseover="this.style.background='rgba(245,158,11,.2)'" onmouseout="this.style.background='rgba(245,158,11,.1)'">↗ Atualizar</a>
+          <button onclick="rankToggleForm()" id="rank-manual-btn" style="font-size:.6rem;color:var(--muted2);font-weight:700;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:.2rem .5rem;cursor:pointer;font-family:var(--ff);">✎ Manual</button>
+          <a id="rank-open-link" href="https://www.tecconcursos.com.br/estatisticas/comparar/" target="_blank" style="font-size:.62rem;color:var(--gold);font-weight:700;text-decoration:none;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.25);border-radius:6px;padding:.2rem .55rem;transition:background .15s;" onmouseover="this.style.background='rgba(245,158,11,.2)'" onmouseout="this.style.background='rgba(245,158,11,.1)'">↗ TEC</a>
         </div>
+      </div>
+      <!-- Manual input form (hidden by default) -->
+      <div id="rank-form" style="display:none;background:rgba(0,0,0,.2);border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:.65rem .8rem;margin-bottom:.6rem;">
+        <div style="font-size:.58rem;color:var(--muted2);font-weight:700;letter-spacing:.5px;margin-bottom:.55rem;text-transform:uppercase;">Inserir dados do ranking manualmente</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.35rem;margin-bottom:.5rem;">
+          <div><label style="font-size:.55rem;color:var(--muted2);">Total participantes</label><input id="rfi-total" type="number" placeholder="ex: 614" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:5px;color:var(--text);font-size:.72rem;padding:.28rem .5rem;font-family:var(--ff);" /></div>
+          <div><label style="font-size:.55rem;color:var(--muted2);">ID do grupo (URL)</label><input id="rfi-group" type="number" placeholder="ex: 147" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:5px;color:var(--text);font-size:.72rem;padding:.28rem .5rem;font-family:var(--ff);" /></div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.3rem;margin-bottom:.3rem;">
+          <div style="font-size:.54rem;color:var(--muted2);text-align:center;font-weight:700;">RESOLUÇÕES</div>
+          <div style="font-size:.54rem;color:var(--muted2);text-align:center;font-weight:700;">ACERTOS</div>
+          <div style="font-size:.54rem;color:var(--muted2);text-align:center;font-weight:700;">DESEMPENHO %</div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.3rem;margin-bottom:.3rem;">
+          <div style="display:flex;flex-direction:column;gap:2px;">
+            <input id="rfi-res-voce"  type="number" placeholder="Você" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:4px;color:var(--text);font-size:.7rem;padding:.25rem .4rem;font-family:var(--ff);" />
+            <input id="rfi-res-media" type="number" placeholder="Média" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:4px;color:var(--text);font-size:.7rem;padding:.25rem .4rem;font-family:var(--ff);" />
+            <input id="rfi-res-pos"   type="number" placeholder="Posição" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:4px;color:var(--text);font-size:.7rem;padding:.25rem .4rem;font-family:var(--ff);" />
+          </div>
+          <div style="display:flex;flex-direction:column;gap:2px;">
+            <input id="rfi-ace-voce"  type="number" placeholder="Você" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:4px;color:var(--text);font-size:.7rem;padding:.25rem .4rem;font-family:var(--ff);" />
+            <input id="rfi-ace-media" type="number" placeholder="Média" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:4px;color:var(--text);font-size:.7rem;padding:.25rem .4rem;font-family:var(--ff);" />
+            <input id="rfi-ace-pos"   type="number" placeholder="Posição" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:4px;color:var(--text);font-size:.7rem;padding:.25rem .4rem;font-family:var(--ff);" />
+          </div>
+          <div style="display:flex;flex-direction:column;gap:2px;">
+            <input id="rfi-des-voce"  type="number" step="0.01" placeholder="Você %" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:4px;color:var(--text);font-size:.7rem;padding:.25rem .4rem;font-family:var(--ff);" />
+            <input id="rfi-des-media" type="number" step="0.01" placeholder="Média %" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:4px;color:var(--text);font-size:.7rem;padding:.25rem .4rem;font-family:var(--ff);" />
+            <input id="rfi-des-pos"   type="number" placeholder="Posição" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:4px;color:var(--text);font-size:.7rem;padding:.25rem .4rem;font-family:var(--ff);" />
+          </div>
+        </div>
+        <div style="display:flex;gap:.4rem;justify-content:flex-end;margin-top:.4rem;">
+          <button onclick="rankToggleForm()" style="font-size:.65rem;background:none;border:1px solid rgba(255,255,255,.1);color:var(--muted2);border-radius:6px;padding:.3rem .7rem;cursor:pointer;font-family:var(--ff);">Cancelar</button>
+          <button onclick="saveRankingManual()" style="font-size:.65rem;background:var(--gold);border:none;color:#000;border-radius:6px;padding:.3rem .9rem;cursor:pointer;font-weight:800;font-family:var(--ff);">💾 Salvar</button>
+        </div>
+      </div>
+      <!-- No-data prompt -->
+      <div id="rank-nodata" style="display:none;font-size:.68rem;color:var(--muted2);padding:.2rem 0 .4rem;">
+        Dados do ranking não encontrados. Visite <a href="https://www.tecconcursos.com.br/estatisticas/comparar/" target="_blank" style="color:var(--gold);">sua página de comparação TEC</a> com a extensão ativa, ou clique em <strong style="color:var(--text);">✎ Manual</strong> para inserir.
       </div>
       <!-- Metrics row -->
       <div id="rank-metrics" style="display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;margin-bottom:.75rem;"></div>
@@ -5568,6 +5607,51 @@ function checkExtStatus() {
 // Poll extension heartbeat every 10s
 setInterval(checkExtStatus, 10000);
 
+function rankToggleForm() {
+  const f = document.getElementById('rank-form');
+  if (!f) return;
+  const open = f.style.display === 'none' || !f.style.display;
+  f.style.display = open ? '' : 'none';
+  // Pre-fill existing data if available
+  if (open) {
+    let r = null;
+    try { r = JSON.parse(localStorage.getItem('_pf_tec_ranking') || 'null'); } catch(e) {}
+    if (r) {
+      const s = (id, v) => { const el = document.getElementById(id); if (el && v != null) el.value = v; };
+      s('rfi-total', r.totalUsers); s('rfi-group', r.groupId);
+      s('rfi-res-voce', r.metrics?.resolucoes?.voce); s('rfi-res-media', r.metrics?.resolucoes?.media); s('rfi-res-pos', r.metrics?.resolucoes?.posicao);
+      s('rfi-ace-voce', r.metrics?.acertos?.voce);    s('rfi-ace-media', r.metrics?.acertos?.media);    s('rfi-ace-pos', r.metrics?.acertos?.posicao);
+      s('rfi-des-voce', r.metrics?.desempenho?.voce); s('rfi-des-media', r.metrics?.desempenho?.media); s('rfi-des-pos', r.metrics?.desempenho?.posicao);
+    }
+  }
+}
+
+function saveRankingManual() {
+  const g = id => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
+  const n = id => { const v = parseFloat(g(id)); return isNaN(v) ? null : v; };
+  const i = id => { const v = parseInt(g(id)); return isNaN(v) ? null : v; };
+
+  const data = {
+    scrapedAt: Date.now(),
+    url: 'manual',
+    groupId: g('rfi-group') || null,
+    totalUsers: i('rfi-total') || 614,
+    metrics: {},
+  };
+
+  const res = { voce: n('rfi-res-voce'), media: n('rfi-res-media'), posicao: i('rfi-res-pos') };
+  if (res.voce !== null || res.posicao !== null) data.metrics.resolucoes = res;
+  const ace = { voce: n('rfi-ace-voce'), media: n('rfi-ace-media'), posicao: i('rfi-ace-pos') };
+  if (ace.voce !== null || ace.posicao !== null) data.metrics.acertos = ace;
+  const des = { voce: n('rfi-des-voce'), media: n('rfi-des-media'), posicao: i('rfi-des-pos') };
+  if (des.voce !== null || des.posicao !== null) data.metrics.desempenho = des;
+
+  if (!Object.keys(data.metrics).length) { alert('Preencha pelo menos uma métrica.'); return; }
+  localStorage.setItem('_pf_tec_ranking', JSON.stringify(data));
+  document.getElementById('rank-form').style.display = 'none';
+  renderDashTecRanking();
+}
+
 // ── TEC Ranking widget ────────────────────────────────────────────────────────
 function renderDashTecRanking() {
   const el = document.getElementById('dash-tec-ranking');
@@ -5576,11 +5660,19 @@ function renderDashTecRanking() {
   let ranking = null;
   try { ranking = JSON.parse(localStorage.getItem('_pf_tec_ranking') || 'null'); } catch(e) {}
 
+  const noDataEl = document.getElementById('rank-nodata');
+  const metricsEl = document.getElementById('rank-metrics');
+  const barsEl = document.getElementById('rank-bars');
+  const goalEl = document.getElementById('rank-goal');
+
   if (!ranking || !ranking.metrics || !Object.keys(ranking.metrics).length) {
-    el.style.display = 'none';
+    if (noDataEl) noDataEl.style.display = '';
+    if (metricsEl) metricsEl.innerHTML = '';
+    if (barsEl) barsEl.innerHTML = '';
+    if (goalEl) goalEl.innerHTML = '';
     return;
   }
-  el.style.display = '';
+  if (noDataEl) noDataEl.style.display = 'none';
 
   const { metrics, totalUsers, groupId, scrapedAt, subjects } = ranking;
   const N = totalUsers || 614;
@@ -5602,7 +5694,6 @@ function renderDashTecRanking() {
     { key: 'acertos',    label: 'Acertos',    fmt: v => Math.round(v), unit: '' },
     { key: 'desempenho', label: 'Desempenho', fmt: v => v.toFixed(1).replace('.',','), unit: '%' },
   ];
-  const metricsEl = document.getElementById('rank-metrics');
   if (metricsEl) {
     metricsEl.innerHTML = metricDefs.map(({ key, label, fmt, unit }) => {
       const m = metrics[key];
@@ -5620,7 +5711,6 @@ function renderDashTecRanking() {
   }
 
   // ── Barras VOCÊ vs MÉDIA ──
-  const barsEl = document.getElementById('rank-bars');
   if (barsEl) {
     barsEl.innerHTML = metricDefs.map(({ key, label, fmt, unit }) => {
       const m = metrics[key];
@@ -5644,7 +5734,6 @@ function renderDashTecRanking() {
   }
 
   // ── Projeção de metas: top 20 ──
-  const goalEl = document.getElementById('rank-goal');
   if (goalEl) {
     const des = metrics.desempenho;
     const res = metrics.resolucoes;
