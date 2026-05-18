@@ -1820,6 +1820,11 @@ select.inp{appearance:none;cursor:pointer;}
     </div>
     <div class="tstat">Semana <strong id="h-week">0h 00m</strong></div>
     <div class="tstat">Total <strong id="h-total">0h 00m</strong></div>
+    <!-- Extension status badge -->
+    <div id="ext-status-pill" title="Status da extensão TEC Automator" style="display:flex;align-items:center;gap:4px;padding:.22rem .6rem;border-radius:20px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);cursor:default;transition:border-color .3s;">
+      <div id="ext-status-dot" style="width:6px;height:6px;border-radius:50%;background:#374151;flex-shrink:0;transition:all .4s;"></div>
+      <span id="ext-status-lbl" style="font-size:.58rem;color:var(--muted2);font-weight:600;font-family:var(--mono);transition:color .3s;">EXT</span>
+    </div>
     <!-- Prova countdown pill -->
     <div id="prova-topbar-pill" style="display:none;align-items:center;gap:.35rem;background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.3);border-radius:20px;padding:.22rem .7rem;cursor:pointer;" onclick="goPage('config',document.querySelector('.nav-item[onclick*=config]'))" title="Clique para ver detalhes">
       <span style="font-size:.65rem;">📅</span>
@@ -2241,6 +2246,42 @@ select.inp{appearance:none;cursor:pointer;}
       <div class="kpi-label">Dias Seguidos</div>
       <div class="kpi-sub">Sequência ativa</div>
       <div class="kpi-trend eq" id="d-trend-streak"></div>
+    </div>
+  </div>
+
+  <!-- TEC Hoje widget -->
+  <div id="dash-tec-hoje" style="display:none;margin-bottom:1rem;">
+    <div style="background:linear-gradient(135deg,rgba(34,211,238,.05),rgba(99,102,241,.05));border:1px solid rgba(34,211,238,.15);border-radius:var(--r3);padding:.75rem 1.1rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap;position:relative;overflow:hidden;">
+      <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--cyan),var(--purple),transparent);"></div>
+      <div style="display:flex;align-items:center;gap:.5rem;flex-shrink:0;">
+        <div id="dash-tec-ext-dot" style="width:8px;height:8px;border-radius:50%;background:#374151;transition:all .4s;"></div>
+        <span style="font-size:.65rem;font-weight:800;color:var(--cyan);letter-spacing:.8px;text-transform:uppercase;">TEC Hoje</span>
+      </div>
+      <div style="display:flex;gap:1.1rem;align-items:center;flex:1;flex-wrap:wrap;">
+        <div style="text-align:center;">
+          <div style="font-size:1.15rem;font-weight:800;font-family:var(--mono);color:var(--text);" id="dash-tec-q">0</div>
+          <div style="font-size:.52rem;color:var(--muted2);text-transform:uppercase;letter-spacing:1px;">Questões</div>
+        </div>
+        <div style="width:1px;height:26px;background:var(--border);"></div>
+        <div style="text-align:center;">
+          <div style="font-size:1.15rem;font-weight:800;font-family:var(--mono);color:var(--green);" id="dash-tec-rate">—</div>
+          <div style="font-size:.52rem;color:var(--muted2);text-transform:uppercase;letter-spacing:1px;">Acerto</div>
+        </div>
+        <div style="width:1px;height:26px;background:var(--border);"></div>
+        <div>
+          <div style="font-size:.78rem;font-weight:700;color:var(--text);max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" id="dash-tec-disc">—</div>
+          <div style="font-size:.52rem;color:var(--muted2);text-transform:uppercase;letter-spacing:1px;">Última disciplina</div>
+        </div>
+        <div style="width:1px;height:26px;background:var(--border);"></div>
+        <div style="text-align:center;">
+          <div style="font-size:1.15rem;font-weight:800;font-family:var(--mono);color:var(--purple);" id="dash-tec-sess">0</div>
+          <div style="font-size:.52rem;color:var(--muted2);text-transform:uppercase;letter-spacing:1px;">Sessões</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:.45rem;flex-shrink:0;">
+        <a href="https://www.tecconcursos.com.br" target="_blank" style="display:inline-flex;align-items:center;gap:.35rem;background:rgba(34,211,238,.1);border:1px solid rgba(34,211,238,.25);color:var(--cyan);border-radius:8px;padding:.38rem .8rem;font-size:.72rem;font-weight:700;cursor:pointer;font-family:inherit;text-decoration:none;transition:background .15s;" onmouseover="this.style.background='rgba(34,211,238,.2)'" onmouseout="this.style.background='rgba(34,211,238,.1)'">📖 Abrir TEC</a>
+        <button onclick="goPage('repositorio',document.querySelector('.nav-item[onclick*=repositorio]'))" style="background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.25);color:var(--purple);border-radius:8px;padding:.38rem .8rem;font-size:.72rem;font-weight:700;cursor:pointer;font-family:inherit;transition:background .15s;" onmouseover="this.style.background='rgba(99,102,241,.2)'" onmouseout="this.style.background='rgba(99,102,241,.1)'">📦 Repositório</button>
+      </div>
     </div>
   </div>
 
@@ -5409,6 +5450,7 @@ function dashUpdateHero(todS, wkS){
       hmLabels.innerHTML = `<span>${daySecs[0].d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}</span><span>${daySecs[14].d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}</span><span>${daySecs[29].d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}</span>`;
     }
   }
+  try { renderDashTecHoje(); } catch(e) {}
 }
 
 function dashDiscCards(){
@@ -5449,6 +5491,55 @@ function dashFilaPreview(){
     el.innerHTML+=`<div style="font-size:.62rem;color:var(--muted2);text-align:center;margin-top:.2rem;">+${all.length-items.length} na fila</div>`;
   }
 }
+
+// ── TEC Hoje widget + Extension status ─────────────────────
+function renderDashTecHoje() {
+  const today = new Date().toLocaleDateString('pt-BR');
+  const todaySess = (state.questionSessions || []).filter(s => s.dateStr === today);
+  const el = document.getElementById('dash-tec-hoje');
+  if (!el) return;
+
+  if (!todaySess.length) { el.style.display = 'none'; return; }
+  el.style.display = '';
+
+  const totQ = todaySess.reduce((s, x) => s + (x.total || 0), 0);
+  const totC = todaySess.reduce((s, x) => s + (x.correct || 0), 0);
+  const taxa = totQ ? Math.round(totC / totQ * 100) : null;
+  const last  = todaySess[todaySess.length - 1];
+
+  const qEl = document.getElementById('dash-tec-q');
+  const rEl = document.getElementById('dash-tec-rate');
+  const dEl = document.getElementById('dash-tec-disc');
+  const sEl = document.getElementById('dash-tec-sess');
+  if (qEl) qEl.textContent = totQ;
+  if (sEl) sEl.textContent = todaySess.length;
+  if (dEl) dEl.textContent = last?.subject || '—';
+  if (rEl) {
+    rEl.textContent = taxa !== null ? taxa + '%' : '—';
+    rEl.style.color = taxa === null ? 'var(--muted2)' : taxa >= 70 ? 'var(--green)' : taxa >= 50 ? 'var(--gold)' : 'var(--red)';
+  }
+  checkExtStatus(); // sync dot color
+}
+
+function checkExtStatus() {
+  const hb  = localStorage.getItem('_pf_ext_heartbeat');
+  const active = hb && (Date.now() - parseInt(hb)) < 15000;
+
+  // Topbar badge
+  const dot = document.getElementById('ext-status-dot');
+  const lbl = document.getElementById('ext-status-lbl');
+  const pill = document.getElementById('ext-status-pill');
+  if (dot) { dot.style.background = active ? '#22c55e' : '#374151'; dot.style.boxShadow = active ? '0 0 6px #22c55e' : 'none'; }
+  if (lbl) { lbl.textContent = active ? 'TEC' : 'EXT'; lbl.style.color = active ? 'var(--green)' : 'var(--muted2)'; }
+  if (pill) { pill.title = active ? 'Extensão TEC Automator ativa e monitorando' : 'Extensão não detectada — instale e ative'; pill.style.borderColor = active ? 'rgba(34,197,94,.3)' : 'rgba(255,255,255,.07)'; }
+
+  // Widget dot
+  const wDot = document.getElementById('dash-tec-ext-dot');
+  if (wDot) { wDot.style.background = active ? '#22c55e' : '#f59e0b'; wDot.style.boxShadow = active ? '0 0 6px #22c55e' : '0 0 6px #f59e0b'; }
+}
+
+// Poll extension heartbeat every 10s
+setInterval(checkExtStatus, 10000);
 
 function renderDashEdital(){
   editalEnsure();
@@ -9025,7 +9116,7 @@ function consWeekScore(days, secs, qs, rate) {
 }
 
 // ═══ RENDER ALL ════════════════════════════════
-function renderAll(){updateStats();renderDisciplines();renderWeekGrid();renderLog();renderProgress();renderQPerf();renderQLog();renderQGoalsList();mwInit();renderSpeedSettings();dashInitWeekSelector();}
+function renderAll(){updateStats();renderDisciplines();renderWeekGrid();renderLog();renderProgress();renderQPerf();renderQLog();renderQGoalsList();mwInit();renderSpeedSettings();dashInitWeekSelector();renderDashTecHoje();checkExtStatus();}
 function updateAll(){updateStats();renderDisciplines();renderProgress();renderQPerf();renderLog();}
 
 function goPage(name,el){
@@ -19216,7 +19307,7 @@ window.addEventListener('beforeunload', function() {
     cronPersist();
   }
 });
-loadTheme();loadState();ensureDisciplines();renderColorPicker();renderAll();updateTimerUI();
+loadTheme();loadState();ensureDisciplines();renderColorPicker();renderAll();updateTimerUI();checkExtStatus();
 try{ wrongHistoryUpdateBadge(); }catch(e){}
 initModalBackdrops();
 try{ renderProvaCountdown(); }catch(e){}

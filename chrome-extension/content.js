@@ -10,6 +10,14 @@
 
   const PANEL_URL = 'https://cazuzaleo89-netizen.github.io/projetofiscal/';
 
+  // ── Heartbeat para o painel detectar extensão ativa ──
+  if (location.hostname === 'cazuzaleo89-netizen.github.io') {
+    const beat = () => localStorage.setItem('_pf_ext_heartbeat', Date.now());
+    beat();
+    setInterval(beat, 8000);
+    return; // não rodar widget TEC aqui
+  }
+
   // ════════════════════════════════════════════════════════
   // ESTADO
   // ════════════════════════════════════════════════════════
