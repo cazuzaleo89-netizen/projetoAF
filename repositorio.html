@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Repositório de Questões — Painel Fiscal</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;}
+body{
+  background:#0f1117;color:#e2e8f0;
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+  font-size:13px;display:flex;flex-direction:column;
+}
+
+/* ── HEADER ── */
+.header{
+  background:linear-gradient(135deg,#1a1d2e,#252a40);
+  border-bottom:1px solid rgba(255,255,255,.07);
+  padding:14px 20px;display:flex;align-items:center;gap:14px;
+  position:sticky;top:0;z-index:100;
+}
+.logo{
+  width:36px;height:36px;background:#f59e0b;border-radius:9px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;font-weight:900;flex-shrink:0;
+}
+.hd-info{flex:1;}
+.hd-title{font-size:16px;font-weight:800;color:#e2e8f0;}
+.hd-sub{font-size:11px;color:#475569;margin-top:1px;}
+.hd-actions{display:flex;gap:8px;align-items:center;}
+btn,button{
+  font-family:inherit;cursor:pointer;
+  border:none;outline:none;
+}
+.btn-import{
+  padding:7px 14px;background:#6366f1;color:#fff;
+  border-radius:8px;font-size:12px;font-weight:700;
+  transition:all .15s;
+}
+.btn-import:hover{background:#4f46e5;}
+.btn-clear{
+  padding:7px 12px;background:rgba(239,68,68,.1);
+  color:#ef4444;border:1px solid rgba(239,68,68,.2);
+  border-radius:8px;font-size:12px;font-weight:700;
+  transition:all .15s;
+}
+.btn-clear:hover{background:rgba(239,68,68,.2);}
+.btn-paste{
+  padding:7px 12px;background:rgba(99,102,241,.1);
+  color:#818cf8;border:1px solid rgba(99,102,241,.2);
+  border-radius:8px;font-size:12px;font-weight:700;
+  transition:all .15s;
+}
+.btn-paste:hover{background:rgba(99,102,241,.2);}
+
+/* ── STATS BAR ── */
+.stats-bar{
+  background:#141728;border-bottom:1px solid rgba(255,255,255,.05);
+  padding:10px 20px;display:flex;gap:16px;align-items:center;flex-wrap:wrap;
+}
+.stat-pill{
+  display:flex;align-items:center;gap:5px;
+  padding:4px 11px;border-radius:20px;
+  font-size:11px;font-weight:700;cursor:pointer;
+  border:1px solid transparent;transition:all .15s;
+}
+.stat-pill.total{background:rgba(255,255,255,.05);color:#94a3b8;border-color:rgba(255,255,255,.07);}
+.stat-pill.dom{background:rgba(34,197,94,.08);color:#22c55e;border-color:rgba(34,197,94,.15);}
+.stat-pill.atc{background:rgba(245,158,11,.08);color:#f59e0b;border-color:rgba(245,158,11,.15);}
+.stat-pill.crit{background:rgba(239,68,68,.08);color:#ef4444;border-color:rgba(239,68,68,.15);}
+.stat-pill.active,.stat-pill:hover{filter:brightness(1.3);border-width:1px;}
+.stat-pill.active{box-shadow:0 0 0 2px currentColor;}
+.stats-sep{flex:1;}
+.search-box{
+  padding:6px 12px;background:#20243a;border:1px solid rgba(255,255,255,.09);
+  border-radius:8px;color:#e2e8f0;font-size:12px;outline:none;width:200px;
+}
+.search-box::placeholder{color:#475569;}
+
+/* ── LAYOUT ── */
+.layout{display:flex;flex:1;overflow:hidden;min-height:0;}
+
+/* ── SIDEBAR ── */
+.sidebar{
+  width:220px;flex-shrink:0;
+  background:#141728;border-right:1px solid rgba(255,255,255,.05);
+  overflow-y:auto;padding:12px 0;
+}
+.sidebar-title{
+  font-size:9px;font-weight:700;color:#475569;letter-spacing:1.2px;
+  padding:0 14px 8px;text-transform:uppercase;
+}
+.disc-item{
+  padding:7px 14px;cursor:pointer;transition:all .1s;
+  border-left:3px solid transparent;
+  font-size:12px;color:#64748b;
+  display:flex;align-items:center;justify-content:space-between;gap:6px;
+}
+.disc-item:hover{background:rgba(255,255,255,.03);color:#94a3b8;}
+.disc-item.active{
+  background:rgba(99,102,241,.07);
+  border-left-color:#6366f1;color:#a5b4fc;
+}
+.disc-name{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.disc-badge{
+  font-size:9px;font-weight:700;padding:1px 6px;
+  border-radius:10px;flex-shrink:0;
+}
+.disc-badge.has-crit{background:rgba(239,68,68,.15);color:#ef4444;}
+.disc-badge.has-atc{background:rgba(245,158,11,.12);color:#f59e0b;}
+.disc-badge.all-dom{background:rgba(34,197,94,.1);color:#22c55e;}
+
+/* ── MAIN ── */
+.main{flex:1;overflow-y:auto;padding:18px 20px;}
+
+.empty-state{
+  display:flex;flex-direction:column;align-items:center;
+  justify-content:center;min-height:300px;text-align:center;gap:12px;
+}
+.empty-icon{font-size:52px;}
+.empty-title{font-size:18px;font-weight:800;color:#e2e8f0;}
+.empty-sub{font-size:13px;color:#475569;max-width:360px;line-height:1.6;}
+.empty-steps{
+  background:#1a1d2e;border:1px solid rgba(255,255,255,.07);
+  border-radius:12px;padding:16px 20px;text-align:left;
+  font-size:12px;color:#64748b;line-height:2;
+  max-width:340px;
+}
+.empty-steps strong{color:#a5b4fc;}
+
+/* ── DISCIPLINE SECTION ── */
+.disc-section{margin-bottom:24px;}
+.disc-header{
+  display:flex;align-items:center;gap:10px;
+  margin-bottom:12px;cursor:pointer;
+}
+.disc-header h2{
+  font-size:14px;font-weight:800;color:#e2e8f0;
+  border-bottom:2px solid #6366f1;padding-bottom:4px;
+  flex:1;
+}
+.disc-toggle{color:#475569;font-size:12px;transition:transform .2s;}
+.disc-toggle.collapsed{transform:rotate(-90deg);}
+.disc-stats-row{
+  display:flex;gap:7px;margin-bottom:10px;flex-wrap:wrap;
+}
+.mini-pill{
+  font-size:9px;font-weight:700;padding:2px 8px;
+  border-radius:10px;
+}
+.mini-pill.dom{background:rgba(34,197,94,.1);color:#22c55e;}
+.mini-pill.atc{background:rgba(245,158,11,.1);color:#f59e0b;}
+.mini-pill.crit{background:rgba(239,68,68,.1);color:#ef4444;}
+
+/* ── ASSUNTO ── */
+.assunto-block{margin-bottom:14px;}
+.assunto-label{
+  font-size:10px;font-weight:700;color:#475569;letter-spacing:.8px;
+  text-transform:uppercase;margin-bottom:7px;
+  display:flex;align-items:center;gap:6px;
+}
+.assunto-label::after{content:'';flex:1;height:1px;background:rgba(255,255,255,.05);}
+
+/* ── QUESTÃO CARD ── */
+.q-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:9px;}
+.qcard{
+  background:#1a1d2e;border:1px solid rgba(255,255,255,.06);
+  border-radius:10px;padding:11px 13px;
+  transition:border-color .15s, box-shadow .15s;
+  position:relative;
+}
+.qcard:hover{border-color:rgba(99,102,241,.25);box-shadow:0 2px 12px rgba(0,0,0,.3);}
+.qcard.imp-1{border-left:3px solid #22c55e;}
+.qcard.imp-2{border-left:3px solid #f59e0b;}
+.qcard.imp-3{border-left:3px solid #ef4444;}
+.qcard-top{display:flex;align-items:flex-start;gap:8px;margin-bottom:7px;}
+.imp-badge{
+  font-size:8px;font-weight:800;padding:2px 7px;border-radius:10px;
+  flex-shrink:0;margin-top:1px;letter-spacing:.3px;
+}
+.imp-badge.imp-1{background:rgba(34,197,94,.12);color:#22c55e;}
+.imp-badge.imp-2{background:rgba(245,158,11,.12);color:#f59e0b;}
+.imp-badge.imp-3{background:rgba(239,68,68,.12);color:#ef4444;border:1px solid rgba(239,68,68,.2);}
+.qcard-desc{
+  font-size:11px;color:#94a3b8;line-height:1.4;flex:1;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.qcard-stats{
+  display:flex;align-items:center;gap:8px;margin-bottom:8px;
+}
+.stat-acertos{font-size:10px;color:#22c55e;font-weight:700;}
+.stat-erros{font-size:10px;color:#ef4444;font-weight:700;}
+.stat-seen{font-size:9px;color:#374151;}
+.qcard-bottom{display:flex;align-items:center;gap:6px;}
+.qid-badge{font-size:9px;color:#374151;background:#20243a;padding:2px 7px;border-radius:6px;}
+.qcard-link{
+  margin-left:auto;padding:4px 10px;
+  background:#6d28d9;color:#fff;
+  border-radius:6px;font-size:10px;font-weight:700;
+  cursor:pointer;border:none;font-family:inherit;
+  transition:background .15s;
+}
+.qcard-link:hover{background:#5b21b6;}
+
+/* ── EMPTY FILTER MSG ── */
+.filter-empty{
+  text-align:center;padding:40px 20px;
+  color:#374151;font-size:13px;
+}
+
+/* ── IMPORT DRAG OVERLAY ── */
+.drop-overlay{
+  display:none;position:fixed;inset:0;
+  background:rgba(99,102,241,.15);backdrop-filter:blur(4px);
+  z-index:200;align-items:center;justify-content:center;
+  border:3px dashed #6366f1;pointer-events:none;
+}
+.drop-overlay.active{display:flex;}
+.drop-msg{font-size:22px;font-weight:800;color:#a5b4fc;}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:#0f1117;}
+::-webkit-scrollbar-thumb{background:#20243a;border-radius:3px;}
+::-webkit-scrollbar-thumb:hover{background:#2d3655;}
+
+/* ── RATE BAR ── */
+.rate-bar-wrap{display:flex;align-items:center;gap:6px;margin-top:7px;}
+.rate-bar-bg{flex:1;height:3px;background:rgba(255,255,255,.07);border-radius:2px;overflow:hidden;}
+.rate-bar-fill{height:100%;border-radius:2px;transition:width .4s;}
+.rate-bar-pct{font-size:9px;font-weight:700;min-width:26px;text-align:right;}
+
+/* ── EXPORT BTN ── */
+.btn-export{
+  padding:7px 12px;background:rgba(16,185,129,.1);
+  color:#10b981;border:1px solid rgba(16,185,129,.2);
+  border-radius:8px;font-size:12px;font-weight:700;
+  transition:all .15s;
+}
+.btn-export:hover{background:rgba(16,185,129,.2);}
+
+/* ── BACK LINK ── */
+.btn-back{
+  padding:7px 12px;background:rgba(255,255,255,.04);
+  color:#64748b;border:1px solid rgba(255,255,255,.07);
+  border-radius:8px;font-size:12px;font-weight:700;
+  transition:all .15s;text-decoration:none;display:inline-flex;align-items:center;gap:4px;
+}
+.btn-back:hover{color:#94a3b8;background:rgba(255,255,255,.07);}
+
+/* ── TOAST ── */
+.toast{
+  position:fixed;bottom:20px;right:20px;
+  background:#252a40;border:1px solid rgba(255,255,255,.1);
+  border-radius:10px;padding:10px 16px;
+  font-size:12px;color:#e2e8f0;z-index:300;
+  opacity:0;transform:translateY(10px);
+  transition:all .25s;pointer-events:none;
+}
+.toast.show{opacity:1;transform:translateY(0);}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="logo">📚</div>
+  <div class="hd-info">
+    <div class="hd-title">Repositório de Questões</div>
+    <div class="hd-sub">Painel Fiscal — TEC Automator Pro v2.0</div>
+  </div>
+  <div class="hd-actions">
+    <a class="btn-back" href="index.html">← Painel</a>
+    <button class="btn-paste" id="btn-paste">📋 Colar JSON</button>
+    <button class="btn-import" id="btn-import">📂 Importar arquivo</button>
+    <button class="btn-export" id="btn-export" style="display:none">⬇ Exportar</button>
+    <button class="btn-clear" id="btn-clear" style="display:none">🗑 Limpar</button>
+  </div>
+</div>
+
+<!-- STATS BAR -->
+<div class="stats-bar">
+  <div class="stat-pill total active" data-filter="all" id="pill-all">📚 <span id="cnt-total">0</span> questões</div>
+  <div class="stat-pill dom" data-filter="1" id="pill-dom">🟢 <span id="cnt-dom">0</span> dominadas</div>
+  <div class="stat-pill atc" data-filter="2" id="pill-atc">🟡 <span id="cnt-atc">0</span> atenção</div>
+  <div class="stat-pill crit" data-filter="3" id="pill-crit">🔴 <span id="cnt-crit">0</span> críticas</div>
+  <div class="stats-sep"></div>
+  <input class="search-box" id="search" placeholder="🔍 Buscar disciplina, assunto, questão..." type="text">
+</div>
+
+<!-- DROP OVERLAY -->
+<div class="drop-overlay" id="drop-overlay">
+  <div class="drop-msg">Solte o arquivo JSON aqui</div>
+</div>
+
+<!-- LAYOUT -->
+<div class="layout">
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-title">Disciplinas</div>
+    <div id="sidebar-list"></div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main" id="main">
+    <div class="empty-state" id="empty-state">
+      <div class="empty-icon">📦</div>
+      <div class="empty-title">Repositório vazio</div>
+      <div class="empty-sub">Importe o JSON exportado pela extensão para visualizar todas as suas questões organizadas por disciplina e assunto.</div>
+      <div class="empty-steps">
+        <strong>Como importar:</strong><br>
+        1. Abra a extensão no Chrome<br>
+        2. Vá em <strong>CONFIG → Repositório de Questões</strong><br>
+        3. Clique em <strong>"Exportar Repositório"</strong> ou <strong>"Copiar JSON"</strong><br>
+        4. Volte aqui e clique em <strong>"Colar JSON"</strong> ou <strong>"Importar arquivo"</strong>
+      </div>
+    </div>
+    <div id="content" style="display:none"></div>
+  </div>
+</div>
+
+<!-- HIDDEN FILE INPUT -->
+<input type="file" id="file-input" accept=".json" style="display:none">
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+let allQuestions = [];
+let activeFilter = 'all';  // 'all' | 1 | 2 | 3
+let activeDisc   = null;   // null = todas
+let searchTerm   = '';
+
+const STORAGE_KEY = 'pf_repositorio_v2';
+
+// ── Boot ───────────────────────────────────────────────────────────────────
+function boot() {
+  // Check ?v=2 param (kept for backwards-compat routing)
+  loadFromStorage();
+  bindEvents();
+}
+
+// ── Storage ─────────────────────────────────────────────────────────────────
+function saveToStorage(data) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch(e) {}
+}
+
+function loadFromStorage() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const data = JSON.parse(raw);
+      // Stored as flat array (correct format)
+      if (Array.isArray(data) && data.length > 0) {
+        allQuestions = data.filter(q => q && q.qid);
+        if (allQuestions.length > 0) { render(); return; }
+      }
+      // Legacy: stored as nested object {disc:{assunto:{qid:{}}}} — flatten it
+      if (data && typeof data === 'object' && !Array.isArray(data)) {
+        const flat = [];
+        for (const [disc, assuntos] of Object.entries(data)) {
+          if (isNaN(disc) && typeof assuntos === 'object') {
+            for (const [assunto, qmap] of Object.entries(assuntos)) {
+              if (typeof qmap === 'object') {
+                for (const [qid, q] of Object.entries(qmap)) {
+                  if (typeof q === 'object' && q !== null)
+                    flat.push({ qid, materia: disc, assunto, ...q });
+                }
+              }
+            }
+          }
+        }
+        if (flat.length > 0) {
+          allQuestions = flat;
+          saveToStorage(allQuestions);
+          render();
+          return;
+        }
+      }
+    }
+  } catch(e) {}
+  showEmpty();
+}
+
+// ── Import ──────────────────────────────────────────────────────────────────
+function importJSON(text) {
+  try {
+    const data = JSON.parse(text);
+    if (!Array.isArray(data)) throw new Error('Formato inválido — deve ser um array');
+    if (data.length === 0) { toast('Arquivo vazio — nenhuma questão importada.'); return; }
+
+    // MERGE: preserve existing questions, accumulate stats for duplicates
+    const existing = new Map(allQuestions.map(q => [String(q.qid), q]));
+    let added = 0, updated = 0;
+    for (const q of data) {
+      const key = String(q.qid || '');
+      if (!key) continue;
+      const ex = existing.get(key);
+      if (!ex) {
+        existing.set(key, { ...q });
+        added++;
+      } else {
+        // Accumulate acertos/erros, keep latest seen, best metadata
+        ex.acertos = (ex.acertos || 0) + (q.acertos || 0);
+        ex.erros   = (ex.erros   || 0) + (q.erros   || 0);
+        ex.importance = ex.erros >= 2 ? 3 : ex.erros === 1 ? 2 : 1;
+        if (q.lastSeen && (!ex.lastSeen || q.lastSeen > ex.lastSeen)) ex.lastSeen = q.lastSeen;
+        if (q.desc    && !ex.desc)    ex.desc    = q.desc;
+        if (q.url     && !ex.url)     ex.url     = q.url;
+        if (q.materia && !ex.materia) ex.materia = q.materia;
+        if (q.assunto && !ex.assunto) ex.assunto = q.assunto;
+        updated++;
+      }
+    }
+    allQuestions = Array.from(existing.values());
+    saveToStorage(allQuestions);
+    activeFilter = 'all';
+    activeDisc   = null;
+    searchTerm   = '';
+    document.getElementById('search').value = '';
+    render();
+    const msg = added > 0 && updated > 0
+      ? `✅ ${added} novas + ${updated} atualizadas (total: ${allQuestions.length})`
+      : added > 0
+      ? `✅ ${added} questões adicionadas! Total: ${allQuestions.length}`
+      : `🔄 ${updated} questões atualizadas. Nenhuma nova.`;
+    toast(msg, 4000);
+  } catch(e) {
+    toast('❌ JSON inválido. Exporte novamente pela extensão.');
+  }
+}
+
+// ── Render ──────────────────────────────────────────────────────────────────
+function render() {
+  if (!allQuestions.length) { showEmpty(); return; }
+
+  document.getElementById('empty-state').style.display = 'none';
+  document.getElementById('content').style.display = 'block';
+  document.getElementById('btn-clear').style.display = '';
+  document.getElementById('btn-export').style.display = '';
+
+  updateStats();
+  renderSidebar();
+  renderMain();
+}
+
+function showEmpty() {
+  document.getElementById('empty-state').style.display = 'flex';
+  document.getElementById('content').style.display = 'none';
+  document.getElementById('btn-clear').style.display = 'none';
+  document.getElementById('btn-export').style.display = 'none';
+  document.getElementById('sidebar-list').innerHTML = '';
+  resetStats();
+}
+
+function resetStats() {
+  ['total','dom','atc','crit'].forEach(k => {
+    const el = document.getElementById('cnt-' + k);
+    if (el) el.textContent = '0';
+  });
+}
+
+function updateStats() {
+  const filtered = getFiltered();
+  document.getElementById('cnt-total').textContent = allQuestions.length;
+  document.getElementById('cnt-dom').textContent   = allQuestions.filter(q => q.importance === 1).length;
+  document.getElementById('cnt-atc').textContent   = allQuestions.filter(q => q.importance === 2).length;
+  document.getElementById('cnt-crit').textContent  = allQuestions.filter(q => q.importance === 3).length;
+}
+
+// ── Filter helpers ──────────────────────────────────────────────────────────
+function getFiltered() {
+  let qs = allQuestions;
+  if (activeFilter !== 'all') qs = qs.filter(q => q.importance === Number(activeFilter));
+  if (activeDisc) qs = qs.filter(q => normalizeDisc(q.materia) === activeDisc);
+  if (searchTerm) {
+    const s = searchTerm.toLowerCase();
+    qs = qs.filter(q =>
+      (q.materia || '').toLowerCase().includes(s) ||
+      (q.assunto || '').toLowerCase().includes(s) ||
+      (q.desc    || '').toLowerCase().includes(s) ||
+      (q.qid    || '').toLowerCase().includes(s)
+    );
+  }
+  return qs;
+}
+
+function normalizeDisc(m) { return (m || 'Sem disciplina').trim(); }
+
+// ── Sidebar ──────────────────────────────────────────────────────────────────
+function renderSidebar() {
+  const discMap = {};
+  allQuestions.forEach(q => {
+    const d = normalizeDisc(q.materia);
+    if (!discMap[d]) discMap[d] = { dom: 0, atc: 0, crit: 0 };
+    if (q.importance === 3)      discMap[d].crit++;
+    else if (q.importance === 2) discMap[d].atc++;
+    else                         discMap[d].dom++;
+  });
+
+  const discs = Object.keys(discMap).sort();
+  const el = document.getElementById('sidebar-list');
+
+  const allItem = `<div class="disc-item ${activeDisc === null ? 'active' : ''}" data-disc="__all__">
+    <span class="disc-name">Todas as disciplinas</span>
+    <span class="disc-badge" style="background:rgba(255,255,255,.05);color:#64748b">${allQuestions.length}</span>
+  </div>`;
+
+  const items = discs.map(d => {
+    const s = discMap[d];
+    const total = s.dom + s.atc + s.crit;
+    let badgeClass = 'all-dom', badgeLabel = '✓';
+    if (s.crit > 0) { badgeClass = 'has-crit'; badgeLabel = s.crit + '🔴'; }
+    else if (s.atc > 0) { badgeClass = 'has-atc'; badgeLabel = s.atc + '🟡'; }
+    const isActive = normalizeDisc(activeDisc) === d;
+    return `<div class="disc-item ${isActive ? 'active' : ''}" data-disc="${escHtml(d)}">
+      <span class="disc-name" title="${escHtml(d)}">${escHtml(d)}</span>
+      <span class="disc-badge ${badgeClass}">${badgeLabel}</span>
+    </div>`;
+  }).join('');
+
+  el.innerHTML = allItem + items;
+
+  el.querySelectorAll('.disc-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const disc = item.dataset.disc;
+      activeDisc = disc === '__all__' ? null : disc;
+      renderSidebar();
+      renderMain();
+    });
+  });
+}
+
+// ── Main content ─────────────────────────────────────────────────────────────
+function renderMain() {
+  const filtered = getFiltered();
+  const content  = document.getElementById('content');
+
+  if (!filtered.length) {
+    content.innerHTML = `<div class="filter-empty">Nenhuma questão encontrada com os filtros atuais.</div>`;
+    return;
+  }
+
+  // Group by materia → assunto, sort by importance desc within each group
+  const discMap = {};
+  filtered.forEach(q => {
+    const d = normalizeDisc(q.materia);
+    const a = (q.assunto || 'Sem assunto').trim();
+    if (!discMap[d]) discMap[d] = {};
+    if (!discMap[d][a]) discMap[d][a] = [];
+    discMap[d][a].push(q);
+  });
+
+  // Sort questions within each assunto: importance 3 first, then 2, then 1
+  // Within same importance: more erros first
+  function sortQs(qs) {
+    return qs.slice().sort((a, b) => {
+      if (b.importance !== a.importance) return b.importance - a.importance;
+      return (b.erros || 0) - (a.erros || 0);
+    });
+  }
+
+  const discNames = Object.keys(discMap).sort();
+
+  content.innerHTML = discNames.map(disc => {
+    const assuntos = discMap[disc];
+    const assNames = Object.keys(assuntos).sort();
+    const allQs    = assNames.flatMap(a => assuntos[a]);
+    const crit     = allQs.filter(q => q.importance === 3).length;
+    const atc      = allQs.filter(q => q.importance === 2).length;
+    const dom      = allQs.filter(q => q.importance === 1).length;
+
+    const pills = [
+      crit > 0 ? `<span class="mini-pill crit">🔴 ${crit} crítica${crit>1?'s':''}</span>` : '',
+      atc  > 0 ? `<span class="mini-pill atc">🟡 ${atc} atenção</span>` : '',
+      dom  > 0 ? `<span class="mini-pill dom">🟢 ${dom} dominada${dom>1?'s':''}</span>` : '',
+    ].filter(Boolean).join('');
+
+    const assuntoBlocks = assNames.map(assunto => {
+      const qs = sortQs(assuntos[assunto]);
+      const cards = qs.map(q => qCardHtml(q)).join('');
+      return `<div class="assunto-block">
+        <div class="assunto-label">${escHtml(assunto)} <span style="color:#374151;font-size:9px;font-weight:400;">(${qs.length})</span></div>
+        <div class="q-grid">${cards}</div>
+      </div>`;
+    }).join('');
+
+    return `<div class="disc-section" id="disc-${slugify(disc)}">
+      <div class="disc-header">
+        <h2>${escHtml(disc)}</h2>
+        <span class="disc-toggle">▼</span>
+      </div>
+      <div class="disc-stats-row">${pills}</div>
+      <div class="disc-body">${assuntoBlocks}</div>
+    </div>`;
+  }).join('');
+
+  // Wire collapse headers
+  content.querySelectorAll('.disc-header').forEach(hdr => {
+    hdr.addEventListener('click', () => {
+      const body   = hdr.nextElementSibling.nextElementSibling;
+      const toggle = hdr.querySelector('.disc-toggle');
+      const collapsed = body.style.display === 'none';
+      body.style.display  = collapsed ? '' : 'none';
+      toggle.classList.toggle('collapsed', !collapsed);
+    });
+  });
+
+  // Wire open-question buttons
+  content.querySelectorAll('.qcard-link').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const url = btn.dataset.url;
+      if (url) window.open(url, '_blank');
+    });
+  });
+}
+
+// ── Card HTML ────────────────────────────────────────────────────────────────
+function qCardHtml(q) {
+  const imp = q.importance || 1;
+  const labels = { 1: '🟢 DOMINADA', 2: '🟡 ATENÇÃO', 3: '🔴 CRÍTICA' };
+  const label  = labels[imp] || labels[1];
+  const desc   = (q.desc || 'Questão #' + q.qid).slice(0, 70);
+  const lastSeen = q.lastSeen ? q.lastSeen.split('-').reverse().join('/') : '';
+  const url = q.url || '';
+  const ac = q.acertos || 0, er = q.erros || 0, tot = ac + er;
+  const pct = tot ? Math.round(ac / tot * 100) : null;
+  const pctCol = pct === null ? '' : pct >= 70 ? '#22c55e' : pct >= 50 ? '#f59e0b' : '#ef4444';
+
+  return `<div class="qcard imp-${imp}">
+    <div class="qcard-top">
+      <span class="imp-badge imp-${imp}">${label}</span>
+      <span class="qcard-desc" title="${escHtml(q.desc || '')}">${escHtml(desc)}</span>
+    </div>
+    <div class="qcard-stats">
+      <span class="stat-acertos">✓ ${ac}</span>
+      <span class="stat-erros">✕ ${er}</span>
+      ${lastSeen ? `<span class="stat-seen">visto ${lastSeen}</span>` : ''}
+      ${pct !== null ? `<span style="margin-left:auto;font-size:9px;font-weight:700;color:${pctCol};">${pct}%</span>` : ''}
+    </div>
+    ${tot > 0 ? `<div class="rate-bar-wrap">
+      <div class="rate-bar-bg"><div class="rate-bar-fill" style="width:${pct}%;background:${pctCol};"></div></div>
+    </div>` : ''}
+    <div class="qcard-bottom" style="margin-top:${tot>0?'6':'0'}px">
+      <span class="qid-badge">#${q.qid}</span>
+      ${url ? `<button class="qcard-link" data-url="${escHtml(url)}">📖 Abrir</button>` : ''}
+    </div>
+  </div>`;
+}
+
+// ── Events ───────────────────────────────────────────────────────────────────
+function bindEvents() {
+  // File import
+  document.getElementById('btn-import').addEventListener('click', () => {
+    document.getElementById('file-input').click();
+  });
+  document.getElementById('file-input').addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => importJSON(ev.target.result);
+    reader.readAsText(file);
+    e.target.value = '';
+  });
+
+  // Paste JSON
+  document.getElementById('btn-paste').addEventListener('click', async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (!text) { toast('Clipboard vazio.'); return; }
+      importJSON(text);
+    } catch {
+      const text = prompt('Cole o JSON exportado pela extensão:');
+      if (text) importJSON(text);
+    }
+  });
+
+  // Export
+  document.getElementById('btn-export').addEventListener('click', () => {
+    const blob = new Blob([JSON.stringify(allQuestions, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `repositorio-questoes-${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+    toast(`⬇ ${allQuestions.length} questões exportadas!`);
+  });
+
+  // Clear
+  document.getElementById('btn-clear').addEventListener('click', () => {
+    if (!confirm('Limpar todos os dados do repositório?')) return;
+    allQuestions = [];
+    localStorage.removeItem(STORAGE_KEY);
+    activeFilter = 'all';
+    activeDisc   = null;
+    searchTerm   = '';
+    document.getElementById('search').value = '';
+    setPillActive('all');
+    showEmpty();
+    toast('Dados removidos.');
+  });
+
+  // Filter pills
+  document.querySelectorAll('.stat-pill').forEach(pill => {
+    pill.addEventListener('click', () => {
+      activeFilter = pill.dataset.filter;
+      setPillActive(activeFilter);
+      renderMain();
+    });
+  });
+
+  // Search
+  document.getElementById('search').addEventListener('input', e => {
+    searchTerm = e.target.value.trim();
+    renderSidebar();
+    renderMain();
+  });
+
+  // Drag-and-drop
+  let dragCnt = 0;
+  const overlay = document.getElementById('drop-overlay');
+  document.addEventListener('dragenter', () => { dragCnt++; overlay.classList.add('active'); });
+  document.addEventListener('dragleave', () => { dragCnt--; if (!dragCnt) overlay.classList.remove('active'); });
+  document.addEventListener('dragover', e => e.preventDefault());
+  document.addEventListener('drop', e => {
+    e.preventDefault();
+    dragCnt = 0;
+    overlay.classList.remove('active');
+    const file = e.dataTransfer.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => importJSON(ev.target.result);
+    reader.readAsText(file);
+  });
+}
+
+function setPillActive(filter) {
+  document.querySelectorAll('.stat-pill').forEach(p => {
+    p.classList.toggle('active', p.dataset.filter === filter);
+  });
+  activeFilter = filter;
+  updateStats();
+}
+
+// ── Utils ─────────────────────────────────────────────────────────────────────
+function escHtml(s) {
+  return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function slugify(s) {
+  return (s || '').toLowerCase().replace(/[^a-z0-9]/g,'-').replace(/-+/g,'-');
+}
+function toast(msg, duration = 3000) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('show'), duration);
+}
+
+boot();
+</script>
+</body>
+</html>
