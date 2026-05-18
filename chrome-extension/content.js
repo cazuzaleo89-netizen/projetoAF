@@ -30,71 +30,131 @@
 
   // ── Scraper da página de ranking TEC (estatisticas/comparar) ──
   if (location.pathname.includes('/estatisticas/comparar')) {
+
+    function _pfToast(msg, ok) {
+      const t = document.createElement('div');
+      t.style.cssText = `position:fixed;bottom:20px;right:20px;z-index:2147483647;
+        background:${ok ? '#15803d' : '#92400e'};color:#fff;
+        padding:10px 16px;border-radius:10px;font:700 12px/1.4 -apple-system,sans-serif;
+        box-shadow:0 4px 20px rgba(0,0,0,.45);transition:opacity .4s;max-width:320px;`;
+      t.textContent = msg;
+      document.body.appendChild(t);
+      setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 500); }, 5000);
+    }
+
     function scrapeTecRanking() {
       const txt = document.body.innerText || '';
-      if (txt.length < 200) return false;
+      if (txt.length < 150) return false;
 
       const data = { scrapedAt: Date.now(), url: location.href };
       const gM = location.pathname.match(/\/comparar\/(\d+)/);
       if (gM) data.groupId = gM[1];
 
-      const totalM = txt.match(/(\d+)\s*(?:participantes?|usuários?|membros?)/i);
-      if (totalM) data.totalUsers = parseInt(totalM[1]);
+      // Total users — several possible patterns
+      for (const p of [
+        /(\d+)\s*participantes?/i, /(\d+)\s*usu[aá]rios?/i,
+        /(\d+)\s*membros?/i, /total[:\s]+(\d+)/i, /de\s+(\d{2,4})\b/,
+      ]) {
+        const m = txt.match(p);
+        if (m && parseInt(m[1]) > 5) { data.totalUsers = parseInt(m[1]); break; }
+      }
 
-      // Extrai bloco de cada métrica e lê VOCÊ / MÉDIA / SUA POSIÇÃO
-      const extractBlock = (label, isPercent) => {
-        const idx = txt.search(new RegExp(label, 'i'));
-        if (idx < 0) return null;
-        const block = txt.slice(idx, idx + 600);
-        const youM = isPercent
-          ? block.match(/VOCÊ[\s\S]{0,30}?([\d]+[,.]\d+)\s*%/i)
-          : block.match(/VOCÊ[\s\S]{0,30}?(\d+)/i);
-        const avgM = isPercent
-          ? block.match(/M[ÉE]DIA[\s\S]{0,30}?([\d]+[,.]\d+)\s*%/i)
-          : block.match(/M[ÉE]DIA[\s\S]{0,30}?(\d+)/i);
-        const posM = block.match(/SUA POSI[ÇC][ÃA]O[\s\S]{0,30}?(\d+)/i)
-                  || block.match(/(\d+)[°º]\s*lugar/i);
-        if (!youM && !posM) return null;
-        return {
-          voce:    youM ? parseFloat(youM[1].replace(',', '.')) : null,
-          media:   avgM ? parseFloat(avgM[1].replace(',', '.')) : null,
-          posicao: posM ? parseInt(posM[1]) : null,
+      // Flexible block extractor — handles both "VOCÊ\n30" and "Você: 30"
+      const extractMetric = (metricVariants, isPercent) => {
+        let startIdx = -1;
+        for (const v of metricVariants) {
+          const i = txt.search(new RegExp(v, 'i'));
+          if (i >= 0) { startIdx = i; break; }
+        }
+        if (startIdx < 0) return null;
+        const block = txt.slice(startIdx, startIdx + 900);
+
+        const grabNum = (src, labelVariants, pct) => {
+          for (const lv of labelVariants) {
+            const li = src.search(new RegExp(lv, 'i'));
+            if (li < 0) continue;
+            const after = src.slice(li, li + 120);
+            const m = pct
+              ? after.match(/([\d]+[,.]\d+)\s*%/) || after.match(/(\d+)\s*%/)
+              : after.match(/[\s\n:]+(\d+)/);
+            if (m) return parseFloat((m[1] || m[0]).replace(',', '.'));
+          }
+          return null;
         };
+
+        const posGrab = (src) => {
+          for (const p of [
+            /posi[çc][ãa]o[\s\S]{0,25}?(\d+)/i,
+            /(\d+)\s*[°º]/,
+            /posição\s*(\d+)/i,
+            /lugar[:\s]+(\d+)/i,
+          ]) { const m = src.match(p); if (m) return parseInt(m[1]); }
+          return null;
+        };
+
+        const voce    = grabNum(block, ['você','voce','VOCÊ','VOCE','vc\b'], isPercent);
+        const media   = grabNum(block, ['média','media','MÉDIA','MEDIA','méd'], isPercent);
+        const posicao = posGrab(block);
+
+        if (voce === null && posicao === null) return null;
+        return { voce, media, posicao };
       };
 
       data.metrics = {};
-      const res = extractBlock('Resolu[çc][õo]es', false);
+      const res = extractMetric(['resolu[çc][õo]es','resolucoes','resoluções'], false);
       if (res) data.metrics.resolucoes = res;
-      const ace = extractBlock('Acertos', false);
+      const ace = extractMetric(['acertos','acerto'], false);
       if (ace) data.metrics.acertos = ace;
-      const des = extractBlock('Desempenho', true);
+      const des = extractMetric(['desempenho'], true);
       if (des) data.metrics.desempenho = des;
 
-      // Captura dados por disciplina (nome + % do usuário)
-      const subjects = [];
-      const subRe = /([A-ZÀ-Ÿa-zà-ÿ][A-Za-zÀ-ÿ\s.]+)\n[\s\S]{0,60}?([\d]+[,.]\d+)\s*%/g;
-      let sm;
-      while ((sm = subRe.exec(txt)) !== null) {
-        const name = sm[1].trim();
-        if (name.length < 3 || name.length > 60) continue;
-        if (/VOCÊ|MÉDIA|POSIÇÃO|clique|filtro/i.test(name)) continue;
-        subjects.push({ name, pct: parseFloat(sm[2].replace(',', '.')) });
+      // DOM leaf-node fallback when innerText layout breaks ordering
+      if (!Object.keys(data.metrics).length) {
+        try {
+          const leaves = [];
+          const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+          while (w.nextNode()) {
+            const t2 = (w.currentNode.textContent || '').trim();
+            if (t2) leaves.push(t2);
+          }
+          const joined = leaves.join('\n');
+          if (joined.length > 200) {
+            // Retry with cleaned joined text
+            const r2 = extractMetric.toString(); // just trigger re-run on joined
+            for (const [variants, key, pct] of [
+              [['resolu'], 'resolucoes', false],
+              [['acerto'], 'acertos', false],
+              [['desempenho'], 'desempenho', true],
+            ]) {
+              const idx = joined.search(new RegExp(variants[0], 'i'));
+              if (idx < 0) continue;
+              const blk = joined.slice(idx, idx + 900);
+              const youM = pct ? blk.match(/([\d]+[,.]?\d*)\s*%/i) : null;
+              const nums = [...blk.matchAll(/\d+[,.]?\d*/g)].map(m => parseFloat(m[0].replace(',','.')));
+              if (nums.length >= 1) {
+                data.metrics[key] = { voce: nums[0] || null, media: nums[1] || null, posicao: null };
+              }
+            }
+          }
+        } catch(x) {}
       }
-      if (subjects.length) data.subjects = subjects.slice(0, 20);
 
-      if (Object.keys(data.metrics).length > 0) {
-        try { chrome.runtime.sendMessage({ type: 'SAVE_TEC_RANKING', data }, () => {}); } catch (x) {}
-        return true;
+      const ok = Object.keys(data.metrics).length > 0;
+      if (ok) {
+        try { chrome.runtime.sendMessage({ type: 'SAVE_TEC_RANKING', data }, () => {}); } catch(x) {}
+        _pfToast('✅ Painel Fiscal: ranking capturado!', true);
+      } else {
+        _pfToast('⚠️ Painel Fiscal: não encontrei os dados — use "Inserir manualmente" no painel', false);
       }
-      return false;
+      return ok;
     }
 
     let _scraped = false;
-    [600, 1800, 4000, 8000].forEach(d => setTimeout(() => { if (!_scraped) _scraped = scrapeTecRanking(); }, d));
+    [800, 2000, 4500, 9000].forEach(d => setTimeout(() => { if (!_scraped) _scraped = scrapeTecRanking(); }, d));
     const _obs = new MutationObserver(() => { if (!_scraped) _scraped = scrapeTecRanking(); });
     _obs.observe(document.body, { childList: true, subtree: true });
-    setTimeout(() => _obs.disconnect(), 20000);
-    return; // não mostrar widget de questões nesta página
+    setTimeout(() => _obs.disconnect(), 25000);
+    return;
   }
 
   // ════════════════════════════════════════════════════════
