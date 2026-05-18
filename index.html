@@ -2348,6 +2348,28 @@ select.inp{appearance:none;cursor:pointer;}
     </div>
   </div>
 
+  <!-- Médias de questões por disciplina -->
+  <div id="dash-disc-avg" style="margin-bottom:1rem;">
+    <div style="background:var(--surf2);border:1px solid var(--border);border-radius:var(--r3);overflow:hidden;">
+      <div onclick="discAvgToggle()" style="display:flex;align-items:center;justify-content:space-between;padding:.6rem 1rem;cursor:pointer;user-select:none;" onmouseover="this.style.background='rgba(255,255,255,.03)'" onmouseout="this.style.background=''">
+        <div style="display:flex;align-items:center;gap:.5rem;">
+          <span style="font-size:.65rem;font-weight:800;color:var(--cyan);letter-spacing:.7px;text-transform:uppercase;">📊 Média de Questões por Disciplina</span>
+          <span id="disc-avg-summary" style="font-size:.58rem;color:var(--muted2);"></span>
+        </div>
+        <span id="disc-avg-arrow" style="font-size:.7rem;color:var(--muted2);transition:transform .2s;">▼</span>
+      </div>
+      <div id="disc-avg-body" style="display:none;padding:.1rem .7rem .75rem;overflow:hidden;">
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.25rem;padding:.25rem 0 .4rem;border-bottom:1px solid var(--border);margin-bottom:.35rem;">
+          <div style="font-size:.5rem;color:var(--muted2);font-weight:700;text-transform:uppercase;letter-spacing:.5px;">Disciplina</div>
+          <div style="font-size:.5rem;color:var(--muted2);font-weight:700;text-transform:uppercase;letter-spacing:.5px;text-align:center;">Total Q</div>
+          <div style="font-size:.5rem;color:var(--muted2);font-weight:700;text-transform:uppercase;letter-spacing:.5px;text-align:center;">Méd/dia</div>
+          <div style="font-size:.5rem;color:var(--muted2);font-weight:700;text-transform:uppercase;letter-spacing:.5px;text-align:center;">Acerto</div>
+        </div>
+        <div id="disc-avg-rows"></div>
+      </div>
+    </div>
+  </div>
+
   <div id="dash-quick-actions" style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1.1rem;">
     <button class="btn btn-gold" onclick="goPage('cronometro',document.querySelector('.nav-item[onclick*=cronometro]'))" style="flex:1;min-width:140px;justify-content:center;font-size:.78rem;padding:.55rem .9rem;">▶ Iniciar Sessão</button>
     <button id="dash-qa-fila" class="btn" onclick="goPage('filarev',document.querySelector('.nav-item[onclick*=filarev]'))" style="flex:1;min-width:140px;justify-content:center;font-size:.78rem;padding:.55rem .9rem;">📋 Fila de Revisão</button>
@@ -5790,6 +5812,83 @@ function renderDashTecRanking() {
       goalEl.innerHTML = `<div style="font-size:.62rem;color:var(--muted2);">Visite <a href="https://www.tecconcursos.com.br/estatisticas/comparar/" target="_blank" style="color:var(--gold);">sua página de ranking TEC</a> com a extensão ativa para capturar metas automáticas.</div>`;
     }
   }
+}
+
+// ── Médias de questões por disciplina ────────────────────────────────────────
+let _discAvgOpen = false;
+
+function discAvgToggle() {
+  _discAvgOpen = !_discAvgOpen;
+  const body  = document.getElementById('disc-avg-body');
+  const arrow = document.getElementById('disc-avg-arrow');
+  if (body)  body.style.display  = _discAvgOpen ? '' : 'none';
+  if (arrow) arrow.style.transform = _discAvgOpen ? 'rotate(180deg)' : '';
+  if (_discAvgOpen) renderDiscAvgStats();
+}
+
+function renderDiscAvgStats() {
+  const rowsEl   = document.getElementById('disc-avg-rows');
+  const summaryEl = document.getElementById('disc-avg-summary');
+  if (!rowsEl) return;
+
+  const sessions = state.questionSessions || [];
+  if (!sessions.length) {
+    rowsEl.innerHTML = '<div style="font-size:.65rem;color:var(--muted2);padding:.3rem 0;">Nenhuma sessão de questões registrada ainda.</div>';
+    return;
+  }
+
+  // Aggregate per discipline
+  const discMap = {};
+  for (const s of sessions) {
+    const key = s.subjectId || s.subject || '—';
+    if (!discMap[key]) {
+      discMap[key] = { name: s.subject || key, subjectId: s.subjectId, total: 0, correct: 0, sessions: 0, days: new Set() };
+    }
+    discMap[key].total   += s.total   || 0;
+    discMap[key].correct += s.correct || 0;
+    discMap[key].sessions++;
+    if (s.dateStr) discMap[key].days.add(s.dateStr);
+  }
+
+  const rows = Object.values(discMap).map(d => {
+    const avgDay  = d.days.size > 0 ? (d.total / d.days.size) : 0;
+    const avgSess = d.sessions > 0  ? (d.total / d.sessions)  : 0;
+    const taxa    = d.total > 0     ? Math.round(d.correct / d.total * 100) : 0;
+    // Find discipline color
+    const disc = (state.disciplines || []).find(x => x.id === d.subjectId);
+    const color = disc ? disc.color : 'var(--muted2)';
+    return { ...d, avgDay, avgSess, taxa, color };
+  }).sort((a, b) => b.total - a.total);
+
+  const totalQ = rows.reduce((s, r) => s + r.total, 0);
+  const grandAvgDay = rows.reduce((s, r) => s + r.avgDay, 0);
+  if (summaryEl) summaryEl.textContent = `${totalQ} questões · ${rows.length} disciplinas`;
+
+  // Find max total for bar scaling
+  const maxTotal = rows[0]?.total || 1;
+
+  rowsEl.innerHTML = rows.map(r => {
+    const barW = Math.round(r.total / maxTotal * 100);
+    const taxaColor = r.taxa >= 70 ? 'var(--green)' : r.taxa >= 50 ? 'var(--gold)' : 'var(--red)';
+    return `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.25rem;align-items:center;padding:.3rem 0;border-bottom:1px solid rgba(255,255,255,.04);">
+      <div style="display:flex;align-items:center;gap:.35rem;min-width:0;">
+        <div style="width:6px;height:6px;border-radius:50%;background:${r.color};flex-shrink:0;"></div>
+        <div style="font-size:.65rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text);" title="${r.name}">${r.name.replace('Direito ','Dir. ').replace('Legislação ','Leg. ')}</div>
+      </div>
+      <div style="text-align:center;">
+        <div style="font-size:.72rem;font-weight:800;font-family:var(--mono);color:var(--text);">${r.total}</div>
+        <div style="height:3px;background:rgba(255,255,255,.06);border-radius:2px;margin-top:2px;"><div style="height:100%;width:${barW}%;background:${r.color};border-radius:2px;opacity:.7;transition:width .4s;"></div></div>
+      </div>
+      <div style="text-align:center;">
+        <div style="font-size:.72rem;font-weight:800;font-family:var(--mono);color:var(--cyan);">${r.avgDay.toFixed(1)}</div>
+        <div style="font-size:.5rem;color:var(--muted2);">${r.days.size} dias</div>
+      </div>
+      <div style="text-align:center;">
+        <div style="font-size:.72rem;font-weight:800;font-family:var(--mono);color:${taxaColor};">${r.taxa}%</div>
+        <div style="font-size:.5rem;color:var(--muted2);">${r.sessions} sessões</div>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 function renderDashEdital(){
@@ -9367,7 +9466,8 @@ function consWeekScore(days, secs, qs, rate) {
 }
 
 // ═══ RENDER ALL ════════════════════════════════
-function renderAll(){updateStats();renderDisciplines();renderWeekGrid();renderLog();renderProgress();renderQPerf();renderQLog();renderQGoalsList();mwInit();renderSpeedSettings();dashInitWeekSelector();renderDashTecHoje();renderDashTecRanking();checkExtStatus();}
+function renderAll(){updateStats();renderDisciplines();renderWeekGrid();renderLog();renderProgress();renderQPerf();renderQLog();renderQGoalsList();mwInit();renderSpeedSettings();dashInitWeekSelector();renderDashTecHoje();renderDashTecRanking();renderDiscAvgSummary();checkExtStatus();}
+function renderDiscAvgSummary(){const s=state.questionSessions||[];const totalQ=s.reduce((a,x)=>a+x.total,0);const el=document.getElementById('disc-avg-summary');if(el&&s.length)el.textContent=`${totalQ} questões · ${new Set(s.map(x=>x.subjectId||x.subject)).size} disciplinas`;if(_discAvgOpen)renderDiscAvgStats();}
 function updateAll(){updateStats();renderDisciplines();renderProgress();renderQPerf();renderLog();}
 
 function goPage(name,el){
