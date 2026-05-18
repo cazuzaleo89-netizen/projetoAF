@@ -259,6 +259,68 @@ btn,button{
   transition:all .25s;pointer-events:none;
 }
 .toast.show{opacity:1;transform:translateY(0);}
+
+/* ── STATS PANEL ── */
+.stats-panel{
+  background:#141728;border-bottom:1px solid rgba(255,255,255,.06);
+  overflow:hidden;transition:max-height .3s ease;
+  max-height:0;
+}
+.stats-panel.open{max-height:600px;}
+.stats-panel-inner{padding:14px 20px 18px;}
+.stats-toggle{
+  display:flex;align-items:center;gap:8px;
+  padding:7px 20px;background:#141728;
+  border-bottom:1px solid rgba(255,255,255,.06);
+  cursor:pointer;font-size:11px;font-weight:700;
+  color:#475569;letter-spacing:.5px;text-transform:uppercase;
+  transition:background .15s;user-select:none;
+}
+.stats-toggle:hover{background:#1a1e35;color:#64748b;}
+.stats-toggle-arrow{margin-left:auto;transition:transform .3s;font-size:10px;}
+.stats-toggle.open .stats-toggle-arrow{transform:rotate(180deg);}
+
+/* KPI row */
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px;}
+.kpi-card{
+  background:#1a1d2e;border:1px solid rgba(255,255,255,.06);
+  border-radius:10px;padding:11px 13px;
+}
+.kpi-label{font-size:9px;font-weight:700;color:#475569;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;}
+.kpi-value{font-size:22px;font-weight:800;line-height:1;font-family:'Courier New',monospace;}
+.kpi-sub{font-size:10px;color:#475569;margin-top:3px;}
+
+/* Charts row */
+.charts-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.chart-card{
+  background:#1a1d2e;border:1px solid rgba(255,255,255,.06);
+  border-radius:10px;padding:12px 14px;
+}
+.chart-title{font-size:9px;font-weight:700;color:#475569;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;}
+
+/* Horizontal bar chart */
+.disc-bar-row{display:flex;align-items:center;gap:8px;margin-bottom:7px;}
+.disc-bar-name{font-size:10px;color:#94a3b8;width:130px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.disc-bar-track{flex:1;height:6px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden;}
+.disc-bar-fill{height:100%;border-radius:3px;transition:width .5s ease;}
+.disc-bar-pct{font-size:9px;font-weight:700;min-width:28px;text-align:right;font-family:'Courier New',monospace;}
+
+/* Critical topics list */
+.crit-item{
+  display:flex;align-items:center;gap:8px;
+  padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04);
+  font-size:10px;
+}
+.crit-item:last-child{border-bottom:none;}
+.crit-name{flex:1;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.crit-disc{font-size:9px;color:#374151;}
+.crit-pct{font-family:'Courier New',monospace;font-size:10px;font-weight:700;min-width:28px;text-align:right;}
+
+/* Donut SVG */
+.donut-wrap{display:flex;align-items:center;gap:14px;}
+.donut-legend{display:flex;flex-direction:column;gap:5px;}
+.legend-item{display:flex;align-items:center;gap:6px;font-size:10px;color:#94a3b8;}
+.legend-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
 </style>
 </head>
 <body>
@@ -287,6 +349,64 @@ btn,button{
   <div class="stat-pill crit" data-filter="3" id="pill-crit">🔴 <span id="cnt-crit">0</span> críticas</div>
   <div class="stats-sep"></div>
   <input class="search-box" id="search" placeholder="🔍 Buscar disciplina, assunto, questão..." type="text">
+</div>
+
+<!-- STATS TOGGLE -->
+<div class="stats-toggle" id="stats-toggle" onclick="toggleStatsPanel()">
+  📊 Estatísticas
+  <span class="stats-toggle-arrow" id="stats-arrow">▼</span>
+</div>
+
+<!-- STATS PANEL -->
+<div class="stats-panel" id="stats-panel">
+  <div class="stats-panel-inner">
+    <!-- KPIs -->
+    <div class="kpi-row">
+      <div class="kpi-card">
+        <div class="kpi-label">Taxa de acerto</div>
+        <div class="kpi-value" id="kpi-taxa" style="color:#22c55e;">—</div>
+        <div class="kpi-sub" id="kpi-taxa-sub">total de tentativas</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Disciplinas</div>
+        <div class="kpi-value" id="kpi-discs" style="color:#818cf8;">—</div>
+        <div class="kpi-sub">com questões</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Mais fraca</div>
+        <div class="kpi-value" id="kpi-weak-pct" style="color:#ef4444;font-size:16px;">—</div>
+        <div class="kpi-sub" id="kpi-weak-name">—</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Mais forte</div>
+        <div class="kpi-value" id="kpi-strong-pct" style="color:#22c55e;font-size:16px;">—</div>
+        <div class="kpi-sub" id="kpi-strong-name">—</div>
+      </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="charts-row">
+      <!-- Bar chart: acerto by disc -->
+      <div class="chart-card">
+        <div class="chart-title">Acerto por disciplina</div>
+        <div id="disc-bars"></div>
+      </div>
+      <!-- Critical topics + donut -->
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <div class="chart-card" style="flex:1;">
+          <div class="chart-title">Top assuntos críticos</div>
+          <div id="crit-list"></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Distribuição</div>
+          <div class="donut-wrap">
+            <svg width="64" height="64" viewBox="0 0 64 64" id="donut-svg" style="flex-shrink:0;"></svg>
+            <div class="donut-legend" id="donut-legend"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- DROP OVERLAY -->
@@ -444,6 +564,7 @@ function render() {
   updateStats();
   renderSidebar();
   renderMain();
+  if (_statsPanelOpen) renderStatsPanel();
 }
 
 function showEmpty() {
@@ -756,6 +877,158 @@ function toast(msg, duration = 3000) {
   el.classList.add('show');
   clearTimeout(el._t);
   el._t = setTimeout(() => el.classList.remove('show'), duration);
+}
+
+// ── Stats Panel ──────────────────────────────────────────────────────────────
+let _statsPanelOpen = false;
+
+function toggleStatsPanel() {
+  _statsPanelOpen = !_statsPanelOpen;
+  const panel  = document.getElementById('stats-panel');
+  const toggle = document.getElementById('stats-toggle');
+  panel.classList.toggle('open', _statsPanelOpen);
+  toggle.classList.toggle('open', _statsPanelOpen);
+  if (_statsPanelOpen) renderStatsPanel();
+}
+
+function renderStatsPanel() {
+  if (!allQuestions.length) return;
+
+  // ── Aggregate by discipline ──
+  const discMap = {};
+  for (const q of allQuestions) {
+    const d = normalizeDisc(q.materia);
+    if (!discMap[d]) discMap[d] = { ac: 0, er: 0, crit: 0, atc: 0, dom: 0 };
+    discMap[d].ac  += (q.acertos || 0);
+    discMap[d].er  += (q.erros   || 0);
+    if (q.importance === 3) discMap[d].crit++;
+    else if (q.importance === 2) discMap[d].atc++;
+    else discMap[d].dom++;
+  }
+
+  // ── Aggregate by assunto (for critical topics) ──
+  const assMap = {};
+  for (const q of allQuestions) {
+    const key = `${normalizeDisc(q.materia)}||${(q.assunto||'Sem assunto').trim()}`;
+    if (!assMap[key]) assMap[key] = { disc: normalizeDisc(q.materia), assunto: (q.assunto||'Sem assunto').trim(), ac: 0, er: 0 };
+    assMap[key].ac += (q.acertos || 0);
+    assMap[key].er += (q.erros   || 0);
+  }
+
+  // ── Global taxa ──
+  const totAc = allQuestions.reduce((s,q) => s + (q.acertos||0), 0);
+  const totEr = allQuestions.reduce((s,q) => s + (q.erros||0),   0);
+  const totTent = totAc + totEr;
+  const taxa = totTent ? Math.round(totAc / totTent * 100) : null;
+  const taxaCol = taxa === null ? '#64748b' : taxa >= 70 ? '#22c55e' : taxa >= 50 ? '#f59e0b' : '#ef4444';
+
+  // KPI: taxa
+  const taxaEl = document.getElementById('kpi-taxa');
+  taxaEl.textContent = taxa !== null ? taxa + '%' : '—';
+  taxaEl.style.color = taxaCol;
+  document.getElementById('kpi-taxa-sub').textContent = totTent ? `${totAc} acertos de ${totTent} tentativas` : 'sem tentativas';
+
+  // KPI: disciplinas
+  document.getElementById('kpi-discs').textContent = Object.keys(discMap).length;
+
+  // KPI: weak / strong
+  const discRates = Object.entries(discMap)
+    .map(([name, s]) => ({ name, pct: (s.ac+s.er) ? Math.round(s.ac/(s.ac+s.er)*100) : null }))
+    .filter(d => d.pct !== null)
+    .sort((a,b) => a.pct - b.pct);
+
+  if (discRates.length) {
+    const weak   = discRates[0];
+    const strong = discRates[discRates.length - 1];
+    document.getElementById('kpi-weak-pct').textContent  = weak.pct + '%';
+    document.getElementById('kpi-weak-name').textContent = weak.name.length > 18 ? weak.name.slice(0,16)+'…' : weak.name;
+    document.getElementById('kpi-strong-pct').textContent  = strong.pct + '%';
+    document.getElementById('kpi-strong-name').textContent = strong.name.length > 18 ? strong.name.slice(0,16)+'…' : strong.name;
+  }
+
+  // ── Bar chart: acerto by disc ──
+  const barsEl = document.getElementById('disc-bars');
+  const discsSorted = Object.entries(discMap)
+    .map(([name, s]) => ({ name, ac: s.ac, er: s.er, pct: (s.ac+s.er) ? Math.round(s.ac/(s.ac+s.er)*100) : null }))
+    .sort((a,b) => (a.pct??-1) - (b.pct??-1));
+
+  barsEl.innerHTML = discsSorted.map(d => {
+    const pct = d.pct ?? 0;
+    const col = pct >= 70 ? '#22c55e' : pct >= 50 ? '#f59e0b' : '#ef4444';
+    const label = d.pct !== null ? pct + '%' : '—';
+    return `<div class="disc-bar-row">
+      <span class="disc-bar-name" title="${escHtml(d.name)}">${escHtml(d.name)}</span>
+      <div class="disc-bar-track">
+        <div class="disc-bar-fill" style="width:${pct}%;background:${col};"></div>
+      </div>
+      <span class="disc-bar-pct" style="color:${col};">${label}</span>
+    </div>`;
+  }).join('');
+
+  // ── Critical topics (worst assuntos) ──
+  const critEl = document.getElementById('crit-list');
+  const assArr = Object.values(assMap)
+    .filter(a => (a.ac + a.er) > 0)
+    .map(a => ({ ...a, pct: Math.round(a.ac / (a.ac + a.er) * 100) }))
+    .sort((a,b) => a.pct - b.pct)
+    .slice(0, 5);
+
+  if (!assArr.length) {
+    critEl.innerHTML = '<div style="font-size:11px;color:#374151;text-align:center;padding:10px 0;">Nenhum dado de tentativas ainda.</div>';
+  } else {
+    critEl.innerHTML = assArr.map(a => {
+      const col = a.pct >= 70 ? '#22c55e' : a.pct >= 50 ? '#f59e0b' : '#ef4444';
+      const icon = a.pct < 50 ? '🔴' : a.pct < 70 ? '🟡' : '🟢';
+      return `<div class="crit-item">
+        <span>${icon}</span>
+        <span class="crit-name" title="${escHtml(a.assunto)}">${escHtml(a.assunto.length>28?a.assunto.slice(0,26)+'…':a.assunto)}</span>
+        <span class="crit-disc">${escHtml(a.disc.split(' ')[0])}</span>
+        <span class="crit-pct" style="color:${col};">${a.pct}%</span>
+      </div>`;
+    }).join('');
+  }
+
+  // ── Donut SVG ──
+  const totQ = allQuestions.length;
+  const nCrit = allQuestions.filter(q=>q.importance===3).length;
+  const nAtc  = allQuestions.filter(q=>q.importance===2).length;
+  const nDom  = totQ - nCrit - nAtc;
+  renderDonut([
+    { val: nDom,  col: '#22c55e', label: `🟢 ${nDom} dom.` },
+    { val: nAtc,  col: '#f59e0b', label: `🟡 ${nAtc} aten.` },
+    { val: nCrit, col: '#ef4444', label: `🔴 ${nCrit} crít.` },
+  ], totQ);
+}
+
+function renderDonut(segments, total) {
+  const svg = document.getElementById('donut-svg');
+  const legend = document.getElementById('donut-legend');
+  if (!total) { svg.innerHTML=''; legend.innerHTML=''; return; }
+
+  const cx=32, cy=32, r=26, stroke=10;
+  const circ = 2 * Math.PI * r;
+  let offset = 0;
+  let paths = '';
+  for (const seg of segments) {
+    const frac = seg.val / total;
+    const dash = frac * circ;
+    const gap  = circ - dash;
+    paths += `<circle cx="${cx}" cy="${cy}" r="${r}"
+      fill="none" stroke="${seg.col}" stroke-width="${stroke}"
+      stroke-dasharray="${dash.toFixed(2)} ${gap.toFixed(2)}"
+      stroke-dashoffset="${(-offset * circ / total).toFixed(2)}"
+      transform="rotate(-90 ${cx} ${cy})"/>`;
+    offset += seg.val;
+  }
+  // Background circle
+  svg.innerHTML = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="${stroke}"/>` + paths;
+
+  legend.innerHTML = segments.map(s =>
+    `<div class="legend-item">
+      <div class="legend-dot" style="background:${s.col};"></div>
+      <span>${s.label}</span>
+    </div>`
+  ).join('');
 }
 
 boot();
