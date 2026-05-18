@@ -202,6 +202,14 @@ btn,button{
   transition:background .15s;
 }
 .qcard-link:hover{background:#5b21b6;}
+.qcard-del{
+  margin-left:4px;flex-shrink:0;
+  background:none;border:none;
+  color:#374151;font-size:11px;font-weight:700;
+  cursor:pointer;padding:2px 4px;border-radius:4px;
+  line-height:1;transition:all .15s;
+}
+.qcard-del:hover{background:rgba(239,68,68,.15);color:#ef4444;}
 
 /* ── EMPTY FILTER MSG ── */
 .filter-empty{
@@ -736,6 +744,31 @@ function renderMain() {
       if (url) window.open(url, '_blank');
     });
   });
+
+  // Wire delete buttons
+  content.querySelectorAll('.qcard-del').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const qid = btn.dataset.qid;
+      deleteQuestion(qid);
+    });
+  });
+}
+
+function deleteQuestion(qid) {
+  const idx = allQuestions.findIndex(q => String(q.qid) === String(qid));
+  if (idx === -1) return;
+  const q = allQuestions[idx];
+  const label = (q.desc || '#' + qid).slice(0, 50);
+  if (!confirm(`Excluir questão?\n\n"${label}"\n\nEsta ação não pode ser desfeita.`)) return;
+  allQuestions.splice(idx, 1);
+  saveToStorage(allQuestions);
+  updateStats();
+  renderSidebar();
+  renderMain();
+  if (_statsPanelOpen) renderStatsPanel();
+  if (!allQuestions.length) showEmpty();
+  toast(`🗑 Questão #${qid} excluída.`);
 }
 
 // ── Card HTML ────────────────────────────────────────────────────────────────
@@ -750,10 +783,11 @@ function qCardHtml(q) {
   const pct = tot ? Math.round(ac / tot * 100) : null;
   const pctCol = pct === null ? '' : pct >= 70 ? '#22c55e' : pct >= 50 ? '#f59e0b' : '#ef4444';
 
-  return `<div class="qcard imp-${imp}">
+  return `<div class="qcard imp-${imp}" data-qid="${escHtml(String(q.qid))}">
     <div class="qcard-top">
       <span class="imp-badge imp-${imp}">${label}</span>
       <span class="qcard-desc" title="${escHtml(q.desc || '')}">${escHtml(desc)}</span>
+      <button class="qcard-del" data-qid="${escHtml(String(q.qid))}" title="Excluir questão">✕</button>
     </div>
     <div class="qcard-stats">
       <span class="stat-acertos">✓ ${ac}</span>
