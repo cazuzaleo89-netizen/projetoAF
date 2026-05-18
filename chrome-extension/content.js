@@ -180,6 +180,8 @@
     // Contadores locais (não dependem do painel)
     localAce: 0,
     localErr: 0,
+    consecutiveWrong: 0,    // fadiga cognitiva
+    recentResults: [],       // últimos 10 resultados (para queda de taxa)
     // Stats do painel (via postMessage)
     stats: { elapsed: 0, acertos: 0, erros: 0, resolved: 0, running: false, paused: false, discName: '', dificuldade: '' },
     // Fila de revisão
@@ -1040,6 +1042,7 @@
             S.stats.acertos = Math.max(S.stats.acertos, S.localAce);
             S.stats.resolved = S.localAce + S.localErr;
             setQuestionResult(curPos, 'correct', qi);
+            trackFadiga('correct');
             renderWidget();
             send('correct', null);
             toBg('QUESTION_CORRECT', { qid: qi.qid, url: qi.url, materia: qi.materia, assunto: qi.assunto, timeSpent: qi.timeSpent, pos: curPos, timestamp: Date.now() });
@@ -1048,6 +1051,7 @@
             S.stats.erros = Math.max(S.stats.erros, S.localErr);
             S.stats.resolved = S.localAce + S.localErr;
             setQuestionResult(curPos, 'wrong', qi);
+            trackFadiga('wrong');
             renderWidget();
             send('wrong_fast', qi);
             toBg('QUESTION_WRONG', { qid: qi.qid, url: qi.url, materia: qi.materia, assunto: qi.assunto, desc: qi.desc, timeSpent: qi.timeSpent, pos: curPos, timestamp: Date.now() });
@@ -1080,7 +1084,7 @@
       S.stats.acertos = Math.max(S.stats.acertos, S.localAce);
       S.stats.resolved = S.localAce + S.localErr;
       setQuestionResult(curPos, 'correct', getInfo());
-      for (let i = 0; i < da; i++) send('correct', null);
+      for (let i = 0; i < da; i++) { send('correct', null); trackFadiga('correct'); }
       S.A = counter.a;
       toBg('QUESTION_CORRECT', { pos: curPos, timestamp: Date.now() });
       renderWidget();
@@ -1099,6 +1103,7 @@
       const deCount = de; S.E = counter.e;
       const qi0 = getInfo();
       S.localErr += deCount;
+      for (let i = 0; i < deCount; i++) trackFadiga('wrong');
       S.stats.erros = Math.max(S.stats.erros, S.localErr);
       S.stats.resolved = S.localAce + S.localErr;
       setQuestionResult(curPos, 'wrong', qi0);
@@ -1231,6 +1236,87 @@
     document.getElementById('_pfHubErrei').onclick  = () => {
       clearTimeout(autoRemove); bn.remove();
       toBg('HUBERMAN_WRONG', { qid: item.qid });
+    };
+  }
+
+  // ── Fadiga Cognitiva ────────────────────────────────────────────────────────
+  let _fadigaShown = false;
+
+  function trackFadiga(result) {
+    if (result === 'correct') {
+      S.consecutiveWrong = 0;
+    } else {
+      S.consecutiveWrong++;
+    }
+    S.recentResults.push(result);
+    if (S.recentResults.length > 10) S.recentResults.shift();
+
+    // Alerta: 3+ erros consecutivos
+    if (S.consecutiveWrong === 3 && !_fadigaShown) {
+      _fadigaShown = true;
+      showFadigaBanner('consecutive');
+      setTimeout(() => { _fadigaShown = false; }, 300000); // reset após 5min
+      return;
+    }
+
+    // Alerta: taxa caiu muito nas últimas 8 questões
+    if (S.recentResults.length >= 8) {
+      const recentWrong = S.recentResults.slice(-8).filter(r => r === 'wrong').length;
+      const sessionTotal = S.localAce + S.localErr;
+      const sessionTaxa = sessionTotal > 5 ? S.localAce / sessionTotal : 1;
+      if (recentWrong >= 6 && sessionTaxa < 0.55 && !_fadigaShown) {
+        _fadigaShown = true;
+        showFadigaBanner('drop');
+        setTimeout(() => { _fadigaShown = false; }, 600000);
+      }
+    }
+  }
+
+  function showFadigaBanner(type) {
+    const prev = document.getElementById('_pfFadigaBanner');
+    if (prev) prev.remove();
+
+    const msgs = {
+      consecutive: { icon: '🧠', title: '3 erros consecutivos', sub: 'Pode ser fadiga cognitiva. Uma pausa de 5 min restaura a concentração.', color: '#f59e0b', btnLabel: '⏸ Pausar 5 min' },
+      drop:        { icon: '📉', title: 'Taxa de acerto caindo', sub: 'Você acertou menos de 25% nas últimas 8 questões. Hora de recuperar.', color: '#ef4444', btnLabel: '☕ Pausa curta' },
+    };
+    const m = msgs[type] || msgs.consecutive;
+
+    const bn = document.createElement('div');
+    bn.id = '_pfFadigaBanner';
+    bn.style.cssText = `
+      position:fixed;top:14px;left:50%;transform:translateX(-50%);
+      background:linear-gradient(135deg,#1a1207,#1a0f0f);
+      border:1px solid ${m.color}55;border-radius:14px;
+      padding:12px 16px;box-shadow:0 8px 32px rgba(0,0,0,.5),0 0 0 1px ${m.color}22 inset;
+      font-family:-apple-system,BlinkMacSystemFont,sans-serif;
+      z-index:2147483647;min-width:280px;max-width:360px;
+      animation:_pfSlide2 .3s cubic-bezier(.16,1,.3,1);
+    `;
+    bn.innerHTML = `
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+        <span style="font-size:18px;">${m.icon}</span>
+        <div style="flex:1;">
+          <div style="font-size:11px;font-weight:800;color:${m.color};letter-spacing:.4px;">${m.title.toUpperCase()}</div>
+          <div style="font-size:10.5px;color:#94a3b8;margin-top:2px;">${m.sub}</div>
+        </div>
+        <button id="_pfFadigaX" style="background:none;border:none;color:#64748b;font-size:16px;cursor:pointer;padding:2px 5px;line-height:1;">✕</button>
+      </div>
+      <div style="display:flex;gap:7px;">
+        <button id="_pfFadigaPause" style="flex:2;padding:7px;background:${m.color}22;border:1px solid ${m.color}55;border-radius:8px;color:${m.color};font-size:11px;font-weight:700;cursor:pointer;">${m.btnLabel}</button>
+        <button id="_pfFadigaIgnore" style="flex:1;padding:7px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#64748b;font-size:11px;cursor:pointer;">Continuar</button>
+      </div>`;
+    document.body.appendChild(bn);
+
+    const autoRemove = setTimeout(() => bn.remove(), 30000);
+    document.getElementById('_pfFadigaX').onclick      = () => { clearTimeout(autoRemove); bn.remove(); };
+    document.getElementById('_pfFadigaIgnore').onclick = () => { clearTimeout(autoRemove); bn.remove(); };
+    document.getElementById('_pfFadigaPause').onclick  = () => {
+      clearTimeout(autoRemove); bn.remove();
+      S.consecutiveWrong = 0;
+      timerControl('TIMER_PAUSE');
+      timerRunning = false;
+      renderWidget();
     };
   }
 
