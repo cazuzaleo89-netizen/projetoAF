@@ -548,7 +548,39 @@
     if (myErrNumM) { const ne = parseInt(myErrNumM[1]); if (ne > info.myErrors) info.myErrors = ne; }
 
     info.timeSpent = Math.round((Date.now() - S.questionStart) / 1000);
+
+    // Captura o texto do enunciado da questão para busca por similaridade
+    info.enunciado = _extractEnunciado();
+    info.keywords  = _extractKeywords(info.enunciado, info.materia, info.assunto);
+
     return info;
+  }
+
+  function _extractEnunciado() {
+    // Tenta seletores comuns do TEC
+    const sel = [
+      '[class*="enunciado"]', '[class*="question-text"]', '[class*="questao-texto"]',
+      '[class*="statement"]', '[class*="pergunta"]', 'article p', '.q-text',
+    ];
+    for (const s of sel) {
+      const el = document.querySelector(s);
+      if (el) {
+        const t = (el.innerText || el.textContent || '').trim();
+        if (t.length > 30) return t.slice(0, 400);
+      }
+    }
+    // Fallback: maior parágrafo da página que pareça um enunciado
+    const paras = [...document.querySelectorAll('p')].map(p => (p.innerText||'').trim()).filter(t => t.length > 60 && t.length < 800);
+    return paras.sort((a,b) => b.length - a.length)[0] || '';
+  }
+
+  function _extractKeywords(enunciado, materia, assunto) {
+    const stopwords = new Set(['de','do','da','em','no','na','os','as','um','uma','que','se','por','com','para','ao','dos','das','pelo','pela','entre','sobre','mais','quando','como','mas','ou','não','são','foi','ser','ter','tem','isso','este','esta','esse','essa','isso','aquele','qual','quais','após','antes','durante','caso','forma','artigo','lei','decreto']);
+    const text = `${enunciado} ${assunto}`.toLowerCase();
+    const words = text.match(/\b[a-záéíóúàâêôãõç]{4,}\b/g) || [];
+    const freq = {};
+    for (const w of words) { if (!stopwords.has(w)) freq[w] = (freq[w]||0) + 1; }
+    return Object.entries(freq).sort((a,b) => b[1]-a[1]).slice(0,6).map(([w])=>w).join(' ');
   }
 
   // ════════════════════════════════════════════════════════
@@ -1470,6 +1502,10 @@
     if (!qi || !qi.qid) return;
     if (S.reforcoQueue.find(r => r.qi.qid === qi.qid)) return;
 
+    // Captura enunciado e keywords no momento exato do erro (DOM ainda está com a questão)
+    if (!qi.enunciado) qi.enunciado = _extractEnunciado();
+    if (!qi.keywords)  qi.keywords  = _extractKeywords(qi.enunciado || '', qi.materia || '', qi.assunto || '');
+
     const entry = { qi: { ...qi }, similares: [], loading: true, fetched: false };
     S.reforcoQueue.push(entry);
     renderWidget();
@@ -1487,19 +1523,14 @@
     const seen  = new Set([qi.qid]);
 
     // Termos-chave da questão errada para validar relevância
-    const materiaKey = (qi.materia || '').toLowerCase();
-    const assuntoKey = (qi.assunto || '').toLowerCase();
-    const bancaKey   = (qi.banca   || '').toLowerCase();
+    const materiaKey  = (qi.materia   || '').toLowerCase();
+    const assuntoKey  = (qi.assunto   || '').toLowerCase();
+    const keywordList = (qi.keywords  || '').toLowerCase().split(' ').filter(Boolean);
 
     function _isRelevant(q) {
-      // Aceita se não há metadados suficientes para filtrar (API não retornou campos)
-      if (!q.materia && !q.assunto && !q.banca) return true;
       const qMat = (q.materia || '').toLowerCase();
-      const qAss = (q.assunto || '').toLowerCase();
-      const qBan = (q.banca   || '').toLowerCase();
-      // Rejeita se matéria claramente diferente (e temos ambas)
+      // Matéria obrigatoriamente compatível quando temos ambas
       if (materiaKey && qMat && !qMat.includes(materiaKey.slice(0, 8)) && !materiaKey.includes(qMat.slice(0, 8))) return false;
-      // Bônus se banca bate
       return true;
     }
 
@@ -1541,22 +1572,34 @@
       }
     } catch(e) {}
 
-    // — Estratégia 2: API REST do TEC (via cookies autenticados da sessão)
-    const endpoints = _tecApi.base
+    // — Estratégia 2: API REST do TEC com múltiplos perfis de busca
+    // Perfil A: matéria + assunto + banca (mais específico)
+    // Perfil B: matéria + keywords do enunciado (busca textual)
+    // Perfil C: somente matéria (mais amplo, como fallback)
+    const baseEndpoints = _tecApi.base
       ? [_tecApi.base, '/api/questoes', '/api/v1/questoes', '/api/v2/questoes']
       : ['/api/questoes', '/api/v1/questoes', '/api/v2/questoes'];
 
-    for (const ep of endpoints) {
-      try {
-        const apiFound = await _tryTecApi(ep, qi);
-        for (const q of apiFound) {
-          if (!seen.has(q.qid) && _isRelevant(q)) {
-            seen.add(q.qid);
-            found.push(q);
+    const searchProfiles = [
+      { materia: qi.materia, assunto: qi.assunto, banca: qi.banca, q: '' },
+      { materia: qi.materia, assunto: qi.assunto, banca: '',       q: qi.keywords },
+      { materia: qi.materia, assunto: '',          banca: qi.banca, q: qi.keywords },
+    ];
+
+    outer: for (const ep of baseEndpoints) {
+      for (const profile of searchProfiles) {
+        try {
+          const apiFound = await _tryTecApi(ep, { ...qi, ...profile });
+          for (const q of apiFound) {
+            if (!seen.has(q.qid) && _isRelevant(q)) {
+              seen.add(q.qid);
+              found.push(q);
+            }
           }
-        }
-        if (found.length >= 4) break;
-      } catch(e) {}
+          if (found.length >= 5) break outer;
+        } catch(e) {}
+      }
+      if (found.length >= 3) break;
     }
 
     // Retorna vazío se nada relevante encontrado — não polui com questões aleatórias
@@ -1565,9 +1608,11 @@
 
   async function _tryTecApi(endpoint, qi) {
     const p = new URLSearchParams();
-    if (qi.materia)  p.set('materia', qi.materia);
-    if (qi.assunto)  p.set('assunto', qi.assunto);
-    if (qi.banca)    p.set('banca',   qi.banca);
+    if (qi.materia)  p.set('materia',  qi.materia);
+    if (qi.assunto)  p.set('assunto',  qi.assunto);
+    if (qi.banca)    p.set('banca',    qi.banca);
+    if (qi.keywords) p.set('q',        qi.keywords);  // busca textual pelo enunciado
+    if (qi.keywords) p.set('enunciado', qi.keywords); // alias usado por algumas versões da API
     p.set('per_page', '6'); p.set('page', '1');
 
     const res = await fetch(`${endpoint}?${p}`, {
@@ -1656,7 +1701,8 @@
               display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;">❌</div>
             <div style="flex:1;min-width:0;">
               <div style="font-size:11px;font-weight:700;color:#f1f5f9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${subjLabel}</div>
-              <div style="font-size:9.5px;color:#475569;">${q.banca || ''} ${q.qid ? '· #' + q.qid : ''}</div>
+              <div style="font-size:9.5px;color:#475569;">${[q.banca, q.qid ? '#'+q.qid : ''].filter(Boolean).join(' · ')}</div>
+              ${q.keywords ? `<div style="font-size:9px;color:#334155;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">🔑 ${q.keywords}</div>` : ''}
             </div>
           </div>
           ${entry.loading
