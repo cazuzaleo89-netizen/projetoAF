@@ -1564,112 +1564,146 @@
   async function _findSimilarQuestions(qi) {
     const found = [];
     const seen  = new Set([qi.qid]);
-
-    // Termos-chave da questão errada para validar relevância
-    const materiaKey  = (qi.materia   || '').toLowerCase();
-    const assuntoKey  = (qi.assunto   || '').toLowerCase();
-    const keywordList = (qi.keywords  || '').toLowerCase().split(' ').filter(Boolean);
+    const materiaKey = (qi.materia || '').toLowerCase();
 
     function _isRelevant(q) {
       const qMat = (q.materia || '').toLowerCase();
-      // Matéria obrigatoriamente compatível quando temos ambas
       if (materiaKey && qMat && !qMat.includes(materiaKey.slice(0, 8)) && !materiaKey.includes(qMat.slice(0, 8))) return false;
       return true;
     }
 
-    // — Estratégia 0: Usa links nativos do TEC (matéria/assunto URLs) via background tab
-    // Mais confiável: abre a própria página de filtro do TEC e extrai os IDs das questões retornadas
-    if (qi.assuntoUrl || qi.materiaUrl) {
+    function _normalize(items, srcLabel) {
+      return items.map(q => {
+        const id = String(q.id || q.questao_id || q.questaoId || '');
+        if (!id || id === qi.qid || seen.has(id)) return null;
+        return {
+          qid:     id,
+          url:     `https://www.tecconcursos.com.br/questoes/${id}`,
+          label:   (q.enunciado || q.texto || q.descricao || `Questão #${id}`).slice(0, 120),
+          materia: q.materia?.nome || q.materia || '',
+          assunto: q.assunto?.nome || q.assunto || '',
+          banca:   q.banca?.nome  || q.banca?.sigla || q.banca || '',
+          source:  srcLabel,
+        };
+      }).filter(Boolean);
+    }
+
+    // ── Estratégia A: API direta com IDs reais (primária — rápido, preciso) ──
+    // Passo 1: descobrir IDs de assunto/matéria/banca
+    let assuntoId = '', materiaId = '', bancaId = '';
+
+    // 1a: dados já capturados pelo content_main.js na sessão atual
+    const captured = _tecApi.schema?.items;
+    if (Array.isArray(captured)) {
+      const match = captured.find(q => q.id === qi.qid) || captured[0];
+      if (match) { assuntoId = match.assunto_id || ''; materiaId = match.materia_id || ''; bancaId = match.banca_id || ''; }
+    }
+
+    // 1b: busca direta do detalhe da questão no TEC — retorna em <1s
+    if (!assuntoId && !materiaId && qi.qid) {
+      const detail = await _fetchQuestaoDetail(qi.qid);
+      if (detail) {
+        assuntoId = String(detail.assunto?.id || detail.assunto_id || '');
+        materiaId = String(detail.materia?.id || detail.materia_id || '');
+        bancaId   = String(detail.banca?.id   || detail.banca_id   || '');
+      }
+    }
+
+    // Passo 2: busca por ID (mais preciso que por nome)
+    if (assuntoId || materiaId) {
+      const byId = await _fetchSimilaresPorIds(qi, assuntoId, materiaId, bancaId);
+      for (const q of _normalize(byId, 'api-ids')) {
+        if (_isRelevant(q)) { seen.add(q.qid); found.push(q); }
+      }
+    }
+    if (found.length >= 5) return found.slice(0, 6);
+
+    // ── Estratégia B: API por nome (fallback quando IDs não disponíveis) ────
+    const baseEps = _tecApi.base
+      ? [_tecApi.base.replace(/\/\d+$/, ''), '/api/questoes', '/api/v1/questoes']
+      : ['/api/questoes', '/api/v1/questoes', '/api/v2/questoes'];
+
+    for (const ep of baseEps) {
       try {
-        const filterUrl = qi.assuntoUrl || qi.materiaUrl;
-        const tabResult = await new Promise(resolve => {
-          const t = setTimeout(() => resolve(null), 14000);
-          try {
-            chrome.runtime.sendMessage(
-              { type: 'FIND_SIMILAR_TAB', url: filterUrl, qid: qi.qid, materia: qi.materia },
-              r => { clearTimeout(t); resolve(r || null); }
-            );
-          } catch(_) { clearTimeout(t); resolve(null); }
-        });
-        if (tabResult && Array.isArray(tabResult.similares)) {
-          for (const q of tabResult.similares) {
-            if (!seen.has(q.qid) && _isRelevant(q)) { seen.add(q.qid); found.push(q); }
-          }
+        const p = new URLSearchParams({ per_page: '8', page: '1' });
+        if (qi.assunto)  p.set('assunto',  qi.assunto);
+        if (qi.materia)  p.set('materia',  qi.materia);
+        if (qi.banca)    p.set('banca',    qi.banca);
+        const res = await fetch(`${ep}?${p}`, { credentials: 'include', headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(5000) });
+        if (!res.ok || !(res.headers.get('content-type') || '').includes('json')) continue;
+        const data = await res.json();
+        const items = Array.isArray(data) ? data : (data.data || data.questoes || data.items || data.results || []);
+        for (const q of _normalize(items, 'api-name')) {
+          if (_isRelevant(q)) { seen.add(q.qid); found.push(q); }
         }
+        if (found.length >= 3) break;
       } catch(_) {}
     }
     if (found.length >= 5) return found.slice(0, 6);
 
-    // — Estratégia 1: Script tag JSON parsing — extrai APENAS questões do mesmo assunto/matéria
+    // ── Estratégia C: Script tag JSON (dados do Angular já na página) ────────
     try {
+      const assuntoSlice = (qi.assunto || '').toLowerCase().slice(0, 8);
+      const matSlice     = materiaKey.slice(0, 6);
       for (const sc of document.querySelectorAll('script:not([src])')) {
         const src = sc.textContent;
         if (src.length < 500 || src.length > 800000) continue;
-        // Só analisa scripts que mencionam a matéria da questão errada
-        if (materiaKey && !src.toLowerCase().includes(materiaKey.slice(0, 6))) continue;
+        if (matSlice && !src.toLowerCase().includes(matSlice)) continue;
         const idMs = src.match(/"(?:id|questao_id)"\s*:\s*(\d{5,9})/g);
         if (!idMs) continue;
         for (const m of idMs) {
           const id = m.match(/\d+/)[0];
           if (seen.has(id)) continue;
-          // Extrai contexto ao redor do ID para validar matéria/assunto
           const ctxIdx = src.indexOf(m);
-          const ctx = src.slice(Math.max(0, ctxIdx - 300), ctxIdx + 400);
-          const ctxLow = ctx.toLowerCase();
-          // Só inclui se o contexto menciona a matéria ou assunto
-          const materiaOk = !materiaKey || ctxLow.includes(materiaKey.slice(0, 8));
-          const assuntoOk = !assuntoKey || ctxLow.includes(assuntoKey.slice(0, 8));
-          if (!materiaOk && !assuntoOk) continue;
+          const ctx    = src.slice(Math.max(0, ctxIdx - 300), ctxIdx + 400).toLowerCase();
+          if (!ctx.includes(matSlice) && !ctx.includes(assuntoSlice)) continue;
           seen.add(id);
-          const enM = ctx.match(/"enunciado"\s*:\s*"([^"]{10,100})/);
-          const assM = ctx.match(/"assunto"\s*:\s*"([^"]{2,40})/);
-          const banM = ctx.match(/"banca"\s*:\s*"([^"]{2,20})/);
-          found.push({
-            qid: id,
-            url: `https://www.tecconcursos.com.br/questoes/${id}`,
-            label: enM ? enM[1] : `Questão #${id}`,
-            assunto: assM ? assM[1] : (qi.assunto || ''),
-            banca:   banM ? banM[1] : (qi.banca   || ''),
-            source: 'script',
-          });
+          const enM  = src.slice(Math.max(0, ctxIdx - 300), ctxIdx + 400).match(/"enunciado"\s*:\s*"([^"]{10,100})/);
+          const assM = src.slice(Math.max(0, ctxIdx - 300), ctxIdx + 400).match(/"(?:assunto|assunto_nome)"\s*:\s*"([^"]{2,50})/);
+          const banM = src.slice(Math.max(0, ctxIdx - 300), ctxIdx + 400).match(/"(?:banca|banca_nome)"\s*:\s*"([^"]{2,20})/);
+          found.push({ qid: id, url: `https://www.tecconcursos.com.br/questoes/${id}`, label: enM ? enM[1] : `Questão #${id}`, assunto: assM ? assM[1] : (qi.assunto || ''), banca: banM ? banM[1] : (qi.banca || ''), materia: qi.materia, source: 'script' });
           if (found.length >= 5) break;
         }
         if (found.length >= 5) break;
       }
-    } catch(e) {}
+    } catch(_) {}
 
-    // — Estratégia 2: API REST do TEC com múltiplos perfis de busca
-    // Perfil A: matéria + assunto + banca (mais específico)
-    // Perfil B: matéria + keywords do enunciado (busca textual)
-    // Perfil C: somente matéria (mais amplo, como fallback)
-    const baseEndpoints = _tecApi.base
-      ? [_tecApi.base, '/api/questoes', '/api/v1/questoes', '/api/v2/questoes']
-      : ['/api/questoes', '/api/v1/questoes', '/api/v2/questoes'];
-
-    const searchProfiles = [
-      { materia: qi.materia, assunto: qi.assunto, banca: qi.banca, q: '' },
-      { materia: qi.materia, assunto: qi.assunto, banca: '',       q: qi.keywords },
-      { materia: qi.materia, assunto: '',          banca: qi.banca, q: qi.keywords },
-    ];
-
-    outer: for (const ep of baseEndpoints) {
-      for (const profile of searchProfiles) {
-        try {
-          const apiFound = await _tryTecApi(ep, { ...qi, ...profile });
-          for (const q of apiFound) {
-            if (!seen.has(q.qid) && _isRelevant(q)) {
-              seen.add(q.qid);
-              found.push(q);
-            }
-          }
-          if (found.length >= 5) break outer;
-        } catch(e) {}
-      }
-      if (found.length >= 3) break;
-    }
-
-    // Retorna vazío se nada relevante encontrado — não polui com questões aleatórias
     return found.slice(0, 6);
+  }
+
+  // Busca detalhes de uma questão na API do TEC (retorna assunto_id, materia_id, etc.)
+  async function _fetchQuestaoDetail(qid) {
+    const base = _tecApi.base ? _tecApi.base.replace(/\/\d+$/, '').replace(/\/questoes.*/, '/questoes') : null;
+    const eps = [...new Set([...(base ? [`${base}/${qid}`] : []), `/api/questoes/${qid}`, `/api/v1/questoes/${qid}`, `/api/v2/questoes/${qid}`])];
+    for (const ep of eps) {
+      try {
+        const res = await fetch(ep, { credentials: 'include', headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(4000) });
+        if (!res.ok || !(res.headers.get('content-type') || '').includes('json')) continue;
+        const data = await res.json();
+        if (data?.id || data?.questao_id) return data;
+      } catch(_) {}
+    }
+    return null;
+  }
+
+  // Busca questões similares usando IDs reais (assunto_id/materia_id/banca_id)
+  async function _fetchSimilaresPorIds(qi, assuntoId, materiaId, bancaId) {
+    const base = _tecApi.base ? _tecApi.base.replace(/\/\d+$/, '') : null;
+    const eps  = [...new Set([...(base ? [base] : []), '/api/questoes', '/api/v1/questoes', '/api/v2/questoes'])];
+    for (const ep of eps) {
+      try {
+        const p = new URLSearchParams({ per_page: '10', page: '1' });
+        if (assuntoId) p.set('assunto_id', assuntoId);
+        else if (materiaId) p.set('materia_id', materiaId);
+        if (bancaId) p.set('banca_id', bancaId);
+        const res = await fetch(`${ep}?${p}`, { credentials: 'include', headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(5000) });
+        if (!res.ok || !(res.headers.get('content-type') || '').includes('json')) continue;
+        const data = await res.json();
+        const items = Array.isArray(data) ? data : (data.data || data.questoes || data.items || data.results || []);
+        if (items.length >= 2) return items;
+      } catch(_) {}
+    }
+    return [];
   }
 
   async function _tryTecApi(endpoint, qi) {
@@ -1677,8 +1711,8 @@
     if (qi.materia)  p.set('materia',  qi.materia);
     if (qi.assunto)  p.set('assunto',  qi.assunto);
     if (qi.banca)    p.set('banca',    qi.banca);
-    if (qi.keywords) p.set('q',        qi.keywords);  // busca textual pelo enunciado
-    if (qi.keywords) p.set('enunciado', qi.keywords); // alias usado por algumas versões da API
+    if (qi.keywords) p.set('q',        qi.keywords);
+    if (qi.keywords) p.set('enunciado', qi.keywords);
     p.set('per_page', '6'); p.set('page', '1');
 
     const res = await fetch(`${endpoint}?${p}`, {
@@ -1697,7 +1731,6 @@
     return items.map(q => {
       const id = String(q.id || q.questao_id || q.questao?.id || '');
       const qMat = (q.materia?.nome || q.materia || '').toLowerCase();
-      // Rejeita resultados de matéria claramente diferente
       if (materiaKey && qMat && !qMat.includes(materiaKey.slice(0,8)) && !materiaKey.includes(qMat.slice(0,8))) return null;
       if (!id || id === qi.qid) return null;
       return {
