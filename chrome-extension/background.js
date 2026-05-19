@@ -14,6 +14,7 @@ let panelTabId  = null;
 let tecTabId    = null;
 let filaCount   = 0;
 let activeSession = null;  // sessão corrente (não persistida ainda)
+let _bgSearchTabId = null; // aba de busca de similares em background
 
 // ── Estatísticas por hora do dia (em memória, reset diário) ──────────────
 let _hourlyDay = '';
@@ -1243,8 +1244,12 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
       // ── TEC API: salva/retorna endpoint descoberto pelo MAIN world script ──
       case 'STORE_TEC_API': {
-        const stored = { base: msg.base, full: msg.full, schema: msg.schema || null, storedAt: Date.now() };
+        const stored = { base: msg.base, full: msg.full, items: msg.schema || null, storedAt: Date.now() };
         await setStorage({ tec_api_info: stored });
+        // Se veio da aba de busca em background, salva separadamente
+        if (_bgSearchTabId && sender.tab?.id === _bgSearchTabId && msg.schema?.length) {
+          await setStorage({ tec_api_info_bg: stored });
+        }
         sendResponse({ ok: true });
         return;
       }
@@ -1265,40 +1270,76 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           return;
         }
         try {
+          // Limpa dado anterior da aba de busca
+          await setStorage({ tec_api_info_bg: null });
+
           const tab = await new Promise(r => chrome.tabs.create({ url: filterUrl, active: false }, r));
-          // Aguarda Angular renderizar (~5s)
-          await new Promise(r => setTimeout(r, 5000));
+          _bgSearchTabId = tab.id;
 
-          const results = await chrome.scripting.executeScript({
-            target: { tabId: tab.id },
-            func: (excludeQid, materia) => {
-              const links = [...document.querySelectorAll('a[href*="/questoes/"]')];
-              const seen = new Set(excludeQid ? [excludeQid] : []);
-              const found = [];
-              for (const a of links) {
-                const m = (a.href || '').match(/\/questoes\/(\d{5,9})/);
-                if (!m || seen.has(m[1])) continue;
-                seen.add(m[1]);
-                const row = a.closest('[class*="questao"],[class*="item"],[class*="card"],[class*="list"]') || a.parentElement;
-                const rowText = (row ? (row.innerText || '') : '').toLowerCase();
-                if (materia && rowText.length > 20 && !rowText.includes(materia.slice(0, 8))) continue;
-                const enunciado = (row ? (row.innerText || '') : a.textContent || '').trim().slice(0, 120);
-                found.push({
-                  qid: m[1],
-                  url: `https://www.tecconcursos.com.br/questoes/${m[1]}`,
-                  label: enunciado || 'Questão #' + m[1],
-                });
-                if (found.length >= 6) break;
+          // Aguarda Angular carregar e content_main.js interceptar as chamadas API (~7s)
+          await new Promise(r => setTimeout(r, 7000));
+
+          const similares = [];
+          const seen = new Set(excludeQid ? [excludeQid] : []);
+
+          // — Estratégia 1: dados capturados pelo content_main.js via intercept de fetch/XHR
+          const { tec_api_info_bg = null } = await getStorage({ tec_api_info_bg: null });
+          if (tec_api_info_bg?.items?.length) {
+            for (const q of tec_api_info_bg.items) {
+              if (!q.id || seen.has(q.id)) continue;
+              seen.add(q.id);
+              similares.push({
+                qid: q.id,
+                url: `https://www.tecconcursos.com.br/questoes/${q.id}`,
+                label: q.enunciado || 'Questão #' + q.id,
+                materia: q.materia, assunto: q.assunto, banca: q.banca,
+                source: 'api-bg',
+              });
+              if (similares.length >= 6) break;
+            }
+          }
+
+          // — Estratégia 2: scraping do DOM (fallback quando API não foi capturada)
+          if (similares.length < 3) {
+            try {
+              const results = await chrome.scripting.executeScript({
+                target: { tabId: tab.id },
+                func: (excludeQid, materia) => {
+                  // Tenta ler dados do window que content.js possa ter populado
+                  const seen = new Set(excludeQid ? [excludeQid] : []);
+                  const found = [];
+                  // Linka questões individuais: /questoes/ID
+                  const links = [...document.querySelectorAll('a[href]')];
+                  for (const a of links) {
+                    const m = (a.href || '').match(/\/questoes\/(\d{5,9})(?:\/|$|\?)/);
+                    if (!m || seen.has(m[1])) continue;
+                    seen.add(m[1]);
+                    const row = a.closest('[class*="questao"],[class*="item"],[class*="card"],[class*="list"],[class*="row"]') || a.parentElement;
+                    const rowText = (row?.innerText || a.textContent || '').toLowerCase();
+                    if (materia && rowText.length > 20 && !rowText.includes(materia.slice(0, 6))) continue;
+                    found.push({
+                      qid: m[1],
+                      url: `https://www.tecconcursos.com.br/questoes/${m[1]}`,
+                      label: (row?.innerText || '').trim().slice(0, 120) || 'Questão #' + m[1],
+                    });
+                    if (found.length >= 6) break;
+                  }
+                  return found;
+                },
+                args: [excludeQid, materia],
+              });
+              for (const q of (results?.[0]?.result || [])) {
+                if (!seen.has(q.qid)) { seen.add(q.qid); similares.push(q); }
+                if (similares.length >= 6) break;
               }
-              return found;
-            },
-            args: [excludeQid, materia],
-          });
+            } catch (_) {}
+          }
 
+          _bgSearchTabId = null;
           await chrome.tabs.remove(tab.id).catch(() => {});
-          const similares = results?.[0]?.result || [];
           sendResponse({ similares });
         } catch (_) {
+          _bgSearchTabId = null;
           sendResponse({ similares: [] });
         }
         return;
