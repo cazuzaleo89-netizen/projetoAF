@@ -10,6 +10,36 @@
 
   const PANEL_URL = 'https://cazuzaleo89-netizen.github.io/projetofiscal/';
 
+  // ── Interceptador de API TEC (captura chamadas AJAX do próprio site) ────
+  // Roda em TODAS as páginas do TEC antes de qualquer return
+  const _tecApi = { headers: {}, base: null, paths: [] };
+  (function _setupInterceptor() {
+    const _oFetch = window.fetch;
+    window.fetch = function(input, init) {
+      const url = typeof input === 'string' ? input : (input?.url || '');
+      if (url && url.includes('tecconcursos')) {
+        const hdrs = init?.headers || {};
+        for (const k of Object.keys(hdrs)) {
+          if (/auth|token|csrf|bearer/i.test(k)) _tecApi.headers[k] = hdrs[k];
+        }
+        const pm = url.match(/\/(api|v\d+)\/(questoes?)[^/]/);
+        if (pm) {
+          const base = url.split('?')[0];
+          if (!_tecApi.paths.includes(base)) _tecApi.paths.push(base);
+          if (!_tecApi.base) _tecApi.base = base;
+        }
+      }
+      return _oFetch.apply(this, arguments);
+    };
+    const _oOpen = XMLHttpRequest.prototype.open;
+    const _oHdr  = XMLHttpRequest.prototype.setRequestHeader;
+    XMLHttpRequest.prototype.open = function(m, u) { this._pfu = u; return _oOpen.apply(this, arguments); };
+    XMLHttpRequest.prototype.setRequestHeader = function(k, v) {
+      if ((this._pfu || '').includes('questoes') && /auth|token|csrf/i.test(k)) _tecApi.headers[k] = v;
+      return _oHdr.apply(this, arguments);
+    };
+  })();
+
   // ── Heartbeat para o painel detectar extensão ativa ──
   if (location.hostname === 'cazuzaleo89-netizen.github.io') {
     const beat = () => localStorage.setItem('_pf_ext_heartbeat', Date.now());
@@ -245,7 +275,7 @@
     localErr: 0,
     consecutiveWrong: 0,    // fadiga cognitiva
     recentResults: [],       // últimos 10 resultados (para queda de taxa)
-    lastWrong: null,         // última questão errada {qid,url,materia,assunto}
+    reforcoQueue: [],        // [{qi,similares[],loading,fetched}] acumuladas na sessão
     // Stats do painel (via postMessage)
     stats: { elapsed: 0, acertos: 0, erros: 0, resolved: 0, running: false, paused: false, discName: '', dificuldade: '' },
     // Fila de revisão
@@ -479,7 +509,7 @@
   }
 
   function getInfo() {
-    const info = { url: '', desc: '', materia: '', assunto: '', qid: '', myTotal: 0, myErrors: 0, timeSpent: 0 };
+    const info = { url: '', desc: '', materia: '', assunto: '', banca: '', qid: '', myTotal: 0, myErrors: 0, timeSpent: 0 };
     const tx = document.body.innerText || '';
 
     const urlPM = window.location.pathname.match(/\/questoes\/(\d{5,9})(?:\/|$)/);
@@ -498,6 +528,13 @@
     if (matM) info.materia = matM[1].replace(/\s*[××].*$/, '').trim();
     const assM = tx.match(/Assunto:\s*([^\n\r×]+)/i);
     if (assM) info.assunto = assM[1].replace(/\s*[××].*$/, '').trim();
+    for (const p of [/Banca[:\s]+([A-ZÁÉÍÓÚ][^\n\r,·×]{2,25})/i, /Organiza[çc][aã]o[:\s]+([^\n\r,]{2,25})/i]) {
+      const bm = tx.match(p); if (bm) { info.banca = bm[1].trim(); break; }
+    }
+    if (!info.banca) {
+      const el = document.querySelector('[data-banca],[class*="banca-nome"],[class*="banca_nome"]');
+      if (el) info.banca = (el.textContent || '').trim().slice(0, 30);
+    }
     const parts = [];
     if (info.materia) parts.push(info.materia);
     if (info.assunto) parts.push(info.assunto);
@@ -899,11 +936,20 @@
         ${hubMini}
         ${dueBanner}
         ${filaBanner}
-        ${S.lastWrong ? `<div class="_pf2reforco" id="_pf2reforcoRow">
-          <span style="font-size:11px;">📚</span>
-          <span style="flex:1;font-size:10.5px;color:#a5b4fc;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${(S.lastWrong.assunto || S.lastWrong.materia || 'Última errada').slice(0,32)}</span>
-          <button id="_pf2reforcoBtn" style="background:rgba(99,102,241,.25);border:1px solid rgba(99,102,241,.5);color:#a5b4fc;border-radius:6px;padding:2px 7px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap;">Similares ↗</button>
-        </div>` : ''}
+        ${S.reforcoQueue.length > 0 ? (() => {
+          const nErros = S.reforcoQueue.length;
+          const nSim = S.reforcoQueue.reduce((a, r) => a + r.similares.length, 0);
+          const isLoading = S.reforcoQueue.some(r => r.loading);
+          const simTxt = isLoading ? '⏳ buscando…' : nSim > 0 ? `${nSim} similar${nSim!==1?'es':''}` : 'filtro pronto';
+          return `<div class="_pf2reforco" id="_pf2reforcoRow">
+            <span style="font-size:13px;flex-shrink:0;">🎯</span>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:10px;font-weight:800;color:#a5b4fc;line-height:1.2;">${nErros} erro${nErros!==1?'s':''} · ${simTxt}</div>
+              <div style="font-size:9px;color:#475569;margin-top:1px;">Rodada de Reforço</div>
+            </div>
+            <button id="_pf2reforcoBtn" style="background:rgba(99,102,241,.28);border:1px solid rgba(99,102,241,.55);color:#a5b4fc;border-radius:7px;padding:3px 8px;font-size:10px;font-weight:800;cursor:pointer;white-space:nowrap;flex-shrink:0;">Ver ↗</button>
+          </div>`;
+        })() : ''}
         <div class="_pf2nav">
           <button class="_pf2navbtn" id="_pf2ant">← Ant</button>
           <button class="_pf2navbtn primary" id="_pf2prox">Prox →</button>
@@ -966,7 +1012,7 @@
 
     // Reforço Inteligente
     const reforcoBtn = document.getElementById('_pf2reforcoBtn');
-    if (reforcoBtn) reforcoBtn.onclick = ev => { ev.stopPropagation(); openReforcoFilter(S.lastWrong); };
+    if (reforcoBtn) reforcoBtn.onclick = ev => { ev.stopPropagation(); showRodadaReforco(); };
 
     // Hub mini: clica para abrir a questão
     const hubMinEl = document.getElementById('_pf2hubmin');
@@ -1058,6 +1104,10 @@
         const stats = { total: pos.t, correct: counter ? counter.a : 0, wrong: counter ? counter.e : 0, elapsed: S.stats.elapsed || 0 };
         sendRaw({ type: 'TEC_CADERNO_END', stats });
         toBg('SESSION_END', { stats, questions: S.questions, caderno: S.caderno });
+        // Dispara Rodada de Reforço se houver erros na sessão
+        if (S.reforcoQueue.length > 0 && !document.getElementById('_pfRodadaOverlay')) {
+          setTimeout(showRodadaReforco, 1800);
+        }
       }, 2500);
     }
   }
@@ -1129,7 +1179,7 @@
             S.stats.erros = Math.max(S.stats.erros, S.localErr);
             S.stats.resolved = S.localAce + S.localErr;
             setQuestionResult(curPos, 'wrong', qi);
-            S.lastWrong = { qid: qi.qid, url: qi.url, materia: qi.materia, assunto: qi.assunto };
+            addToReforcoQueue({ qid: qi.qid, url: qi.url, materia: qi.materia, assunto: qi.assunto, banca: qi.banca });
             trackFadiga('wrong');
             renderWidget();
             send('wrong_fast', qi);
@@ -1186,7 +1236,7 @@
       S.stats.erros = Math.max(S.stats.erros, S.localErr);
       S.stats.resolved = S.localAce + S.localErr;
       setQuestionResult(curPos, 'wrong', qi0);
-      S.lastWrong = { qid: qi0.qid, url: qi0.url, materia: qi0.materia, assunto: qi0.assunto };
+      addToReforcoQueue({ qid: qi0.qid, url: qi0.url, materia: qi0.materia, assunto: qi0.assunto, banca: qi0.banca });
       renderWidget();
       send('wrong_fast', qi0);
       toBg('QUESTION_WRONG', { qid: qi0.qid, url: qi0.url, materia: qi0.materia, assunto: qi0.assunto, desc: qi0.desc, timeSpent: qi0.timeSpent, pos: curPos, timestamp: Date.now() });
@@ -1400,16 +1450,260 @@
     };
   }
 
-  // ── Reforço Inteligente: abre filtro TEC com questões similares ─────────
+  // ════════════════════════════════════════════════════════
+  // REFORÇO INTELIGENTE — Busca similares + Rodada de Reforço
+  // ════════════════════════════════════════════════════════
+
+  function _pfRqToast(msg, color) {
+    const t = document.createElement('div');
+    t.style.cssText = `position:fixed;bottom:76px;right:20px;z-index:2147483645;
+      background:linear-gradient(135deg,#1e1b4b,#312e81);color:${color||'#a5b4fc'};
+      padding:8px 14px;border-radius:10px;font:700 11px/1.5 -apple-system,sans-serif;
+      border:1px solid rgba(99,102,241,.4);box-shadow:0 4px 20px rgba(0,0,0,.5);
+      transition:opacity .4s;display:flex;align-items:center;gap:8px;max-width:260px;`;
+    t.innerHTML = msg;
+    document.body.appendChild(t);
+    setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 500); }, 3500);
+  }
+
+  function addToReforcoQueue(qi) {
+    if (!qi || !qi.qid) return;
+    if (S.reforcoQueue.find(r => r.qi.qid === qi.qid)) return;
+
+    const entry = { qi: { ...qi }, similares: [], loading: true, fetched: false };
+    S.reforcoQueue.push(entry);
+    renderWidget();
+
+    const assunto = (qi.assunto || qi.materia || '').slice(0, 30);
+    _pfRqToast(`<span style="font-size:14px">📚</span> Buscando similares: <strong>${assunto}</strong>…`);
+
+    _findSimilarQuestions(qi)
+      .then(found => { entry.similares = found || []; entry.loading = false; entry.fetched = true; renderWidget(); })
+      .catch(() => { entry.loading = false; entry.fetched = true; renderWidget(); });
+  }
+
+  async function _findSimilarQuestions(qi) {
+    const found = [];
+    const seen  = new Set([qi.qid]);
+
+    // — Estratégia 1: Links de questões embarcados na página atual
+    try {
+      for (const a of document.querySelectorAll('a[href*="/questoes/"]')) {
+        const m = a.href.match(/\/questoes\/(\d{5,9})/);
+        if (m && !seen.has(m[1])) {
+          seen.add(m[1]);
+          found.push({ qid: m[1], url: a.href, label: (a.textContent || '').trim().slice(0, 90) || `Questão #${m[1]}`, source: 'dom' });
+          if (found.length >= 5) break;
+        }
+      }
+    } catch(e) {}
+
+    // — Estratégia 2: JSON embutido em <script> — extrai IDs do estado do SPA
+    if (found.length < 3) {
+      try {
+        for (const sc of document.querySelectorAll('script:not([src])')) {
+          const src = sc.textContent;
+          if (src.length < 200 || src.length > 600000) continue;
+          const idMs = src.match(/"(?:id|questao_id)"\s*:\s*(\d{5,9})/g);
+          if (!idMs) continue;
+          for (const m of idMs) {
+            const id = m.match(/\d+/)[0];
+            if (!seen.has(id)) {
+              seen.add(id);
+              // Tenta extrair label do JSON context ao redor
+              const ctxStart = src.indexOf(m) - 200;
+              const ctx = src.slice(Math.max(0, ctxStart), ctxStart + 400);
+              const enM = ctx.match(/"enunciado"\s*:\s*"([^"]{10,100})/);
+              const label = enM ? enM[1] : `Questão #${id}`;
+              found.push({ qid: id, url: `https://www.tecconcursos.com.br/questoes/${id}`, label, source: 'script' });
+              if (found.length >= 5) break;
+            }
+          }
+          if (found.length >= 5) break;
+        }
+      } catch(e) {}
+    }
+
+    // — Estratégia 3: API do TEC (via cookies autenticados)
+    if (found.length < 3) {
+      const endpoints = _tecApi.base ? [_tecApi.base, ...['', '/api', '/api/v1', '/api/v2'].map(p => p + '/questoes')] : ['', '/api', '/api/v1', '/api/v2'].map(p => p + '/questoes');
+      for (const ep of endpoints) {
+        if (!ep) continue;
+        try {
+          const apiFound = await _tryTecApi(ep, qi);
+          for (const q of apiFound) {
+            if (!seen.has(q.qid)) { seen.add(q.qid); found.push(q); }
+          }
+          if (found.length >= 4) break;
+        } catch(e) {}
+      }
+    }
+
+    return found.slice(0, 6);
+  }
+
+  async function _tryTecApi(endpoint, qi) {
+    const p = new URLSearchParams();
+    if (qi.materia)  p.set('materia', qi.materia);
+    if (qi.assunto)  p.set('assunto', qi.assunto);
+    if (qi.banca)    p.set('banca',   qi.banca);
+    p.set('per_page', '6'); p.set('page', '1');
+
+    const res = await fetch(`${endpoint}?${p}`, {
+      credentials: 'include',
+      headers: { Accept: 'application/json', ..._tecApi.headers },
+    });
+    if (!res.ok) return [];
+    const ct = res.headers.get('content-type') || '';
+    if (!ct.includes('json')) return [];
+
+    const data = await res.json();
+    const items = Array.isArray(data) ? data : (data.data || data.questoes || data.items || data.results || []);
+    if (!Array.isArray(items) || !items.length) return [];
+
+    return items.slice(0, 5).map(q => {
+      const id = String(q.id || q.questao_id || q.questao?.id || '');
+      return {
+        qid:     id,
+        url:     q.url || q.link || `https://www.tecconcursos.com.br/questoes/${id}`,
+        banca:   q.banca?.nome || q.banca || '',
+        assunto: q.assunto?.nome || q.assunto || '',
+        label:   (q.enunciado || q.texto || q.descricao || `Questão #${id}`).slice(0, 100),
+        source:  'api',
+      };
+    }).filter(q => q.qid && q.qid !== qi.qid);
+  }
+
+  function _tecFilterUrl(qi) {
+    const p = new URLSearchParams();
+    if (qi.materia) p.set('pf_materia', qi.materia);
+    if (qi.assunto) p.set('pf_assunto', qi.assunto);
+    if (qi.banca)   p.set('pf_banca',   qi.banca);
+    p.set('pf_caderno', ('Reforço ' + (qi.assunto || qi.materia || 'Painel Fiscal')).slice(0, 55));
+    return 'https://www.tecconcursos.com.br/questoes/filtrar?' + p.toString();
+  }
+
   function openReforcoFilter(qi) {
     if (!qi) return;
-    const base = 'https://www.tecconcursos.com.br/questoes/filtrar';
-    const p = new URLSearchParams();
-    if (qi.materia)  p.set('pf_materia', qi.materia);
-    if (qi.assunto)  p.set('pf_assunto', qi.assunto);
-    const cadernoName = 'Reforço ' + (qi.assunto || qi.materia || 'Painel Fiscal');
-    p.set('pf_caderno', cadernoName.slice(0, 60));
-    window.open(base + '?' + p.toString(), '_blank');
+    window.open(_tecFilterUrl(qi), '_blank');
+  }
+
+  function showRodadaReforco() {
+    const prev = document.getElementById('_pfRodadaOverlay');
+    if (prev) { prev.remove(); return; }
+    if (!S.reforcoQueue.length) return;
+
+    const nErros = S.reforcoQueue.length;
+    const nSim   = S.reforcoQueue.reduce((a, r) => a + r.similares.length, 0);
+    const loading = S.reforcoQueue.some(r => r.loading);
+
+    const overlay = document.createElement('div');
+    overlay.id = '_pfRodadaOverlay';
+    overlay.style.cssText = `
+      position:fixed;inset:0;background:rgba(0,0,0,.88);backdrop-filter:blur(8px);
+      z-index:2147483646;display:flex;align-items:center;justify-content:center;padding:16px;
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;animation:_pfFadeIn .25s ease;`;
+
+    const cards = S.reforcoQueue.map((entry, idx) => {
+      const q = entry.qi;
+      const hasSim = entry.similares.length > 0;
+      const subjLabel = (q.assunto || q.materia || 'Questão #' + q.qid).slice(0, 40);
+
+      const simRows = entry.similares.map((s, si) => `
+        <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05);">
+          <div style="width:18px;height:18px;border-radius:50%;background:rgba(99,102,241,.18);border:1px solid rgba(99,102,241,.4);
+            display:flex;align-items:center;justify-content:center;font-size:9px;color:#818cf8;font-weight:800;flex-shrink:0;">${si+1}</div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:10.5px;color:#cbd5e1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${s.label}</div>
+            ${s.banca || s.assunto ? `<div style="font-size:9px;color:#475569;">${[s.banca,s.assunto].filter(Boolean).join(' · ')}</div>` : ''}
+          </div>
+          <a href="${s.url}" target="_blank"
+            style="background:rgba(99,102,241,.2);border:1px solid rgba(99,102,241,.4);color:#a5b4fc;
+            border-radius:6px;padding:3px 9px;font-size:10px;text-decoration:none;font-weight:700;white-space:nowrap;">Abrir ↗</a>
+        </div>`).join('');
+
+      return `
+        <div style="padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.07);">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+            <div style="width:24px;height:24px;border-radius:50%;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);
+              display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;">❌</div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:11px;font-weight:700;color:#f1f5f9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${subjLabel}</div>
+              <div style="font-size:9.5px;color:#475569;">${q.banca || ''} ${q.qid ? '· #' + q.qid : ''}</div>
+            </div>
+          </div>
+          ${entry.loading
+            ? `<div style="display:flex;align-items:center;gap:8px;padding:8px;background:rgba(99,102,241,.07);border-radius:8px;margin-bottom:8px;">
+                <div style="width:12px;height:12px;border:2px solid rgba(99,102,241,.25);border-top-color:#6366f1;border-radius:50%;animation:_pfSpin 1s linear infinite;flex-shrink:0;"></div>
+                <span style="font-size:10px;color:#64748b;">Buscando questões similares no banco do TEC…</span>
+              </div>`
+            : hasSim
+              ? `<div style="font-size:9.5px;color:#6366f1;font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px;">
+                  📚 ${entry.similares.length} similar${entry.similares.length>1?'es':''} encontrada${entry.similares.length>1?'s':''}
+                </div>${simRows}`
+              : `<div style="font-size:10px;color:#475569;margin-bottom:6px;">Nenhuma encontrada via API — use o filtro TEC:</div>`
+          }
+          <a href="${_tecFilterUrl(q)}" target="_blank"
+            style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:8px;
+            background:rgba(20,18,48,.8);border:1px solid rgba(99,102,241,.35);color:#818cf8;
+            border-radius:8px;padding:7px;font-size:10.5px;font-weight:700;text-decoration:none;">
+            📋 Gerar Caderno de Reforço no TEC
+          </a>
+        </div>`;
+    }).join('');
+
+    overlay.innerHTML = `
+      <div style="background:#0b0d18;border:1px solid rgba(99,102,241,.4);border-radius:18px;
+        width:100%;max-width:520px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;
+        box-shadow:0 0 0 1px rgba(99,102,241,.1) inset,0 28px 80px rgba(0,0,0,.75);">
+        <!-- Header fixo -->
+        <div style="background:linear-gradient(135deg,rgba(30,27,75,.95),rgba(49,46,129,.8));
+          padding:18px 20px 14px;border-bottom:1px solid rgba(99,102,241,.2);flex-shrink:0;">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:${nSim>0?'12':'0'}px;">
+            <span style="font-size:26px;line-height:1;">🎯</span>
+            <div style="flex:1;">
+              <div style="font-size:15px;font-weight:800;color:#e2e8f0;">Rodada de Reforço</div>
+              <div style="font-size:11px;color:#6366f1;margin-top:3px;">
+                ${nErros} questão${nErros>1?'ões':''} errada${nErros>1?'s':''} ·
+                ${loading ? '⏳ buscando similares…' : nSim + ' similar' + (nSim!==1?'es':'') + ' encontrada' + (nSim!==1?'s':'')}
+              </div>
+            </div>
+            <button id="_pfRodadaX" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);
+              color:#64748b;border-radius:8px;padding:5px 10px;font-size:15px;cursor:pointer;">✕</button>
+          </div>
+          ${nSim > 0 ? `
+          <button id="_pfRodadaAll" style="width:100%;background:linear-gradient(135deg,#4338ca,#7c3aed);
+            border:none;color:#fff;border-radius:10px;padding:10px;font-size:12px;font-weight:800;
+            cursor:pointer;letter-spacing:.3px;display:flex;align-items:center;justify-content:center;gap:8px;">
+            🚀 Abrir Todas as Questões Similares (${nSim})
+          </button>` : ''}
+        </div>
+        <!-- Cards com scroll -->
+        <div style="overflow-y:auto;flex:1;">${cards}</div>
+      </div>`;
+
+    if (!document.getElementById('_pfRodadaCSS')) {
+      const st = document.createElement('style');
+      st.id = '_pfRodadaCSS';
+      st.textContent = `
+        @keyframes _pfSpin { to { transform: rotate(360deg); } }
+        @keyframes _pfFadeIn { from { opacity: 0; transform: scale(.97); } to { opacity: 1; transform: none; } }`;
+      document.head.appendChild(st);
+    }
+
+    document.body.appendChild(overlay);
+
+    document.getElementById('_pfRodadaX').onclick = () => overlay.remove();
+    overlay.addEventListener('click', ev => { if (ev.target === overlay) overlay.remove(); });
+
+    const allBtn = document.getElementById('_pfRodadaAll');
+    if (allBtn) allBtn.onclick = () => {
+      S.reforcoQueue.forEach((entry, i) => {
+        entry.similares.forEach((s, j) => {
+          setTimeout(() => window.open(s.url, '_blank'), (i * 3 + j) * 120);
+        });
+      });
+    };
   }
 
   // Alt+R → próxima da fila
