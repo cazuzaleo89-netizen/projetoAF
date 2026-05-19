@@ -10,35 +10,44 @@
 
   const PANEL_URL = 'https://cazuzaleo89-netizen.github.io/projetofiscal/';
 
-  // ── Interceptador de API TEC (captura chamadas AJAX do próprio site) ────
-  // Roda em TODAS as páginas do TEC antes de qualquer return
-  const _tecApi = { headers: {}, base: null, paths: [] };
-  (function _setupInterceptor() {
-    const _oFetch = window.fetch;
-    window.fetch = function(input, init) {
-      const url = typeof input === 'string' ? input : (input?.url || '');
-      if (url && url.includes('tecconcursos')) {
-        const hdrs = init?.headers || {};
-        for (const k of Object.keys(hdrs)) {
-          if (/auth|token|csrf|bearer/i.test(k)) _tecApi.headers[k] = hdrs[k];
-        }
-        const pm = url.match(/\/(api|v\d+)\/(questoes?)[^/]/);
-        if (pm) {
-          const base = url.split('?')[0];
-          if (!_tecApi.paths.includes(base)) _tecApi.paths.push(base);
-          if (!_tecApi.base) _tecApi.base = base;
+  // ── Recebe dados do content_main.js (MAIN world) via CustomEvent ────────
+  // content_main.js intercepta o fetch/XHR REAL do Angular do TEC
+  const _tecApi = { base: null, paths: [], schema: null };
+  window.addEventListener('_pf_tec_api', ev => {
+    const d = ev.detail;
+    if (!d) return;
+    if (d.type === 'URL' && d.base) {
+      if (!_tecApi.paths.includes(d.base)) _tecApi.paths.push(d.base);
+      if (!_tecApi.base) {
+        _tecApi.base = d.base;
+        try { chrome.runtime.sendMessage({ type: 'STORE_TEC_API', base: d.base, full: d.full }); } catch(_) {}
+      }
+    }
+    if (d.type === 'DATA' && d.base && d.items?.length) {
+      _tecApi.base   = d.base;
+      _tecApi.schema = d;
+      try { chrome.runtime.sendMessage({ type: 'STORE_TEC_API', base: d.base, full: d.full, schema: d.items }); } catch(_) {}
+      // Corresponde questões capturadas ao reforço pendente
+      for (const entry of (typeof S !== 'undefined' ? S.reforcoQueue : [])) {
+        if (entry.fetched || entry.similares.length) continue;
+        const matKey = (entry.qi.materia || '').toLowerCase().slice(0, 7);
+        const matching = d.items.filter(q => {
+          if (!matKey) return true;
+          return (q.materia || '').toLowerCase().includes(matKey);
+        });
+        if (matching.length >= 2) {
+          entry.similares = matching.map(q => ({
+            qid: q.id, url: `https://www.tecconcursos.com.br/questoes/${q.id}`,
+            label: q.enunciado || `Questão #${q.id}`,
+            banca: q.banca, assunto: q.assunto, materia: q.materia, source: 'api-live',
+          }));
+          entry.loading = false;
+          entry.fetched = true;
+          if (typeof renderWidget === 'function') renderWidget();
         }
       }
-      return _oFetch.apply(this, arguments);
-    };
-    const _oOpen = XMLHttpRequest.prototype.open;
-    const _oHdr  = XMLHttpRequest.prototype.setRequestHeader;
-    XMLHttpRequest.prototype.open = function(m, u) { this._pfu = u; return _oOpen.apply(this, arguments); };
-    XMLHttpRequest.prototype.setRequestHeader = function(k, v) {
-      if ((this._pfu || '').includes('questoes') && /auth|token|csrf/i.test(k)) _tecApi.headers[k] = v;
-      return _oHdr.apply(this, arguments);
-    };
-  })();
+    }
+  });
 
   // ── Heartbeat para o painel detectar extensão ativa ──
   if (location.hostname === 'cazuzaleo89-netizen.github.io') {
@@ -528,8 +537,25 @@
     if (matM) info.materia = matM[1].replace(/\s*[××].*$/, '').trim();
     const assM = tx.match(/Assunto:\s*([^\n\r×]+)/i);
     if (assM) info.assunto = assM[1].replace(/\s*[××].*$/, '').trim();
+
+    // Lê hrefs dos links nativos do TEC (matéria e assunto são links clicáveis na página)
+    const allPageLinks = [...document.querySelectorAll('a[href*="tecconcursos"]')];
+    if (info.materia) {
+      const mLink = allPageLinks.find(a => (a.textContent||'').trim().toLowerCase() === info.materia.toLowerCase());
+      if (mLink) info.materiaUrl = mLink.href;
+    }
+    if (info.assunto) {
+      const aLink = allPageLinks.find(a => (a.textContent||'').trim().toLowerCase() === info.assunto.toLowerCase());
+      if (aLink) info.assuntoUrl = aLink.href;
+    }
+
     for (const p of [/Banca[:\s]+([A-ZÁÉÍÓÚ][^\n\r,·×]{2,25})/i, /Organiza[çc][aã]o[:\s]+([^\n\r,]{2,25})/i]) {
       const bm = tx.match(p); if (bm) { info.banca = bm[1].trim(); break; }
+    }
+    // Extrai banca da linha de referência: "#2154055 FCC - 2022 - Analista..."
+    if (!info.banca) {
+      const refM = tx.match(/#\d{5,9}\s+([\w\-]{2,15})\s*[-–]\s*20\d\d/);
+      if (refM) info.banca = refM[1].trim();
     }
     if (!info.banca) {
       const el = document.querySelector('[data-banca],[class*="banca-nome"],[class*="banca_nome"]');
@@ -1211,7 +1237,7 @@
             S.stats.erros = Math.max(S.stats.erros, S.localErr);
             S.stats.resolved = S.localAce + S.localErr;
             setQuestionResult(curPos, 'wrong', qi);
-            addToReforcoQueue({ qid: qi.qid, url: qi.url, materia: qi.materia, assunto: qi.assunto, banca: qi.banca });
+            addToReforcoQueue({ qid: qi.qid, url: qi.url, materia: qi.materia, assunto: qi.assunto, banca: qi.banca, materiaUrl: qi.materiaUrl, assuntoUrl: qi.assuntoUrl });
             trackFadiga('wrong');
             renderWidget();
             send('wrong_fast', qi);
@@ -1268,7 +1294,7 @@
       S.stats.erros = Math.max(S.stats.erros, S.localErr);
       S.stats.resolved = S.localAce + S.localErr;
       setQuestionResult(curPos, 'wrong', qi0);
-      addToReforcoQueue({ qid: qi0.qid, url: qi0.url, materia: qi0.materia, assunto: qi0.assunto, banca: qi0.banca });
+      addToReforcoQueue({ qid: qi0.qid, url: qi0.url, materia: qi0.materia, assunto: qi0.assunto, banca: qi0.banca, materiaUrl: qi0.materiaUrl, assuntoUrl: qi0.assuntoUrl });
       renderWidget();
       send('wrong_fast', qi0);
       toBg('QUESTION_WRONG', { qid: qi0.qid, url: qi0.url, materia: qi0.materia, assunto: qi0.assunto, desc: qi0.desc, timeSpent: qi0.timeSpent, pos: curPos, timestamp: Date.now() });
@@ -1534,6 +1560,29 @@
       return true;
     }
 
+    // — Estratégia 0: Usa links nativos do TEC (matéria/assunto URLs) via background tab
+    // Mais confiável: abre a própria página de filtro do TEC e extrai os IDs das questões retornadas
+    if (qi.assuntoUrl || qi.materiaUrl) {
+      try {
+        const filterUrl = qi.assuntoUrl || qi.materiaUrl;
+        const tabResult = await new Promise(resolve => {
+          const t = setTimeout(() => resolve(null), 14000);
+          try {
+            chrome.runtime.sendMessage(
+              { type: 'FIND_SIMILAR_TAB', url: filterUrl, qid: qi.qid, materia: qi.materia },
+              r => { clearTimeout(t); resolve(r || null); }
+            );
+          } catch(_) { clearTimeout(t); resolve(null); }
+        });
+        if (tabResult && Array.isArray(tabResult.similares)) {
+          for (const q of tabResult.similares) {
+            if (!seen.has(q.qid) && _isRelevant(q)) { seen.add(q.qid); found.push(q); }
+          }
+        }
+      } catch(_) {}
+    }
+    if (found.length >= 5) return found.slice(0, 6);
+
     // — Estratégia 1: Script tag JSON parsing — extrai APENAS questões do mesmo assunto/matéria
     try {
       for (const sc of document.querySelectorAll('script:not([src])')) {
@@ -1647,11 +1696,14 @@
   }
 
   function _tecFilterUrl(qi) {
+    // Usa o link nativo do TEC quando disponível (extraído do DOM da questão)
+    if (qi.assuntoUrl) return qi.assuntoUrl;
+    if (qi.materiaUrl) return qi.materiaUrl;
+    // Fallback: monta URL de filtro do TEC com os parâmetros que conhecemos
     const p = new URLSearchParams();
-    if (qi.materia) p.set('pf_materia', qi.materia);
-    if (qi.assunto) p.set('pf_assunto', qi.assunto);
-    if (qi.banca)   p.set('pf_banca',   qi.banca);
-    p.set('pf_caderno', ('Reforço ' + (qi.assunto || qi.materia || 'Painel Fiscal')).slice(0, 55));
+    if (qi.materia) p.set('materia', qi.materia);
+    if (qi.assunto) p.set('assunto', qi.assunto);
+    if (qi.banca)   p.set('banca',   qi.banca);
     return 'https://www.tecconcursos.com.br/questoes/filtrar?' + p.toString();
   }
 

@@ -1241,6 +1241,69 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         return;
       }
 
+      // ── TEC API: salva/retorna endpoint descoberto pelo MAIN world script ──
+      case 'STORE_TEC_API': {
+        const stored = { base: msg.base, full: msg.full, schema: msg.schema || null, storedAt: Date.now() };
+        await setStorage({ tec_api_info: stored });
+        sendResponse({ ok: true });
+        return;
+      }
+      case 'GET_TEC_API': {
+        const { tec_api_info = null } = await getStorage({ tec_api_info: null });
+        sendResponse({ data: tec_api_info });
+        return;
+      }
+
+      // ── Abre TEC em background tab, aguarda render Angular, extrai questões ─
+      case 'FIND_SIMILAR_TAB': {
+        const filterUrl = msg.url;
+        const excludeQid = String(msg.qid || '');
+        const materia = (msg.materia || '').toLowerCase();
+
+        if (!filterUrl || !filterUrl.includes('tecconcursos')) {
+          sendResponse({ similares: [] });
+          return;
+        }
+        try {
+          const tab = await new Promise(r => chrome.tabs.create({ url: filterUrl, active: false }, r));
+          // Aguarda Angular renderizar (~5s)
+          await new Promise(r => setTimeout(r, 5000));
+
+          const results = await chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            func: (excludeQid, materia) => {
+              const links = [...document.querySelectorAll('a[href*="/questoes/"]')];
+              const seen = new Set(excludeQid ? [excludeQid] : []);
+              const found = [];
+              for (const a of links) {
+                const m = (a.href || '').match(/\/questoes\/(\d{5,9})/);
+                if (!m || seen.has(m[1])) continue;
+                seen.add(m[1]);
+                const row = a.closest('[class*="questao"],[class*="item"],[class*="card"],[class*="list"]') || a.parentElement;
+                const rowText = (row ? (row.innerText || '') : '').toLowerCase();
+                if (materia && rowText.length > 20 && !rowText.includes(materia.slice(0, 8))) continue;
+                const enunciado = (row ? (row.innerText || '') : a.textContent || '').trim().slice(0, 120);
+                found.push({
+                  qid: m[1],
+                  url: `https://www.tecconcursos.com.br/questoes/${m[1]}`,
+                  label: enunciado || 'Questão #' + m[1],
+                });
+                if (found.length >= 6) break;
+              }
+              return found;
+            },
+            args: [excludeQid, materia],
+          });
+
+          await chrome.tabs.remove(tab.id).catch(() => {});
+          const similares = results?.[0]?.result || [];
+          sendResponse({ similares });
+        } catch (_) {
+          sendResponse({ similares: [] });
+        }
+        return;
+      }
+
       // ── Status geral ──────────────────────────────────────────────────────
       case 'GET_STATUS':
         sendResponse({ filaCount, panelTabId, tecTabId });
