@@ -15,22 +15,29 @@
   //        /questoes (listagem Angular), /materias/.../questoes, etc.
   function _isQuestaoUrl(url) {
     if (!url || !url.includes('tecconcursos.com.br')) return false;
-    return /\/(questoes?|questao)(\/|\?|$)/i.test(url) ||
+    return /\/(questoes?|questao)(\/\d|\/?\?|$)/i.test(url) ||
            /\/(api|v\d+)\/(questoes?|search|buscar|filtrar)/i.test(url) ||
            /\/materias?\/[^/]+\/questoes/i.test(url) ||
-           /\/assuntos?\/[^/]+\/questoes/i.test(url);
+           /\/assuntos?\/[^/]+\/questoes/i.test(url) ||
+           /\/questoes?\/\d{4,}/i.test(url);
   }
 
   function _parseItems(data) {
-    const raw = Array.isArray(data) ? data
-      : (data.data || data.questoes || data.items || data.results || data.content || []);
+    // Suporta: array de questões, { data: [...] }, { questoes: [...] }, ou objeto único
+    let raw = Array.isArray(data) ? data
+      : (data.data || data.questoes || data.items || data.results || data.content || null);
+    // Objeto único (resposta de /api/questoes/ID)
+    if (!raw && data && (data.id || data.questao_id)) raw = [data];
     if (!Array.isArray(raw) || !raw.length) return [];
     return raw.slice(0, 10).map(q => ({
-      id:       String(q.id || q.questao_id || q.questaoId || ''),
-      materia:  q.materia?.nome  || q.materia  || q.disciplina?.nome || q.disciplina || '',
-      assunto:  q.assunto?.nome  || q.assunto  || '',
-      banca:    q.banca?.nome    || q.banca?.sigla || q.banca || '',
-      enunciado:(q.enunciado     || q.texto    || q.descricao || '').slice(0, 150),
+      id:         String(q.id || q.questao_id || q.questaoId || ''),
+      materia_id: String(q.materia?.id  || q.materia_id  || ''),
+      assunto_id: String(q.assunto?.id  || q.assunto_id  || ''),
+      banca_id:   String(q.banca?.id    || q.banca_id    || ''),
+      materia:    q.materia?.nome || q.materia || q.disciplina?.nome || q.disciplina || '',
+      assunto:    q.assunto?.nome || q.assunto || '',
+      banca:      q.banca?.nome   || q.banca?.sigla || q.banca || '',
+      enunciado:  (q.enunciado || q.texto || q.descricao || '').slice(0, 150),
     })).filter(q => q.id);
   }
 
