@@ -1676,41 +1676,37 @@
     }
     if (found.length >= 5) return found.slice(0, 6);
 
-    // ── Estratégia B2: URL do assunto/matéria como endpoint JSON ─────────────
-    // O Angular do TEC responde com JSON quando se passa Accept: application/json
-    const pageJsonUrl = qi.assuntoUrl || qi.materiaUrl;
-    if (pageJsonUrl) {
+    // ── Estratégia B2: variações do path do assunto como endpoint de API ──────
+    // Ex: assuntoUrl=/materias/123/assuntos/456/questoes →
+    //     tenta /api/materias/123/assuntos/456/questoes, /api/v1/..., etc.
+    const refPath = (qi.assuntoUrl || qi.materiaUrl || '').replace(/^https?:\/\/[^/]+/, '').replace(/\?.*/, '');
+    const subPath = refPath.match(/\/(materias\/\d+(?:\/assuntos\/\d+)?\/questoes)/)?.[1];
+    const b2Eps = [];
+    if (subPath) {
+      b2Eps.push(`/api/${subPath}`, `/api/v1/${subPath}`, `/api/v2/${subPath}`);
+    }
+    if (qi.assuntoUrl || qi.materiaUrl) {
+      b2Eps.push(qi.assuntoUrl || qi.materiaUrl);
+    }
+    for (const ep of b2Eps) {
       try {
-        const res = await fetch(pageJsonUrl, {
+        const p = new URLSearchParams({ per_page: '10', page: '1' });
+        const res = await fetch(`${ep}?${p}`, {
           credentials: 'include',
           headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
           signal: AbortSignal.timeout(6000),
         });
-        if (res.ok && (res.headers.get('content-type') || '').includes('json')) {
-          const data = await res.json();
-          const items = Array.isArray(data) ? data : (data.data || data.questoes || data.items || data.results || []);
-          for (const q of _normalize(items, 'page-json')) {
+        if (!res.ok || !(res.headers.get('content-type') || '').includes('json')) continue;
+        const data = await res.json();
+        const items = Array.isArray(data) ? data : (data.data || data.questoes || data.items || data.results || []);
+        if (items.length >= 1) {
+          for (const q of _normalize(items, 'api-path')) {
             if (_isRelevant(q)) { seen.add(q.qid); found.push(q); }
           }
+          if (found.length >= 3) break;
         }
       } catch(_) {}
     }
-    if (found.length >= 5) return found.slice(0, 6);
-
-    // ── Estratégia B3: raspar links /questoes/ID visíveis no DOM atual ───────
-    try {
-      const domLinks = document.querySelectorAll('a[href*="/questoes/"]');
-      for (const a of domLinks) {
-        const m = (a.href || '').match(/\/questoes\/(\d{5,9})/);
-        if (!m) continue;
-        const id = m[1];
-        if (seen.has(id) || id === qi.qid) continue;
-        seen.add(id);
-        const label = (a.textContent || '').trim().slice(0, 120) || `Questão #${id}`;
-        found.push({ qid: id, url: `https://www.tecconcursos.com.br/questoes/${id}`, label, materia: qi.materia, assunto: qi.assunto, banca: qi.banca, source: 'dom' });
-        if (found.length >= 6) break;
-      }
-    } catch(_) {}
     if (found.length >= 5) return found.slice(0, 6);
 
     // ── Estratégia C: Script tag JSON (dados do Angular já na página) ────────
