@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "Painel Fiscal — TEC Automator",
   "short_name": "TEC Automator",
-  "version": "2.2.0",
-  "description": "Rastreia acertos/erros no TecConcursos, captura ranking de grupo, exibe grade visual de questões e envia erros para revisão com repetição espaçada (SM-2).",
+  "version": "2.3.0",
+  "description": "Rastreia acertos/erros no TecConcursos, captura ranking, exibe grade de questões, reforço inteligente via filtro TEC e repetição espaçada (SM-2).",
   "permissions": [
     "storage",
     "notifications",

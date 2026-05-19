@@ -157,6 +157,69 @@
     return;
   }
 
+  // ── Auto-fill: página de filtro TEC (questoes/filtrar) ──────────────────
+  if (location.pathname.includes('/questoes/filtrar')) {
+    const _pfp = new URLSearchParams(location.search);
+    const _pfMateria  = _pfp.get('pf_materia');
+    const _pfAssunto  = _pfp.get('pf_assunto');
+    const _pfKeywords = _pfp.get('pf_keywords');
+    const _pfCaderno  = _pfp.get('pf_caderno');
+
+    if (_pfMateria || _pfAssunto || _pfKeywords) {
+      function _pfFiltBanner() {
+        if (document.getElementById('_pfFiltBanner')) return;
+        const label = _pfAssunto || _pfMateria || _pfKeywords || 'Reforço';
+        const bn = document.createElement('div');
+        bn.id = '_pfFiltBanner';
+        bn.style.cssText = `
+          position:fixed;top:0;left:0;right:0;z-index:2147483647;
+          background:linear-gradient(135deg,#1e1b4b,#312e81);
+          border-bottom:2px solid #818cf8;padding:10px 20px;
+          display:flex;align-items:center;gap:12px;
+          font-family:-apple-system,BlinkMacSystemFont,sans-serif;
+          box-shadow:0 4px 24px rgba(0,0,0,.4);`;
+        bn.innerHTML = `
+          <span style="font-size:18px;">🎯</span>
+          <div style="flex:1;">
+            <div style="font-size:10px;font-weight:800;color:#a5b4fc;letter-spacing:.6px;text-transform:uppercase;">PAINEL FISCAL — REFORÇO INTELIGENTE</div>
+            <div style="font-size:12px;color:#e2e8f0;margin-top:2px;"><strong>${label}</strong> — filtre as questões e clique em <em>Gerar Caderno</em></div>
+          </div>
+          <button id="_pfFiltBannerX" style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#e2e8f0;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;">✕ Fechar</button>`;
+        document.body.style.marginTop = '52px';
+        document.body.prepend(bn);
+        document.getElementById('_pfFiltBannerX').onclick = () => { bn.remove(); document.body.style.marginTop = ''; };
+      }
+
+      function _pfFiltFill() {
+        let filled = false;
+        if (_pfKeywords) {
+          const inp = document.querySelector('input[placeholder*="enunciado" i], input[placeholder*="texto" i], input[type="search"]');
+          if (inp && !inp.value) {
+            inp.value = _pfKeywords;
+            ['input','change'].forEach(ev => inp.dispatchEvent(new Event(ev, { bubbles: true })));
+            filled = true;
+          }
+        }
+        if (_pfCaderno) {
+          const ci = document.querySelector('input[placeholder*="aderno" i], input[name*="caderno" i]');
+          if (ci && ci.value === 'Caderno de Estudo') {
+            ci.value = _pfCaderno;
+            ['input','change'].forEach(ev => ci.dispatchEvent(new Event(ev, { bubbles: true })));
+          }
+        }
+        if (filled) _pfFiltBanner();
+        return filled;
+      }
+
+      _pfFiltBanner();
+      [500, 1500, 3500, 7000].forEach(d => setTimeout(_pfFiltFill, d));
+      const _fObs = new MutationObserver(_pfFiltFill);
+      _fObs.observe(document.body, { childList: true, subtree: true });
+      setTimeout(() => _fObs.disconnect(), 20000);
+    }
+    return;
+  }
+
   // ════════════════════════════════════════════════════════
   // ESTADO
   // ════════════════════════════════════════════════════════
@@ -182,6 +245,7 @@
     localErr: 0,
     consecutiveWrong: 0,    // fadiga cognitiva
     recentResults: [],       // últimos 10 resultados (para queda de taxa)
+    lastWrong: null,         // última questão errada {qid,url,materia,assunto}
     // Stats do painel (via postMessage)
     stats: { elapsed: 0, acertos: 0, erros: 0, resolved: 0, running: false, paused: false, discName: '', dificuldade: '' },
     // Fila de revisão
@@ -688,6 +752,11 @@
       ._pf2due:hover{background:rgba(99,102,241,.14);}
       ._pf2due-dot{width:5px;height:5px;border-radius:50%;background:#6366f1;flex-shrink:0;}
       ._pf2due-txt{flex:1;font-size:10px;color:#818cf8;font-weight:700;}
+      ._pf2reforco{
+        display:flex;align-items:center;gap:6px;
+        background:rgba(99,102,241,.06);border:1px solid rgba(99,102,241,.2);
+        border-radius:7px;padding:5px 9px;margin-bottom:8px;
+      }
     `;
     document.head.appendChild(st);
   }
@@ -830,6 +899,11 @@
         ${hubMini}
         ${dueBanner}
         ${filaBanner}
+        ${S.lastWrong ? `<div class="_pf2reforco" id="_pf2reforcoRow">
+          <span style="font-size:11px;">📚</span>
+          <span style="flex:1;font-size:10.5px;color:#a5b4fc;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${(S.lastWrong.assunto || S.lastWrong.materia || 'Última errada').slice(0,32)}</span>
+          <button id="_pf2reforcoBtn" style="background:rgba(99,102,241,.25);border:1px solid rgba(99,102,241,.5);color:#a5b4fc;border-radius:6px;padding:2px 7px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap;">Similares ↗</button>
+        </div>` : ''}
         <div class="_pf2nav">
           <button class="_pf2navbtn" id="_pf2ant">← Ant</button>
           <button class="_pf2navbtn primary" id="_pf2prox">Prox →</button>
@@ -889,6 +963,10 @@
     // Banner de fila
     const filaRow = document.getElementById('_pf2filarow');
     if (filaRow && S.fila[0]) filaRow.onclick = () => window.open(S.fila[0].link || S.fila[0].url, '_self');
+
+    // Reforço Inteligente
+    const reforcoBtn = document.getElementById('_pf2reforcoBtn');
+    if (reforcoBtn) reforcoBtn.onclick = ev => { ev.stopPropagation(); openReforcoFilter(S.lastWrong); };
 
     // Hub mini: clica para abrir a questão
     const hubMinEl = document.getElementById('_pf2hubmin');
@@ -1051,6 +1129,7 @@
             S.stats.erros = Math.max(S.stats.erros, S.localErr);
             S.stats.resolved = S.localAce + S.localErr;
             setQuestionResult(curPos, 'wrong', qi);
+            S.lastWrong = { qid: qi.qid, url: qi.url, materia: qi.materia, assunto: qi.assunto };
             trackFadiga('wrong');
             renderWidget();
             send('wrong_fast', qi);
@@ -1107,6 +1186,7 @@
       S.stats.erros = Math.max(S.stats.erros, S.localErr);
       S.stats.resolved = S.localAce + S.localErr;
       setQuestionResult(curPos, 'wrong', qi0);
+      S.lastWrong = { qid: qi0.qid, url: qi0.url, materia: qi0.materia, assunto: qi0.assunto };
       renderWidget();
       send('wrong_fast', qi0);
       toBg('QUESTION_WRONG', { qid: qi0.qid, url: qi0.url, materia: qi0.materia, assunto: qi0.assunto, desc: qi0.desc, timeSpent: qi0.timeSpent, pos: curPos, timestamp: Date.now() });
@@ -1318,6 +1398,18 @@
       timerRunning = false;
       renderWidget();
     };
+  }
+
+  // ── Reforço Inteligente: abre filtro TEC com questões similares ─────────
+  function openReforcoFilter(qi) {
+    if (!qi) return;
+    const base = 'https://www.tecconcursos.com.br/questoes/filtrar';
+    const p = new URLSearchParams();
+    if (qi.materia)  p.set('pf_materia', qi.materia);
+    if (qi.assunto)  p.set('pf_assunto', qi.assunto);
+    const cadernoName = 'Reforço ' + (qi.assunto || qi.materia || 'Painel Fiscal');
+    p.set('pf_caderno', cadernoName.slice(0, 60));
+    window.open(base + '?' + p.toString(), '_blank');
   }
 
   // Alt+R → próxima da fila

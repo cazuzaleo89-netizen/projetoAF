@@ -1216,6 +1216,18 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         sendResponse({ ok: true });
         return;
 
+      // ── Reforço Inteligente: salva/retorna alvo de filtro ────────────────
+      case 'SET_REFORCO_TARGET':
+        await setStorage({ reforco_target: msg.data });
+        sendResponse({ ok: true });
+        return;
+
+      case 'GET_REFORCO_TARGET': {
+        const { reforco_target = null } = await getStorage({ reforco_target: null });
+        sendResponse({ data: reforco_target });
+        return;
+      }
+
       // ── Ranking TEC: salva dados do scraper ──────────────────────────────
       case 'SAVE_TEC_RANKING':
         await setStorage({ tec_ranking: msg.data });
