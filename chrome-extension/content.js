@@ -1554,11 +1554,34 @@
     renderWidget();
 
     const assunto = (qi.assunto || qi.materia || '').slice(0, 30);
-    _pfRqToast(`<span style="font-size:14px">📚</span> Buscando similares: <strong>${assunto}</strong>…`);
+    _pfRqToast(`<span style="font-size:14px">📚</span> Buscando similares no filtro do TEC: <strong>${assunto}</strong>…`);
 
     _findSimilarQuestions(qi)
-      .then(found => { entry.similares = found || []; entry.loading = false; entry.fetched = true; renderWidget(); })
+      .then(found => {
+        entry.similares = found || [];
+        entry.loading = false;
+        entry.fetched = true;
+        const ov = document.getElementById('_pfRodadaOverlay');
+        if (ov) { ov.remove(); showRodadaReforco(); }
+        else renderWidget();
+        if (found && found.length > 0) {
+          _pfRqToast(`<span style="font-size:14px">🎯</span> ${found.length} questões similares encontradas!`);
+        }
+      })
       .catch(() => { entry.loading = false; entry.fetched = true; renderWidget(); });
+  }
+
+  // Abre o filtro do TEC em background, seleciona matéria/assunto e clica "GERAR CADERNO"
+  async function _generateReforcoCaderno(qi) {
+    return new Promise(resolve => {
+      const timeout = setTimeout(() => resolve(null), 30000);
+      try {
+        chrome.runtime.sendMessage(
+          { type: 'GENERATE_CADERNO_REFORCO', materia: qi.materia, assunto: qi.assunto, banca: qi.banca, qid: qi.qid },
+          r => { clearTimeout(timeout); resolve(r?.url || null); }
+        );
+      } catch(_) { clearTimeout(timeout); resolve(null); }
+    });
   }
 
   async function _findSimilarQuestions(qi) {
@@ -1807,26 +1830,33 @@
               ${q.keywords ? `<div style="font-size:9px;color:#334155;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">🔑 ${q.keywords}</div>` : ''}
             </div>
           </div>
-          ${entry.loading
-            ? `<div style="display:flex;align-items:center;gap:8px;padding:8px;background:rgba(99,102,241,.07);border-radius:8px;margin-bottom:8px;">
-                <div style="width:12px;height:12px;border:2px solid rgba(99,102,241,.25);border-top-color:#6366f1;border-radius:50%;animation:_pfSpin 1s linear infinite;flex-shrink:0;"></div>
-                <span style="font-size:10px;color:#64748b;">Buscando questões similares no banco do TEC…</span>
+          ${entry.cadernoLoading
+            ? `<div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.2);border-radius:10px;margin-bottom:8px;">
+                <div style="width:14px;height:14px;border:2px solid rgba(99,102,241,.3);border-top-color:#6366f1;border-radius:50%;animation:_pfSpin 1s linear infinite;flex-shrink:0;"></div>
+                <span style="font-size:10.5px;color:#818cf8;font-weight:600;">Gerando caderno de reforço no TEC…</span>
               </div>`
-            : hasSim
-              ? `<div style="font-size:9.5px;color:#6366f1;font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px;">
-                  📚 ${entry.similares.length} similar${entry.similares.length>1?'es':''} de <strong style="color:#a5b4fc">${q.assunto||q.materia||''}</strong>
-                </div>${simRows}`
-              : `<div style="display:flex;align-items:center;gap:6px;padding:8px;background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);border-radius:8px;margin-bottom:6px;">
-                  <span style="font-size:13px;">🔍</span>
-                  <span style="font-size:10px;color:#92400e;">API do TEC ainda não mapeada para este assunto. Use o filtro abaixo — a extensão preenche os campos automaticamente.</span>
-                </div>`
+            : entry.cadernoUrl
+              ? `<a href="${entry.cadernoUrl}" target="_blank"
+                  style="display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;margin-bottom:8px;
+                  background:linear-gradient(135deg,#4338ca,#7c3aed);border:none;color:#fff;
+                  border-radius:10px;font-size:12px;font-weight:800;text-decoration:none;letter-spacing:.3px;">
+                  🎯 Abrir Caderno de Reforço — ${(q.assunto||q.materia||'').slice(0,28)}
+                </a>`
+              : `<a href="${_tecFilterUrl(q)}" target="_blank"
+                  style="display:flex;align-items:center;justify-content:center;gap:6px;padding:10px 12px;margin-bottom:8px;
+                  background:rgba(20,18,48,.8);border:1px solid rgba(99,102,241,.35);color:#818cf8;
+                  border-radius:10px;font-size:10.5px;font-weight:700;text-decoration:none;">
+                  📋 Filtrar Questões no TEC (manual)
+                </a>`
           }
-          <a href="${_tecFilterUrl(q)}" target="_blank"
-            style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:8px;
-            background:rgba(20,18,48,.8);border:1px solid rgba(99,102,241,.35);color:#818cf8;
-            border-radius:8px;padding:7px;font-size:10.5px;font-weight:700;text-decoration:none;">
-            📋 Gerar Caderno de Reforço no TEC
-          </a>
+          ${hasSim
+            ? `<div style="font-size:9.5px;color:#6366f1;font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px;">
+                📚 ${entry.similares.length} prévia${entry.similares.length>1?'s':''}
+               </div>${simRows}`
+            : entry.loading
+              ? `<div style="font-size:9px;color:#334155;padding:4px 0;">Buscando prévia de questões…</div>`
+              : ''
+          }
         </div>`;
     }).join('');
 
