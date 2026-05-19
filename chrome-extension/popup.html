@@ -63,8 +63,8 @@ body{
   background:#141728;
 }
 .tab{
-  flex:1;padding:9px 4px;font-size:11px;font-weight:700;
-  color:#475569;cursor:pointer;text-align:center;letter-spacing:.4px;
+  flex:1;padding:9px 2px;font-size:10px;font-weight:700;
+  color:#475569;cursor:pointer;text-align:center;letter-spacing:.3px;
   border-bottom:2px solid transparent;transition:all .15s;
 }
 .tab:hover{color:#94a3b8;}
@@ -239,21 +239,18 @@ body{
 .qbtn.acertei:hover{background:rgba(22,163,74,.25);}
 .qbtn.errei{background:rgba(185,28,28,.15);border-color:#ef444444;color:#ef4444;}
 .qbtn.errei:hover{background:rgba(185,28,28,.25);}
-/* ── Similar questions panel ─── */
-.sim-panel{margin-top:8px;border-top:1px solid rgba(99,102,241,.18);padding-top:7px;}
-.sim-toggle{display:flex;align-items:center;gap:5px;font-size:9px;font-weight:800;color:#818cf8;letter-spacing:.8px;cursor:pointer;padding:2px 0;user-select:none;}
-.sim-toggle:hover{color:#a5b4fc;}
-.sim-list{margin-top:5px;display:flex;flex-direction:column;gap:4px;}
-.sim-item{display:flex;align-items:flex-start;gap:6px;background:#0c1020;border:1px solid rgba(99,102,241,.15);border-radius:7px;padding:6px 8px;font-size:10px;}
-.sim-imp{font-size:9px;flex-shrink:0;margin-top:1px;}
-.sim-body{flex:1;min-width:0;}
-.sim-assunto{font-size:8.5px;color:#6366f1;font-weight:700;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.sim-desc{color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.sim-stats{font-size:8px;color:#374151;margin-top:2px;}
-.sim-open{flex-shrink:0;background:none;border:1px solid rgba(99,102,241,.25);border-radius:5px;color:#818cf8;font-size:9px;font-weight:700;cursor:pointer;padding:2px 6px;}
-.sim-open:hover{background:rgba(99,102,241,.15);}
-.sim-block-btn{width:100%;margin-top:6px;padding:5px;border-radius:7px;border:1px solid rgba(99,102,241,.3);background:rgba(99,102,241,.08);color:#818cf8;font-size:9px;font-weight:800;cursor:pointer;letter-spacing:.5px;}
-.sim-block-btn:hover{background:rgba(99,102,241,.18);}
+
+/* ── SEÇÃO: Análise ── */
+.cov-bar-wrap{display:flex;align-items:center;gap:7px;margin-bottom:6px;}
+.cov-bar-ref{font-size:10px;color:#94a3b8;width:72px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cov-bar-bg{flex:1;height:7px;background:#1e2338;border-radius:4px;overflow:hidden;}
+.cov-bar-fill{height:100%;border-radius:4px;transition:width .4s;}
+.cov-bar-pct{font-size:10px;font-weight:700;width:30px;text-align:right;flex-shrink:0;}
+.cov-mat-hdr{font-size:9.5px;color:#6366f1;font-weight:800;letter-spacing:.7px;margin:10px 0 5px;}
+.conf-item{background:#20243a;border:1px solid rgba(239,68,68,.2);border-radius:8px;padding:8px 10px;margin-bottom:6px;}
+.conf-pair{font-size:11px;color:#fca5a5;font-weight:700;margin-bottom:2px;}
+.conf-meta{font-size:10px;color:#64748b;}
+.cluster-hdr{font-size:10px;font-weight:800;color:#818cf8;letter-spacing:.6px;margin:10px 0 6px;padding:5px 8px;background:rgba(99,102,241,.08);border-radius:6px;border-left:3px solid #6366f1;}
 
 /* ── SEÇÃO: Histórico ── */
 .hist-empty{text-align:center;padding:30px;color:#475569;}
@@ -419,6 +416,7 @@ body{
 <div class="tabs">
   <div class="tab active" data-tab="hoje">HOJE</div>
   <div class="tab" data-tab="revisao">REVISÃO</div>
+  <div class="tab" data-tab="analise">ANÁLISE</div>
   <div class="tab" data-tab="historico">HISTÓRICO</div>
   <div class="tab" data-tab="config">CONFIG</div>
 </div>
@@ -462,9 +460,6 @@ body{
     <span class="goal-val" id="goal-progress">0 / 30</span>
   </div>
   <div class="goal-bar"><div class="goal-bar-fill" id="goal-fill" style="width:0%"></div></div>
-
-  <!-- Alerta de fadiga -->
-  <div id="fatigue-alert-pop" style="display:none;background:linear-gradient(135deg,rgba(251,191,36,.1),rgba(239,68,68,.06));border:1px solid rgba(251,191,36,.4);border-radius:9px;padding:8px 11px;font-size:10px;font-weight:700;color:#fbbf24;margin-bottom:10px;cursor:pointer;" onclick="this.style.display='none'"></div>
 
   <!-- Grid de stats -->
   <div class="stats-grid">
@@ -512,44 +507,6 @@ body{
   <!-- Gráfico semanal -->
   <div id="week-chart"></div>
 
-  <!-- Gráfico por hora -->
-  <div id="hourly-chart-wrap" style="margin-bottom:10px;">
-    <div style="font-size:8.5px;font-weight:800;letter-spacing:1.5px;color:#475569;text-transform:uppercase;margin-bottom:5px;display:flex;align-items:center;gap:5px;">
-      🕐 DESEMPENHO POR HORA
-      <span style="display:flex;gap:3px;margin-left:auto;">
-        <button id="hr-btn-q"    style="font-size:8px;padding:1px 5px;border-radius:4px;border:1px solid rgba(74,108,247,.4);background:rgba(74,108,247,.15);color:#6366f1;cursor:pointer;font-weight:700;" onclick="hrPopMode('q')">Q</button>
-        <button id="hr-btn-rate" style="font-size:8px;padding:1px 5px;border-radius:4px;border:1px solid rgba(255,255,255,.1);background:transparent;color:#475569;cursor:pointer;font-weight:700;" onclick="hrPopMode('rate')">%</button>
-      </span>
-    </div>
-    <div id="pop-hourly-chart" style="height:52px;"></div>
-    <div id="pop-hourly-insight" style="font-size:8.5px;color:#475569;margin-top:3px;text-align:center;min-height:1em;"></div>
-  </div>
-
-  <!-- Timer Huberman Manual -->
-  <div style="border-top:1px solid rgba(167,139,250,.18);padding-top:10px;margin-bottom:2px;">
-    <div style="font-size:8.5px;font-weight:800;letter-spacing:1.5px;color:#a78bfa;text-transform:uppercase;margin-bottom:7px;">🧠 REVISÃO HUBERMAN MANUAL</div>
-    <div style="display:flex;gap:4px;margin-bottom:6px;flex-wrap:wrap;">
-      <button class="s-btn" onclick="manHubStart(5,'5 min')" style="color:#a78bfa;border-color:rgba(167,139,250,.3);">5 min</button>
-      <button class="s-btn" onclick="manHubStart(9,'9 min')" style="color:#a78bfa;border-color:rgba(167,139,250,.3);">9 min</button>
-      <button class="s-btn" onclick="manHubStart(11,'11 min')" style="color:#a78bfa;border-color:rgba(167,139,250,.3);">11 min ⭐</button>
-      <input id="man-hub-inp" type="number" min="1" max="120" placeholder="min" style="width:42px;background:#0f1220;border:1px solid rgba(167,139,250,.25);border-radius:7px;color:#a78bfa;font-size:10px;font-weight:700;padding:4px 5px;outline:none;text-align:center;">
-      <button class="s-btn" onclick="manHubStart(parseInt(document.getElementById('man-hub-inp').value)||15,'Personalizado')" style="color:#a78bfa;border-color:rgba(167,139,250,.3);">+</button>
-    </div>
-    <div id="man-hub-active" style="display:none;align-items:center;gap:6px;background:rgba(167,139,250,.08);border:1px solid rgba(167,139,250,.28);border-radius:9px;padding:7px 10px;margin-bottom:5px;">
-      <span id="man-hub-lbl" style="font-size:7.5px;letter-spacing:1.5px;text-transform:uppercase;color:#a78bfa;font-weight:700;"></span>
-      <span id="man-hub-display" style="font-family:'SF Mono','Courier New',monospace;font-size:1.1rem;font-weight:800;color:#e2e8f0;flex:1;text-align:center;">00:00</span>
-      <button class="s-btn" onclick="manHubCancel()" style="color:#f87171;border-color:rgba(248,113,113,.3);font-size:9px;padding:3px 7px;">✕</button>
-    </div>
-    <div id="man-hub-result" style="display:none;padding:7px 9px;background:rgba(167,139,250,.06);border:1px solid rgba(167,139,250,.2);border-radius:9px;">
-      <div style="font-size:8px;color:#a78bfa;font-weight:700;letter-spacing:1px;margin-bottom:5px;">COMO FOI A REVISÃO?</div>
-      <div style="display:flex;gap:5px;">
-        <button onclick="manHubResult(true)" style="flex:1;padding:5px;border-radius:7px;border:1px solid rgba(34,197,94,.3);background:rgba(34,197,94,.12);color:#22c55e;font-size:10px;font-weight:800;cursor:pointer;font-family:inherit;">✓ Lembrei</button>
-        <button onclick="manHubResult(false)" style="flex:1;padding:5px;border-radius:7px;border:1px solid rgba(248,113,113,.3);background:rgba(248,113,113,.1);color:#f87171;font-size:10px;font-weight:800;cursor:pointer;font-family:inherit;">✕ Esqueci</button>
-        <button onclick="document.getElementById('man-hub-result').style.display='none'" style="padding:5px 8px;border-radius:7px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);color:#475569;font-size:10px;cursor:pointer;font-family:inherit;">–</button>
-      </div>
-    </div>
-  </div>
-
 </div>
 
 <!-- ══════════════════════════════════════════════ -->
@@ -557,6 +514,7 @@ body{
 <!-- ══════════════════════════════════════════════ -->
 <div class="panel" id="panel-revisao">
   <button id="btn-simulado" class="cfg-btn primary" style="margin-bottom:10px;">🎯 Simulado com Erros (10 questões)</button>
+  <div id="rev-prealert" style="display:none;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.3);border-radius:8px;padding:9px 11px;margin-bottom:9px;font-size:11px;color:#fbbf24;"></div>
   <div class="rev-header">
     <div class="rev-count"><strong id="due-count">0</strong> questões para revisar</div>
   </div>
@@ -566,6 +524,37 @@ body{
       <p>Nenhuma revisão pendente!<br>Continue resolvendo questões.</p>
     </div>
   </div>
+</div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- PAINEL: ANÁLISE                               -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="panel" id="panel-analise">
+  <!-- Pré-alerta de sessão -->
+  <div id="pre-alert-pop" style="display:none;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);border-radius:9px;padding:10px 12px;margin-bottom:10px;">
+    <div style="font-size:10px;font-weight:700;color:#ef4444;margin-bottom:4px;">⚠️ ALERTA PRÉ-SESSÃO</div>
+    <div id="pre-alert-pop-text" style="font-size:11px;color:#fca5a5;line-height:1.5;"></div>
+  </div>
+
+  <!-- Padrões de confusão -->
+  <div style="font-size:10px;color:#64748b;font-weight:700;letter-spacing:.8px;margin-bottom:7px;">🔀 PADRÕES DE CONFUSÃO</div>
+  <div id="confusion-list">
+    <div style="font-size:11px;color:#475569;padding:8px 0;">Ainda sem dados suficientes.<br>Resolva mais questões para detectar padrões.</div>
+  </div>
+
+  <div style="height:14px;"></div>
+
+  <!-- Score de cobertura por artigo -->
+  <div style="font-size:10px;color:#64748b;font-weight:700;letter-spacing:.8px;margin-bottom:7px;">📊 COBERTURA POR ARTIGO</div>
+  <div id="article-coverage-list">
+    <div style="font-size:11px;color:#475569;padding:8px 0;">Nenhuma questão com referência legal registrada ainda.</div>
+  </div>
+
+  <div style="height:14px;"></div>
+
+  <!-- Conceitos semânticos (Claude API) -->
+  <div style="font-size:10px;color:#64748b;font-weight:700;letter-spacing:.8px;margin-bottom:7px;">🤖 ANÁLISE SEMÂNTICA (CLAUDE)</div>
+  <div id="semantic-status" style="font-size:11px;color:#475569;padding:8px 0;">Configure a chave da API Claude em CONFIG para ativar análise semântica.</div>
 </div>
 
 <!-- ══════════════════════════════════════════════ -->
@@ -587,6 +576,12 @@ body{
   <div class="cfg-group">
     <label class="cfg-label">META DIÁRIA (questões)</label>
     <input class="cfg-input" type="number" id="cfg-goal" min="5" max="500" value="30">
+  </div>
+
+  <div class="cfg-group">
+    <label class="cfg-label">CHAVE API CLAUDE (opcional)</label>
+    <input class="cfg-input" type="password" id="cfg-claude-key" placeholder="sk-ant-..." autocomplete="off">
+    <div style="font-size:10px;color:#475569;margin-top:4px;">Habilita análise semântica de questões na aba ANÁLISE.</div>
   </div>
 
   <div class="cfg-group">

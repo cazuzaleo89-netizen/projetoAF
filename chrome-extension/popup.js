@@ -67,6 +67,7 @@ document.querySelectorAll('.tab').forEach(tab => {
     document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
     if (tab.dataset.tab === 'revisao' && appData) renderRevisao(appData);
     if (tab.dataset.tab === 'historico' && appData) renderHistorico(appData);
+    if (tab.dataset.tab === 'analise' && appData) renderAnalise(appData);
   });
 });
 
@@ -515,6 +516,9 @@ function qCardHtml(q, sessionMode) {
   const simBadge = q.relatedQuestions?.length
     ? `<span class="badge" style="background:rgba(99,102,241,.15);color:#818cf8;">📎 ${q.relatedQuestions.length} similares</span>`
     : '';
+  const semBadge = q.semanticConcepts?.concepts?.length
+    ? `<span class="badge" style="background:rgba(34,197,94,.1);color:#4ade80;" title="${q.semanticConcepts.concepts.slice(0,3).join(', ')}">🤖 ${q.semanticConcepts.concepts.length} conceitos</span>`
+    : '';
   const desc = (q.desc || 'Questão #' + q.qid).slice(0, 55);
   const url  = (q.url || '').replace(/'/g, "\\'");
   const assuntoHtml = q.assunto ? `<div style="font-size:9px;color:#6366f1;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${q.assunto}</div>` : '';
@@ -528,7 +532,7 @@ function qCardHtml(q, sessionMode) {
         <div class="qcard-desc" title="${q.desc || ''}">${desc}</div>
       </div>
     </div>
-    <div class="qcard-badges">${errBadge}${dateBadge}${difBadge}${simBadge}</div>
+    <div class="qcard-badges">${errBadge}${dateBadge}${difBadge}${simBadge}${semBadge}</div>
     <div class="qcard-btns">
       <button class="qbtn review" data-action="open-question" data-url="${url}">📖 Abrir</button>
       <button class="qbtn acertei" data-action="mark-review" data-qid="${q.qid}" data-quality="4">✓ Acertei</button>
@@ -635,15 +639,20 @@ function renderRevisao(data) {
     html += sessionErrors.map(q => qCardHtml(q, true)).join('');
   }
 
-  // 3. Seção SM-2 agendadas
+  // 3. Seção SM-2 agendadas — renderiza em clusters por assunto
   if (due.length > 0) {
     if (hubItems.length > 0 || sessionErrors.length > 0) {
       html += `<div style="font-size:10px;color:#475569;font-weight:700;letter-spacing:.8px;margin:10px 0 7px;">📅 AGENDADAS (SM-2)</div>`;
     }
-    html += due.map(q => qCardHtml(q, false)).join('');
+    if (data.clusteredReviews && data.clusteredReviews.length > 0) {
+      html += renderClusters(data.clusteredReviews);
+    } else {
+      html += due.map(q => qCardHtml(q, false)).join('');
+    }
   }
 
   document.getElementById('rev-list').innerHTML = html;
+  renderRevPreAlert(data.preAlert);
 }
 
 // ── Renderização: Histórico ─────────────────────────────────────────────────
@@ -701,7 +710,103 @@ function renderConfig(data) {
   document.getElementById('cfg-goal').value = cfgSettings.dailyGoal || 30;
   setToggle('notifications', cfgSettings.notifications !== false);
   setToggle('autoReveal', cfgSettings.autoReveal !== false);
+  const keyEl = document.getElementById('cfg-claude-key');
+  if (keyEl) keyEl.value = cfgSettings.claudeApiKey ? '••••••••' : '';
   renderQBankStats(data.questionBankStats);
+}
+
+// ── Renderização: Revisão com clusters e pré-alerta ─────────────────────────
+function renderRevPreAlert(preAlert) {
+  const el = document.getElementById('rev-prealert');
+  if (!el) return;
+  if (!preAlert || !preAlert.count) { el.style.display = 'none'; return; }
+  el.style.display = '';
+  el.innerHTML = `⚠️ <strong>${preAlert.count} questão(ões)</strong> de <em>${preAlert.materia}</em> aguardando revisão antes desta sessão.`;
+}
+
+function renderClusters(clusteredReviews) {
+  if (!clusteredReviews || !clusteredReviews.length) return '';
+  let html = '';
+  for (const cluster of clusteredReviews) {
+    if (cluster.items.length === 1) {
+      html += qCardHtml(cluster.items[0], false);
+    } else {
+      html += `<div class="cluster-hdr">📚 ${cluster.label} (${cluster.items.length} questões)</div>`;
+      html += cluster.items.map(q => qCardHtml(q, false)).join('');
+    }
+  }
+  return html;
+}
+
+// ── Renderização: Análise ────────────────────────────────────────────────────
+function renderAnalise(data) {
+  renderPreAlertAnalise(data.preAlert);
+  renderConfusionPatterns(data.confusionPatterns || []);
+  renderArticleCoverage(data.articleCoverage || {});
+  renderSemanticStatus(data.settings || {});
+}
+
+function renderPreAlertAnalise(preAlert) {
+  const el = document.getElementById('pre-alert-pop');
+  const txt = document.getElementById('pre-alert-pop-text');
+  if (!el || !txt) return;
+  if (!preAlert || !preAlert.count) { el.style.display = 'none'; return; }
+  el.style.display = '';
+  const items = (preAlert.items || []).map(i => `• ${i.assunto || i.desc || i.qid}`).join('<br>');
+  txt.innerHTML = `<strong>${preAlert.count} questão(ões)</strong> pendente(s) de <em>${preAlert.materia}</em>:<br>${items}`;
+}
+
+function renderConfusionPatterns(patterns) {
+  const el = document.getElementById('confusion-list');
+  if (!el) return;
+  if (!patterns.length) {
+    el.innerHTML = '<div style="font-size:11px;color:#475569;padding:8px 0;">Ainda sem dados suficientes.<br>Erre pelo menos 3 questões relacionadas para detectar padrões.</div>';
+    return;
+  }
+  el.innerHTML = patterns.map(p => `
+    <div class="conf-item">
+      <div class="conf-pair">⚠️ ${p.a} ↔ ${p.b}</div>
+      <div class="conf-meta">${p.materia ? p.materia + ' · ' : ''}Confundido <strong>${p.count}×</strong></div>
+    </div>`).join('');
+}
+
+function renderArticleCoverage(coverage) {
+  const el = document.getElementById('article-coverage-list');
+  if (!el) return;
+  const allMats = Object.entries(coverage);
+  if (!allMats.length) {
+    el.innerHTML = '<div style="font-size:11px;color:#475569;padding:8px 0;">Nenhuma questão com referência legal registrada ainda.</div>';
+    return;
+  }
+  let html = '';
+  for (const [mat, refs] of allMats) {
+    const ranked = Object.entries(refs)
+      .map(([ref, v]) => ({ ref, ...v, total: v.correct + v.wrong, pct: v.correct + v.wrong > 0 ? Math.round(v.correct / (v.correct + v.wrong) * 100) : 0 }))
+      .filter(r => r.total > 0)
+      .sort((a, b) => a.pct - b.pct || b.total - a.total)
+      .slice(0, 8);
+    if (!ranked.length) continue;
+    html += `<div class="cov-mat-hdr">${mat.replace(/_/g, ' ').toUpperCase()}</div>`;
+    for (const r of ranked) {
+      const color = r.pct >= 70 ? '#22c55e' : r.pct >= 40 ? '#f59e0b' : '#ef4444';
+      html += `<div class="cov-bar-wrap">
+        <span class="cov-bar-ref" title="${r.ref}">${r.ref}</span>
+        <div class="cov-bar-bg"><div class="cov-bar-fill" style="width:${r.pct}%;background:${color};"></div></div>
+        <span class="cov-bar-pct" style="color:${color};">${r.pct}%</span>
+      </div>`;
+    }
+  }
+  el.innerHTML = html || '<div style="font-size:11px;color:#475569;padding:8px 0;">Sem artigos rastreados ainda.</div>';
+}
+
+function renderSemanticStatus(settings) {
+  const el = document.getElementById('semantic-status');
+  if (!el) return;
+  if (settings.claudeApiKey) {
+    el.innerHTML = '<span style="color:#22c55e;font-weight:700;">✓ API Claude configurada.</span> Conceitos semânticos são extraídos automaticamente ao errar questões.';
+  } else {
+    el.innerHTML = 'Configure a chave da API Claude em <strong>CONFIG → Chave API Claude</strong> para ativar análise semântica de conceitos jurídicos.';
+  }
 }
 
 function setToggle(id, on) {
@@ -768,6 +873,7 @@ async function loadAll() {
   try { renderRevisao(appData); }  catch(e) { console.error('renderRevisao', e); }
   try { renderHistorico(appData); }catch(e) { console.error('renderHistorico', e); }
   try { renderConfig(appData); }   catch(e) { console.error('renderConfig', e); }
+  try { renderAnalise(appData); }  catch(e) { /* */ }
   try { initPopTimer(appData.timer); } catch(e) { console.error('initPopTimer', e); }
   try { if (appData.pomodoro) initPomodoro(appData.pomodoro); } catch(e) { console.error('initPomodoro', e); }
   try { renderHourlyChart(appData.hourlyStats); } catch(e) { /* */ }
@@ -822,6 +928,8 @@ async function markReview(qid, quality) {
 
 function saveConfig() {
   cfgSettings.dailyGoal = parseInt(document.getElementById('cfg-goal').value) || 30;
+  const keyEl = document.getElementById('cfg-claude-key');
+  if (keyEl && keyEl.value && !keyEl.value.startsWith('•')) cfgSettings.claudeApiKey = keyEl.value.trim();
   chrome.runtime.sendMessage({ type: 'SAVE_SETTINGS', settings: cfgSettings }, () => {
     const btn = document.querySelector('.cfg-btn.primary');
     const orig = btn.textContent;
@@ -1059,6 +1167,7 @@ async function softRefresh(force = false) {
     try { renderHourlyChart(fresh.hourlyStats); } catch (e) { /* */ }
     try { renderFatigueAlert(fresh.recentResults || [], fresh.todayStats || {}); } catch (e) { /* */ }
     try { if (fresh.manualHubTimer && !_manHubLocal) renderManHubTimer(fresh.manualHubTimer); } catch (e) { /* */ }
+    try { renderRevPreAlert(fresh.preAlert); } catch (e) { /* */ }
 
     // Atualiza pomodoro se mudou estado
     if (fresh.pomodoro && fresh.pomodoro.active !== pomData.active) {
