@@ -15,7 +15,209 @@
     const beat = () => localStorage.setItem('_pf_ext_heartbeat', Date.now());
     beat();
     setInterval(beat, 8000);
-    return; // não rodar widget TEC aqui
+    // Sincroniza ranking do TEC ao localStorage do painel
+    const syncRanking = () => {
+      try {
+        chrome.runtime.sendMessage({ type: 'GET_TEC_RANKING' }, r => {
+          if (r && r.data) localStorage.setItem('_pf_tec_ranking', JSON.stringify(r.data));
+        });
+      } catch (x) {}
+    };
+    syncRanking();
+    setInterval(syncRanking, 30000);
+    return;
+  }
+
+  // ── Scraper da página de ranking TEC (estatisticas/comparar) ──
+  if (location.pathname.includes('/estatisticas/comparar')) {
+
+    function _pfToast(msg, ok) {
+      const t = document.createElement('div');
+      t.style.cssText = `position:fixed;bottom:20px;right:20px;z-index:2147483647;
+        background:${ok ? '#15803d' : '#92400e'};color:#fff;
+        padding:10px 16px;border-radius:10px;font:700 12px/1.4 -apple-system,sans-serif;
+        box-shadow:0 4px 20px rgba(0,0,0,.45);transition:opacity .4s;max-width:320px;`;
+      t.textContent = msg;
+      document.body.appendChild(t);
+      setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 500); }, 5000);
+    }
+
+    function scrapeTecRanking() {
+      const txt = document.body.innerText || '';
+      if (txt.length < 150) return false;
+
+      const data = { scrapedAt: Date.now(), url: location.href };
+      const gM = location.pathname.match(/\/comparar\/(\d+)/);
+      if (gM) data.groupId = gM[1];
+
+      // Total users — several possible patterns
+      for (const p of [
+        /(\d+)\s*participantes?/i, /(\d+)\s*usu[aá]rios?/i,
+        /(\d+)\s*membros?/i, /total[:\s]+(\d+)/i, /de\s+(\d{2,4})\b/,
+      ]) {
+        const m = txt.match(p);
+        if (m && parseInt(m[1]) > 5) { data.totalUsers = parseInt(m[1]); break; }
+      }
+
+      // Flexible block extractor — handles both "VOCÊ\n30" and "Você: 30"
+      const extractMetric = (metricVariants, isPercent) => {
+        let startIdx = -1;
+        for (const v of metricVariants) {
+          const i = txt.search(new RegExp(v, 'i'));
+          if (i >= 0) { startIdx = i; break; }
+        }
+        if (startIdx < 0) return null;
+        const block = txt.slice(startIdx, startIdx + 900);
+
+        const grabNum = (src, labelVariants, pct) => {
+          for (const lv of labelVariants) {
+            const li = src.search(new RegExp(lv, 'i'));
+            if (li < 0) continue;
+            const after = src.slice(li, li + 120);
+            const m = pct
+              ? after.match(/([\d]+[,.]\d+)\s*%/) || after.match(/(\d+)\s*%/)
+              : after.match(/[\s\n:]+(\d+)/);
+            if (m) return parseFloat((m[1] || m[0]).replace(',', '.'));
+          }
+          return null;
+        };
+
+        const posGrab = (src) => {
+          for (const p of [
+            /posi[çc][ãa]o[\s\S]{0,25}?(\d+)/i,
+            /(\d+)\s*[°º]/,
+            /posição\s*(\d+)/i,
+            /lugar[:\s]+(\d+)/i,
+          ]) { const m = src.match(p); if (m) return parseInt(m[1]); }
+          return null;
+        };
+
+        const voce    = grabNum(block, ['você','voce','VOCÊ','VOCE','vc\b'], isPercent);
+        const media   = grabNum(block, ['média','media','MÉDIA','MEDIA','méd'], isPercent);
+        const posicao = posGrab(block);
+
+        if (voce === null && posicao === null) return null;
+        return { voce, media, posicao };
+      };
+
+      data.metrics = {};
+      const res = extractMetric(['resolu[çc][õo]es','resolucoes','resoluções'], false);
+      if (res) data.metrics.resolucoes = res;
+      const ace = extractMetric(['acertos','acerto'], false);
+      if (ace) data.metrics.acertos = ace;
+      const des = extractMetric(['desempenho'], true);
+      if (des) data.metrics.desempenho = des;
+
+      // DOM leaf-node fallback when innerText layout breaks ordering
+      if (!Object.keys(data.metrics).length) {
+        try {
+          const leaves = [];
+          const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+          while (w.nextNode()) {
+            const t2 = (w.currentNode.textContent || '').trim();
+            if (t2) leaves.push(t2);
+          }
+          const joined = leaves.join('\n');
+          if (joined.length > 200) {
+            // Retry with cleaned joined text
+            const r2 = extractMetric.toString(); // just trigger re-run on joined
+            for (const [variants, key, pct] of [
+              [['resolu'], 'resolucoes', false],
+              [['acerto'], 'acertos', false],
+              [['desempenho'], 'desempenho', true],
+            ]) {
+              const idx = joined.search(new RegExp(variants[0], 'i'));
+              if (idx < 0) continue;
+              const blk = joined.slice(idx, idx + 900);
+              const youM = pct ? blk.match(/([\d]+[,.]?\d*)\s*%/i) : null;
+              const nums = [...blk.matchAll(/\d+[,.]?\d*/g)].map(m => parseFloat(m[0].replace(',','.')));
+              if (nums.length >= 1) {
+                data.metrics[key] = { voce: nums[0] || null, media: nums[1] || null, posicao: null };
+              }
+            }
+          }
+        } catch(x) {}
+      }
+
+      const ok = Object.keys(data.metrics).length > 0;
+      if (ok) {
+        try { chrome.runtime.sendMessage({ type: 'SAVE_TEC_RANKING', data }, () => {}); } catch(x) {}
+        _pfToast('✅ Painel Fiscal: ranking capturado!', true);
+      } else {
+        _pfToast('⚠️ Painel Fiscal: não encontrei os dados — use "Inserir manualmente" no painel', false);
+      }
+      return ok;
+    }
+
+    let _scraped = false;
+    [800, 2000, 4500, 9000].forEach(d => setTimeout(() => { if (!_scraped) _scraped = scrapeTecRanking(); }, d));
+    const _obs = new MutationObserver(() => { if (!_scraped) _scraped = scrapeTecRanking(); });
+    _obs.observe(document.body, { childList: true, subtree: true });
+    setTimeout(() => _obs.disconnect(), 25000);
+    return;
+  }
+
+  // ── Auto-fill: página de filtro TEC (questoes/filtrar) ──────────────────
+  if (location.pathname.includes('/questoes/filtrar')) {
+    const _pfp = new URLSearchParams(location.search);
+    const _pfMateria  = _pfp.get('pf_materia');
+    const _pfAssunto  = _pfp.get('pf_assunto');
+    const _pfKeywords = _pfp.get('pf_keywords');
+    const _pfCaderno  = _pfp.get('pf_caderno');
+
+    if (_pfMateria || _pfAssunto || _pfKeywords) {
+      function _pfFiltBanner() {
+        if (document.getElementById('_pfFiltBanner')) return;
+        const label = _pfAssunto || _pfMateria || _pfKeywords || 'Reforço';
+        const bn = document.createElement('div');
+        bn.id = '_pfFiltBanner';
+        bn.style.cssText = `
+          position:fixed;top:0;left:0;right:0;z-index:2147483647;
+          background:linear-gradient(135deg,#1e1b4b,#312e81);
+          border-bottom:2px solid #818cf8;padding:10px 20px;
+          display:flex;align-items:center;gap:12px;
+          font-family:-apple-system,BlinkMacSystemFont,sans-serif;
+          box-shadow:0 4px 24px rgba(0,0,0,.4);`;
+        bn.innerHTML = `
+          <span style="font-size:18px;">🎯</span>
+          <div style="flex:1;">
+            <div style="font-size:10px;font-weight:800;color:#a5b4fc;letter-spacing:.6px;text-transform:uppercase;">PAINEL FISCAL — REFORÇO INTELIGENTE</div>
+            <div style="font-size:12px;color:#e2e8f0;margin-top:2px;"><strong>${label}</strong> — filtre as questões e clique em <em>Gerar Caderno</em></div>
+          </div>
+          <button id="_pfFiltBannerX" style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#e2e8f0;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;">✕ Fechar</button>`;
+        document.body.style.marginTop = '52px';
+        document.body.prepend(bn);
+        document.getElementById('_pfFiltBannerX').onclick = () => { bn.remove(); document.body.style.marginTop = ''; };
+      }
+
+      function _pfFiltFill() {
+        let filled = false;
+        if (_pfKeywords) {
+          const inp = document.querySelector('input[placeholder*="enunciado" i], input[placeholder*="texto" i], input[type="search"]');
+          if (inp && !inp.value) {
+            inp.value = _pfKeywords;
+            ['input','change'].forEach(ev => inp.dispatchEvent(new Event(ev, { bubbles: true })));
+            filled = true;
+          }
+        }
+        if (_pfCaderno) {
+          const ci = document.querySelector('input[placeholder*="aderno" i], input[name*="caderno" i]');
+          if (ci && ci.value === 'Caderno de Estudo') {
+            ci.value = _pfCaderno;
+            ['input','change'].forEach(ev => ci.dispatchEvent(new Event(ev, { bubbles: true })));
+          }
+        }
+        if (filled) _pfFiltBanner();
+        return filled;
+      }
+
+      _pfFiltBanner();
+      [500, 1500, 3500, 7000].forEach(d => setTimeout(_pfFiltFill, d));
+      const _fObs = new MutationObserver(_pfFiltFill);
+      _fObs.observe(document.body, { childList: true, subtree: true });
+      setTimeout(() => _fObs.disconnect(), 20000);
+    }
+    return;
   }
 
   // ════════════════════════════════════════════════════════
@@ -41,6 +243,9 @@
     // Contadores locais (não dependem do painel)
     localAce: 0,
     localErr: 0,
+    consecutiveWrong: 0,    // fadiga cognitiva
+    recentResults: [],       // últimos 10 resultados (para queda de taxa)
+    lastWrong: null,         // última questão errada {qid,url,materia,assunto}
     // Stats do painel (via postMessage)
     stats: { elapsed: 0, acertos: 0, erros: 0, resolved: 0, running: false, paused: false, discName: '', dificuldade: '' },
     // Fila de revisão
@@ -547,6 +752,11 @@
       ._pf2due:hover{background:rgba(99,102,241,.14);}
       ._pf2due-dot{width:5px;height:5px;border-radius:50%;background:#6366f1;flex-shrink:0;}
       ._pf2due-txt{flex:1;font-size:10px;color:#818cf8;font-weight:700;}
+      ._pf2reforco{
+        display:flex;align-items:center;gap:6px;
+        background:rgba(99,102,241,.06);border:1px solid rgba(99,102,241,.2);
+        border-radius:7px;padding:5px 9px;margin-bottom:8px;
+      }
     `;
     document.head.appendChild(st);
   }
@@ -689,6 +899,11 @@
         ${hubMini}
         ${dueBanner}
         ${filaBanner}
+        ${S.lastWrong ? `<div class="_pf2reforco" id="_pf2reforcoRow">
+          <span style="font-size:11px;">📚</span>
+          <span style="flex:1;font-size:10.5px;color:#a5b4fc;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${(S.lastWrong.assunto || S.lastWrong.materia || 'Última errada').slice(0,32)}</span>
+          <button id="_pf2reforcoBtn" style="background:rgba(99,102,241,.25);border:1px solid rgba(99,102,241,.5);color:#a5b4fc;border-radius:6px;padding:2px 7px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap;">Similares ↗</button>
+        </div>` : ''}
         <div class="_pf2nav">
           <button class="_pf2navbtn" id="_pf2ant">← Ant</button>
           <button class="_pf2navbtn primary" id="_pf2prox">Prox →</button>
@@ -748,6 +963,10 @@
     // Banner de fila
     const filaRow = document.getElementById('_pf2filarow');
     if (filaRow && S.fila[0]) filaRow.onclick = () => window.open(S.fila[0].link || S.fila[0].url, '_self');
+
+    // Reforço Inteligente
+    const reforcoBtn = document.getElementById('_pf2reforcoBtn');
+    if (reforcoBtn) reforcoBtn.onclick = ev => { ev.stopPropagation(); openReforcoFilter(S.lastWrong); };
 
     // Hub mini: clica para abrir a questão
     const hubMinEl = document.getElementById('_pf2hubmin');
@@ -901,6 +1120,7 @@
             S.stats.acertos = Math.max(S.stats.acertos, S.localAce);
             S.stats.resolved = S.localAce + S.localErr;
             setQuestionResult(curPos, 'correct', qi);
+            trackFadiga('correct');
             renderWidget();
             send('correct', null);
             toBg('QUESTION_CORRECT', { qid: qi.qid, url: qi.url, materia: qi.materia, assunto: qi.assunto, timeSpent: qi.timeSpent, pos: curPos, timestamp: Date.now() });
@@ -909,6 +1129,8 @@
             S.stats.erros = Math.max(S.stats.erros, S.localErr);
             S.stats.resolved = S.localAce + S.localErr;
             setQuestionResult(curPos, 'wrong', qi);
+            S.lastWrong = { qid: qi.qid, url: qi.url, materia: qi.materia, assunto: qi.assunto };
+            trackFadiga('wrong');
             renderWidget();
             send('wrong_fast', qi);
             toBg('QUESTION_WRONG', { qid: qi.qid, url: qi.url, materia: qi.materia, assunto: qi.assunto, desc: qi.desc, timeSpent: qi.timeSpent, pos: curPos, timestamp: Date.now() });
@@ -941,7 +1163,7 @@
       S.stats.acertos = Math.max(S.stats.acertos, S.localAce);
       S.stats.resolved = S.localAce + S.localErr;
       setQuestionResult(curPos, 'correct', getInfo());
-      for (let i = 0; i < da; i++) send('correct', null);
+      for (let i = 0; i < da; i++) { send('correct', null); trackFadiga('correct'); }
       S.A = counter.a;
       toBg('QUESTION_CORRECT', { pos: curPos, timestamp: Date.now() });
       renderWidget();
@@ -960,9 +1182,11 @@
       const deCount = de; S.E = counter.e;
       const qi0 = getInfo();
       S.localErr += deCount;
+      for (let i = 0; i < deCount; i++) trackFadiga('wrong');
       S.stats.erros = Math.max(S.stats.erros, S.localErr);
       S.stats.resolved = S.localAce + S.localErr;
       setQuestionResult(curPos, 'wrong', qi0);
+      S.lastWrong = { qid: qi0.qid, url: qi0.url, materia: qi0.materia, assunto: qi0.assunto };
       renderWidget();
       send('wrong_fast', qi0);
       toBg('QUESTION_WRONG', { qid: qi0.qid, url: qi0.url, materia: qi0.materia, assunto: qi0.assunto, desc: qi0.desc, timeSpent: qi0.timeSpent, pos: curPos, timestamp: Date.now() });
@@ -1093,6 +1317,99 @@
       clearTimeout(autoRemove); bn.remove();
       toBg('HUBERMAN_WRONG', { qid: item.qid });
     };
+  }
+
+  // ── Fadiga Cognitiva ────────────────────────────────────────────────────────
+  let _fadigaShown = false;
+
+  function trackFadiga(result) {
+    if (result === 'correct') {
+      S.consecutiveWrong = 0;
+    } else {
+      S.consecutiveWrong++;
+    }
+    S.recentResults.push(result);
+    if (S.recentResults.length > 10) S.recentResults.shift();
+
+    // Alerta: 3+ erros consecutivos
+    if (S.consecutiveWrong === 3 && !_fadigaShown) {
+      _fadigaShown = true;
+      showFadigaBanner('consecutive');
+      setTimeout(() => { _fadigaShown = false; }, 300000); // reset após 5min
+      return;
+    }
+
+    // Alerta: taxa caiu muito nas últimas 8 questões
+    if (S.recentResults.length >= 8) {
+      const recentWrong = S.recentResults.slice(-8).filter(r => r === 'wrong').length;
+      const sessionTotal = S.localAce + S.localErr;
+      const sessionTaxa = sessionTotal > 5 ? S.localAce / sessionTotal : 1;
+      if (recentWrong >= 6 && sessionTaxa < 0.55 && !_fadigaShown) {
+        _fadigaShown = true;
+        showFadigaBanner('drop');
+        setTimeout(() => { _fadigaShown = false; }, 600000);
+      }
+    }
+  }
+
+  function showFadigaBanner(type) {
+    const prev = document.getElementById('_pfFadigaBanner');
+    if (prev) prev.remove();
+
+    const msgs = {
+      consecutive: { icon: '🧠', title: '3 erros consecutivos', sub: 'Pode ser fadiga cognitiva. Uma pausa de 5 min restaura a concentração.', color: '#f59e0b', btnLabel: '⏸ Pausar 5 min' },
+      drop:        { icon: '📉', title: 'Taxa de acerto caindo', sub: 'Você acertou menos de 25% nas últimas 8 questões. Hora de recuperar.', color: '#ef4444', btnLabel: '☕ Pausa curta' },
+    };
+    const m = msgs[type] || msgs.consecutive;
+
+    const bn = document.createElement('div');
+    bn.id = '_pfFadigaBanner';
+    bn.style.cssText = `
+      position:fixed;top:14px;left:50%;transform:translateX(-50%);
+      background:linear-gradient(135deg,#1a1207,#1a0f0f);
+      border:1px solid ${m.color}55;border-radius:14px;
+      padding:12px 16px;box-shadow:0 8px 32px rgba(0,0,0,.5),0 0 0 1px ${m.color}22 inset;
+      font-family:-apple-system,BlinkMacSystemFont,sans-serif;
+      z-index:2147483647;min-width:280px;max-width:360px;
+      animation:_pfSlide2 .3s cubic-bezier(.16,1,.3,1);
+    `;
+    bn.innerHTML = `
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+        <span style="font-size:18px;">${m.icon}</span>
+        <div style="flex:1;">
+          <div style="font-size:11px;font-weight:800;color:${m.color};letter-spacing:.4px;">${m.title.toUpperCase()}</div>
+          <div style="font-size:10.5px;color:#94a3b8;margin-top:2px;">${m.sub}</div>
+        </div>
+        <button id="_pfFadigaX" style="background:none;border:none;color:#64748b;font-size:16px;cursor:pointer;padding:2px 5px;line-height:1;">✕</button>
+      </div>
+      <div style="display:flex;gap:7px;">
+        <button id="_pfFadigaPause" style="flex:2;padding:7px;background:${m.color}22;border:1px solid ${m.color}55;border-radius:8px;color:${m.color};font-size:11px;font-weight:700;cursor:pointer;">${m.btnLabel}</button>
+        <button id="_pfFadigaIgnore" style="flex:1;padding:7px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#64748b;font-size:11px;cursor:pointer;">Continuar</button>
+      </div>`;
+    document.body.appendChild(bn);
+
+    const autoRemove = setTimeout(() => bn.remove(), 30000);
+    document.getElementById('_pfFadigaX').onclick      = () => { clearTimeout(autoRemove); bn.remove(); };
+    document.getElementById('_pfFadigaIgnore').onclick = () => { clearTimeout(autoRemove); bn.remove(); };
+    document.getElementById('_pfFadigaPause').onclick  = () => {
+      clearTimeout(autoRemove); bn.remove();
+      S.consecutiveWrong = 0;
+      timerControl('TIMER_PAUSE');
+      timerRunning = false;
+      renderWidget();
+    };
+  }
+
+  // ── Reforço Inteligente: abre filtro TEC com questões similares ─────────
+  function openReforcoFilter(qi) {
+    if (!qi) return;
+    const base = 'https://www.tecconcursos.com.br/questoes/filtrar';
+    const p = new URLSearchParams();
+    if (qi.materia)  p.set('pf_materia', qi.materia);
+    if (qi.assunto)  p.set('pf_assunto', qi.assunto);
+    const cadernoName = 'Reforço ' + (qi.assunto || qi.materia || 'Painel Fiscal');
+    p.set('pf_caderno', cadernoName.slice(0, 60));
+    window.open(base + '?' + p.toString(), '_blank');
   }
 
   // Alt+R → próxima da fila

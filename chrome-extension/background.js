@@ -508,16 +508,118 @@ async function findSimilarQuestions(payload, limit = 5) {
   return results.sort((a, b) => b.score - a.score || b.erros - a.erros).slice(0, limit);
 }
 
-
+async function getDueReviews() {
   const bank = await loadWrongBank();
   const today = todayKey();
   return Object.values(bank)
     .filter(q => q.nextReview <= today)
     .sort((a, b) => {
-      // Prioridade: mais erros primeiro, depois mais antiga
       if (b.errorCount !== a.errorCount) return b.errorCount - a.errorCount;
       return a.nextReview.localeCompare(b.nextReview);
     });
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// COBERTURA POR ARTIGO — mapeia acertos/erros por referência jurídica
+// ════════════════════════════════════════════════════════════════════════════
+
+function extractArticleRefs(text, materia) {
+  const src = ((text || '') + ' ' + (materia || '')).toLowerCase();
+  const refs = new Set();
+  const artRefs = src.match(/art(?:igo)?\.?\s*\d+[oº°]?(?:-[a-z])?/g) || [];
+  artRefs.forEach(a => refs.add(a.replace(/\s+/g, '').replace('artigo', 'art.')));
+  const parRefs = src.match(/§\s*\d+[oº°]?/g) || [];
+  parRefs.forEach(p => refs.add(p.replace(/\s+/g, '')));
+  return [...refs];
+}
+
+async function updateArticleCoverage(payload, result) {
+  const refs = extractArticleRefs(payload.desc || payload.enunciado, payload.materia);
+  if (!refs.length) return;
+  const stored = await new Promise(r => chrome.storage.local.get('pf_article_coverage', r));
+  const cov = stored['pf_article_coverage'] || {};
+  const key = (payload.materia || 'geral').toLowerCase().replace(/\s+/g, '_');
+  if (!cov[key]) cov[key] = {};
+  for (const ref of refs) {
+    if (!cov[key][ref]) cov[key][ref] = { correct: 0, wrong: 0 };
+    if (result === 'correct') cov[key][ref].correct++;
+    else cov[key][ref].wrong++;
+  }
+  await new Promise(r => chrome.storage.local.set({ pf_article_coverage: cov }, r));
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// PADRÕES DE CONFUSÃO — detecta artigos que o usuário confunde
+// ════════════════════════════════════════════════════════════════════════════
+
+async function updateConfusionPatterns(payload) {
+  const refs = extractArticleRefs(payload.desc || payload.enunciado, payload.materia);
+  if (refs.length < 2) return;
+  const stored = await new Promise(r => chrome.storage.local.get('pf_confusion_patterns', r));
+  const patterns = stored['pf_confusion_patterns'] || {};
+  for (let i = 0; i < refs.length; i++) {
+    for (let j = i + 1; j < refs.length; j++) {
+      const pairKey = [refs[i], refs[j]].sort().join('||');
+      if (!patterns[pairKey]) patterns[pairKey] = { a: refs[i], b: refs[j], count: 0, materia: payload.materia || '' };
+      patterns[pairKey].count++;
+    }
+  }
+  await new Promise(r => chrome.storage.local.set({ pf_confusion_patterns: patterns }, r));
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// CLUSTER DE REVISÕES — agrupa revisões pendentes por assunto
+// ════════════════════════════════════════════════════════════════════════════
+
+function clusterDueReviews(dueReviews) {
+  const clusters = {};
+  for (const q of dueReviews) {
+    const key = (q.assunto || q.materia || 'geral').toLowerCase();
+    if (!clusters[key]) clusters[key] = { label: q.assunto || q.materia || 'Geral', materia: q.materia || '', items: [] };
+    clusters[key].items.push(q);
+  }
+  return Object.values(clusters).sort((a, b) => b.items.length - a.items.length);
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// CLAUDE API — extração semântica de conceitos jurídicos
+// ════════════════════════════════════════════════════════════════════════════
+
+async function callClaudeForConcepts(text, apiKey) {
+  if (!apiKey || !text) return null;
+  const cacheKey = 'sem_' + Array.from(text.slice(0, 200)).reduce((h, c) => (Math.imul(31, h) + c.charCodeAt(0)) | 0, 0).toString(36);
+  const stored = await new Promise(r => chrome.storage.local.get('pf_semantic_cache', r));
+  const cache = stored['pf_semantic_cache'] || {};
+  if (cache[cacheKey]) return cache[cacheKey];
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 256,
+        messages: [{
+          role: 'user',
+          content: `Extraia conceitos jurídicos e artigos desta questão. Responda APENAS com JSON: {"concepts":["conceito1"],"articles":["art.X"]}\n\nQuestão: ${text.slice(0, 600)}`,
+        }],
+      }),
+    });
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    const raw = data.content?.[0]?.text || '';
+    const match = raw.match(/\{[\s\S]*\}/);
+    if (!match) return null;
+    const parsed = JSON.parse(match[0]);
+    cache[cacheKey] = parsed;
+    const keys = Object.keys(cache);
+    if (keys.length > 500) keys.slice(0, 50).forEach(k => delete cache[k]);
+    await new Promise(r => chrome.storage.local.set({ pf_semantic_cache: cache }, r));
+    return parsed;
+  } catch { return null; }
 }
 
 // ── Histórico de sessões ──────────────────────────────────────────────────────
@@ -696,6 +798,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         if (payload.materia) await updateSubjectStats(payload.materia, 1, 0, payload.assunto);
         await checkDailyGoal(today);
         _ensureHourlyDay(); const _h1 = new Date().getHours(); hourlyStats[_h1].q++; hourlyStats[_h1].ace++;
+        updateArticleCoverage(payload, 'correct').catch(() => {});
         if (activeSession) {
           activeSession.acertos = (activeSession.acertos || 0) + 1;
           activeSession.questions = activeSession.questions || [];
@@ -738,6 +841,21 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         const due = await getDueReviews();
         updateBadge(due.length + hubQueue.length);
         _ensureHourlyDay(); const _h2 = new Date().getHours(); hourlyStats[_h2].q++;
+        updateArticleCoverage(payload, 'wrong').catch(() => {});
+        updateConfusionPatterns(payload).catch(() => {});
+        // Enriquecimento semântico via Claude API (se configurado)
+        if (payload.qid && (payload.desc || payload.enunciado)) {
+          getSettings().then(async s => {
+            if (!s.claudeApiKey) return;
+            const concepts = await callClaudeForConcepts(payload.desc || payload.enunciado, s.claudeApiKey);
+            if (!concepts) return;
+            const wb = await loadWrongBank();
+            if (wb[payload.qid]) {
+              wb[payload.qid].semanticConcepts = concepts;
+              await setStorage({ wrongBank: wb });
+            }
+          }).catch(() => {});
+        }
         if (activeSession) {
           activeSession.erros = (activeSession.erros || 0) + 1;
           activeSession.questions = activeSession.questions || [];
@@ -762,6 +880,31 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         };
         // Auto-inicia cronômetro ao começar sessão
         if (!timer.running) timerStart();
+        // Pré-alerta: verifica se há erros pendentes da mesma matéria/assunto
+        if (payload.materia || payload.assunto) {
+          getDueReviews().then(async dueList => {
+            const related = dueList.filter(q =>
+              (payload.materia && q.materia === payload.materia) ||
+              (payload.assunto && q.assunto === payload.assunto)
+            );
+            if (related.length > 0) {
+              const settings = await getSettings();
+              if (settings.notifications !== false) {
+                showNotification(
+                  `⚠️ ${related.length} revisão(ões) pendente(s)`,
+                  `Você tem erros de ${payload.materia || payload.assunto} para revisar antes de continuar.`,
+                  'pf-prealert-' + Date.now()
+                );
+              }
+              // Guarda para exibir no popup
+              activeSession._preAlert = {
+                count: related.length,
+                materia: payload.materia || payload.assunto,
+                items: related.slice(0, 3).map(q => ({ qid: q.qid, desc: q.desc, assunto: q.assunto })),
+              };
+            }
+          }).catch(() => {});
+        }
         break;
       }
 
@@ -938,7 +1081,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       }
 
       case 'GET_POPUP_DATA': {
-        const [todayStats, globalStats, wrongBank, sessions, subjectStats, settings, dueReviews, weekStats, questionBank] = await Promise.all([
+        const [todayStats, globalStats, wrongBank, sessions, subjectStats, settings, dueReviews, weekStats, questionBank, artCovStored, confStored] = await Promise.all([
           getTodayStats(),
           loadStats(),
           loadWrongBank(),
@@ -948,8 +1091,16 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           getDueReviews(),
           getWeekStats(),
           loadQuestionBank(),
+          new Promise(r => chrome.storage.local.get('pf_article_coverage', r)),
+          new Promise(r => chrome.storage.local.get('pf_confusion_patterns', r)),
         ]);
         const qbItems = Object.values(questionBank);
+        const articleCoverage = artCovStored['pf_article_coverage'] || {};
+        const confusionPatterns = Object.values(confStored['pf_confusion_patterns'] || {})
+          .filter(p => p.count >= 3)
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 10);
+        const clusteredReviews = clusterDueReviews(dueReviews);
         sendResponse({
           todayStats,
           globalStats,
@@ -958,6 +1109,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           subjectStats,
           settings,
           dueReviews,
+          clusteredReviews,
           filaCount,
           panelTabId,
           tecTabId,
@@ -969,6 +1121,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           hourlyStats,
           manualHubTimer: manualHubSnapshot(),
           recentResults: activeSession ? (activeSession.questions || []).slice(-10).map(q => q.result) : [],
+          preAlert: activeSession?._preAlert || null,
+          articleCoverage,
+          confusionPatterns,
           questionBankStats: {
             total: qbItems.length,
             dominadas: qbItems.filter(q => q.importance === 1).length,
@@ -976,6 +1131,46 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             criticas: qbItems.filter(q => q.importance === 3).length,
           },
         });
+        return;
+      }
+
+      // ── Content: contagem leve de revisões pendentes (usado pelo widget TEC) ──
+      case 'GET_DUE_COUNT': {
+        const due = await getDueReviews();
+        sendResponse({ dueCount: due.length, hubCount: hubQueue.length });
+        return;
+      }
+
+      // ── Popup: solicita dados de análise avançada ─────────────────────────
+      case 'GET_ANALISE_DATA': {
+        const [artCov, confPatt, settings2] = await Promise.all([
+          new Promise(r => chrome.storage.local.get('pf_article_coverage', r)),
+          new Promise(r => chrome.storage.local.get('pf_confusion_patterns', r)),
+          getSettings(),
+        ]);
+        const topWeak = {};
+        const covData = artCov['pf_article_coverage'] || {};
+        for (const [mat, refs] of Object.entries(covData)) {
+          const ranked = Object.entries(refs)
+            .map(([ref, v]) => ({ ref, ...v, total: v.correct + v.wrong, pct: v.correct + v.wrong > 0 ? Math.round(v.correct / (v.correct + v.wrong) * 100) : 0 }))
+            .filter(r => r.total > 0)
+            .sort((a, b) => a.pct - b.pct || b.total - a.total);
+          if (ranked.length) topWeak[mat] = ranked.slice(0, 10);
+        }
+        const confusions = Object.values(confPatt['pf_confusion_patterns'] || {})
+          .filter(p => p.count >= 2)
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 20);
+        // Try Claude semantic enhancement if API key is set
+        sendResponse({ topWeak, confusions, apiKeySet: !!(settings2.claudeApiKey) });
+        return;
+      }
+
+      // ── Popup: chama Claude para conceitos de questão ──────────────────────
+      case 'GET_SEMANTIC_CONCEPTS': {
+        const settings3 = await getSettings();
+        const concepts = await callClaudeForConcepts(msg.text, settings3.claudeApiKey);
+        sendResponse({ concepts });
         return;
       }
 
@@ -1020,6 +1215,31 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         await setStorage({ settings: msg.settings });
         sendResponse({ ok: true });
         return;
+
+      // ── Reforço Inteligente: salva/retorna alvo de filtro ────────────────
+      case 'SET_REFORCO_TARGET':
+        await setStorage({ reforco_target: msg.data });
+        sendResponse({ ok: true });
+        return;
+
+      case 'GET_REFORCO_TARGET': {
+        const { reforco_target = null } = await getStorage({ reforco_target: null });
+        sendResponse({ data: reforco_target });
+        return;
+      }
+
+      // ── Ranking TEC: salva dados do scraper ──────────────────────────────
+      case 'SAVE_TEC_RANKING':
+        await setStorage({ tec_ranking: msg.data });
+        sendResponse({ ok: true });
+        return;
+
+      // ── Ranking TEC: retorna dados para o painel ──────────────────────────
+      case 'GET_TEC_RANKING': {
+        const { tec_ranking = null } = await getStorage({ tec_ranking: null });
+        sendResponse({ data: tec_ranking });
+        return;
+      }
 
       // ── Status geral ──────────────────────────────────────────────────────
       case 'GET_STATUS':

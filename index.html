@@ -2384,6 +2384,20 @@ select.inp{appearance:none;cursor:pointer;}
     </div>
   </div>
 
+  <!-- Reforço Inteligente TEC -->
+  <div id="dash-reforco" style="margin-bottom:1rem;">
+    <div style="background:var(--surf2);border:1px solid rgba(99,102,241,.22);border-radius:var(--r3);overflow:hidden;">
+      <div onclick="reforcoToggle()" style="display:flex;align-items:center;justify-content:space-between;padding:.6rem 1rem;cursor:pointer;user-select:none;" onmouseover="this.style.background='rgba(99,102,241,.04)'" onmouseout="this.style.background=''">
+        <div style="display:flex;align-items:center;gap:.5rem;">
+          <span style="font-size:.65rem;font-weight:800;color:#818cf8;letter-spacing:.7px;text-transform:uppercase;">🎯 Reforço Inteligente no TEC</span>
+          <span id="reforco-summary" style="font-size:.58rem;color:var(--muted2);"></span>
+        </div>
+        <span id="reforco-arrow" style="font-size:.7rem;color:var(--muted2);transition:transform .25s;">▼</span>
+      </div>
+      <div id="reforco-body" style="display:none;padding:.3rem .8rem .85rem;"></div>
+    </div>
+  </div>
+
   <div id="dash-quick-actions" style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1.1rem;">
     <button class="btn btn-gold" onclick="goPage('cronometro',document.querySelector('.nav-item[onclick*=cronometro]'))" style="flex:1;min-width:140px;justify-content:center;font-size:.78rem;padding:.55rem .9rem;">▶ Iniciar Sessão</button>
     <button id="dash-qa-fila" class="btn" onclick="goPage('filarev',document.querySelector('.nav-item[onclick*=filarev]'))" style="flex:1;min-width:140px;justify-content:center;font-size:.78rem;padding:.55rem .9rem;">📋 Fila de Revisão</button>
@@ -9702,9 +9716,148 @@ function renderDiagAv() {
 }
 
 // ═══ RENDER ALL ════════════════════════════════
-function renderAll(){updateStats();renderDisciplines();renderWeekGrid();renderLog();renderProgress();renderQPerf();renderQLog();renderQGoalsList();mwInit();renderSpeedSettings();dashInitWeekSelector();renderDashTecHoje();renderDashTecRanking();renderDiscAvgSummary();renderDiagAvSummary();checkExtStatus();}
+function renderAll(){updateStats();renderDisciplines();renderWeekGrid();renderLog();renderProgress();renderQPerf();renderQLog();renderQGoalsList();mwInit();renderSpeedSettings();dashInitWeekSelector();renderDashTecHoje();renderDashTecRanking();renderDiscAvgSummary();renderDiagAvSummary();renderReforcoSummary();checkExtStatus();}
+function renderReforcoSummary(){const sessions=state.questionSessions||[];const el=document.getElementById('reforco-summary');if(!el)return;if(!sessions.length){el.textContent='';return;}const map={};for(const s of sessions){const k=s.subjectId||s.subject;if(!k)continue;if(!map[k]){map[k]={name:s.subject||k,total:0,correct:0};}map[k].total+=s.total;map[k].correct+=s.correct;}const list=Object.values(map).filter(d=>d.total>=3).sort((a,b)=>(a.correct/a.total)-(b.correct/b.total));if(list.length){const w=list[0];el.textContent=`pior: ${w.name.split(' ')[0]} (${Math.round(w.correct/w.total*100)}%)`;}else el.textContent='';if(_reforcoOpen)renderReforcoCard();}
 function renderDiscAvgSummary(){const s=state.questionSessions||[];const totalQ=s.reduce((a,x)=>a+x.total,0);const el=document.getElementById('disc-avg-summary');if(el&&s.length)el.textContent=`${totalQ} questões · ${new Set(s.map(x=>x.subjectId||x.subject)).size} disciplinas`;if(_discAvgOpen)renderDiscAvgStats();}
 function renderDiagAvSummary(){if(_diagAvOpen)renderDiagAv();else{const{list,hasWeights}=_diagDiscStats();const weights=state.edital?.weights||{};const totalW=Object.values(weights).reduce((a,b)=>a+b,0)||1;let nota=null;if(hasWeights){let w=0;for(const d of list){const r=d.total>0?d.taxa:0.5;w+=r*d.weight;}nota=Math.round(w/totalW*100*10)/10;}const dangers=list.filter(d=>d.total>0&&d.taxa<0.6&&d.weight>=(Math.max(...list.map(x=>x.weight),1)*0.45));const el=document.getElementById('diag-av-summary');if(el){const parts=[];if(nota!==null)parts.push(`nota ${nota}/100`);if(dangers.length)parts.push(`⚠️ ${dangers[0].name.split(' ')[0]}`);el.textContent=parts.join(' · ');}}}
+
+// ── Reforço Inteligente TEC ─────────────────────────────────────────────
+let _reforcoOpen = false;
+function reforcoToggle(){
+  _reforcoOpen = !_reforcoOpen;
+  const body = document.getElementById('reforco-body');
+  const arrow = document.getElementById('reforco-arrow');
+  if(body) body.style.display = _reforcoOpen ? '' : 'none';
+  if(arrow) arrow.style.transform = _reforcoOpen ? 'rotate(180deg)' : '';
+  if(_reforcoOpen) renderReforcoCard();
+}
+
+function _buildTecFilterUrl(materia, caderno, keywords, banca){
+  const base = 'https://www.tecconcursos.com.br/questoes/filtrar';
+  const p = new URLSearchParams();
+  if(materia)  p.set('pf_materia',  materia);
+  if(keywords) p.set('pf_keywords', keywords);
+  if(banca)    p.set('pf_banca',    banca);
+  p.set('pf_caderno', (caderno || ('Reforço ' + (materia || 'Painel Fiscal'))).slice(0,60));
+  return base + '?' + p.toString();
+}
+
+function openTecReforco(materia, caderno, keywords, banca){
+  window.open(_buildTecFilterUrl(materia, caderno, keywords, banca), '_blank');
+}
+
+function renderReforcoCard(){
+  const body = document.getElementById('reforco-body');
+  if(!body) return;
+  const sessions = state.questionSessions || [];
+  // Build per-discipline stats
+  const map = {};
+  for(const s of sessions){
+    const key = s.subjectId || s.subject;
+    if(!key) continue;
+    if(!map[key]) map[key] = { name: s.subject || key, total: 0, correct: 0, bancas: {} };
+    map[key].total   += s.total;
+    map[key].correct += s.correct;
+    if(s.banca && s.banca !== '—') map[key].bancas[s.banca] = (map[key].bancas[s.banca]||0) + 1;
+  }
+  const list = Object.values(map).filter(d => d.total >= 3).sort((a,b) => (a.correct/a.total) - (b.correct/b.total));
+  const worst5 = list.slice(0, 5);
+
+  // Build bancas frequency list from all sessions
+  const bancaMap = {};
+  for(const s of sessions){ if(s.banca && s.banca !== '—') bancaMap[s.banca] = (bancaMap[s.banca]||0) + 1; }
+  const topBancas = Object.entries(bancaMap).sort((a,b)=>b[1]-a[1]).slice(0,4).map(([b])=>b);
+
+  const pct = d => d.total > 0 ? Math.round(d.correct/d.total*100) : 0;
+  const pctColor = p => p >= 70 ? '#22c55e' : p >= 50 ? '#f59e0b' : '#ef4444';
+
+  const worstRows = worst5.length ? worst5.map(d => {
+    const p = pct(d);
+    const topBanca = Object.entries(d.bancas).sort((a,b)=>b[1]-a[1])[0]?.[0] || '';
+    return `<div style="display:flex;align-items:center;gap:.5rem;padding:.3rem 0;border-bottom:1px solid var(--border);">
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:.65rem;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${d.name}</div>
+        <div style="font-size:.55rem;color:var(--muted2);">${d.total} q · <span style="color:${pctColor(p)}">${p}% acerto</span>${topBanca ? ' · ' + topBanca : ''}</div>
+      </div>
+      <button class="btn" style="padding:.2rem .5rem;font-size:.58rem;white-space:nowrap;gap:.2rem;background:rgba(99,102,241,.15);border-color:rgba(99,102,241,.3);color:#a5b4fc;"
+        onclick="openTecReforco('${d.name.replace(/'/g,'&apos;')}','Reforço ${d.name.slice(0,20).replace(/'/g,'&apos;')}','','')">📚 Abrir no TEC</button>
+    </div>`;
+  }).join('') : `<div style="font-size:.62rem;color:var(--muted2);padding:.5rem 0;">Faça pelo menos 3 questões de uma disciplina para ver sugestões.</div>`;
+
+  const bancaBtns = topBancas.map(b => `<button class="btn" style="font-size:.58rem;padding:.25rem .6rem;gap:.2rem;background:rgba(30,30,50,.6);"
+    onclick="openTecReforco('${worst5[0]?.name?.replace(/'/g,'&apos;')||''}','Treino ${b.replace(/'/g,'&apos;')}','','${b.replace(/'/g,'&apos;')}')">${b}</button>`).join('');
+
+  body.innerHTML = `
+    <!-- Pior desempenho por disciplina -->
+    <div style="font-size:.58rem;font-weight:800;color:var(--muted2);letter-spacing:.6px;text-transform:uppercase;margin:.35rem 0 .3rem;">📉 Disciplinas com menor acerto</div>
+    ${worstRows}
+
+    <!-- Estratégias criativas -->
+    <div style="font-size:.58rem;font-weight:800;color:var(--muted2);letter-spacing:.6px;text-transform:uppercase;margin:.75rem 0 .35rem;">💡 Estratégias de Treino</div>
+
+    <div style="display:flex;flex-direction:column;gap:.4rem;">
+
+      <!-- Estratégia 1: Por matéria específica -->
+      <div style="background:rgba(30,30,50,.5);border:1px solid var(--border);border-radius:8px;padding:.5rem .7rem;">
+        <div style="font-size:.62rem;font-weight:700;color:var(--text);margin-bottom:.25rem;">1. Reforço por Matéria</div>
+        <div style="font-size:.57rem;color:var(--muted2);margin-bottom:.4rem;">Abre o filtro TEC com a sua disciplina mais fraca pré-selecionada.</div>
+        ${worst5[0] ? `<button class="btn" style="font-size:.58rem;padding:.25rem .6rem;background:rgba(99,102,241,.15);border-color:rgba(99,102,241,.3);color:#a5b4fc;"
+          onclick="openTecReforco('${worst5[0].name.replace(/'/g,'&apos;')}','Reforço ${worst5[0].name.slice(0,20).replace(/'/g,'&apos;')}','','')">🎯 ${worst5[0].name.slice(0,30)}</button>` : '<span style="font-size:.57rem;color:var(--muted3)">Sem dados ainda</span>'}
+      </div>
+
+      <!-- Estratégia 2: Treino de Banca -->
+      <div style="background:rgba(30,30,50,.5);border:1px solid var(--border);border-radius:8px;padding:.5rem .7rem;">
+        <div style="font-size:.62rem;font-weight:700;color:var(--text);margin-bottom:.25rem;">2. Treino de Banca</div>
+        <div style="font-size:.57rem;color:var(--muted2);margin-bottom:.4rem;">Pratique questões de uma banca específica na sua matéria mais fraca.</div>
+        <div style="display:flex;flex-wrap:wrap;gap:.3rem;">${bancaBtns || '<span style="font-size:.57rem;color:var(--muted3)">Registre bancas nas sessões</span>'}</div>
+      </div>
+
+      <!-- Estratégia 3: Questões Inéditas -->
+      <div style="background:rgba(30,30,50,.5);border:1px solid var(--border);border-radius:8px;padding:.5rem .7rem;">
+        <div style="font-size:.62rem;font-weight:700;color:var(--text);margin-bottom:.25rem;">3. Questões Inéditas</div>
+        <div style="font-size:.57rem;color:var(--muted2);margin-bottom:.4rem;">Abre o filtro TEC para questões novas (nunca respondidas) na matéria fraca.</div>
+        ${worst5[0] ? `<button class="btn" style="font-size:.58rem;padding:.25rem .6rem;background:rgba(16,185,129,.1);border-color:rgba(16,185,129,.3);color:#34d399;"
+          onclick="openTecReforco('${worst5[0].name.replace(/'/g,'&apos;')}','Inéditas ${worst5[0].name.slice(0,18).replace(/'/g,'&apos;')}','','')">🆕 Inéditas em ${worst5[0].name.slice(0,25)}</button>` : '<span style="font-size:.57rem;color:var(--muted3)">Sem dados ainda</span>'}
+      </div>
+
+      <!-- Estratégia 4: Busca por palavra-chave -->
+      <div style="background:rgba(30,30,50,.5);border:1px solid var(--border);border-radius:8px;padding:.5rem .7rem;">
+        <div style="font-size:.62rem;font-weight:700;color:var(--text);margin-bottom:.25rem;">4. Busca por Conceito</div>
+        <div style="font-size:.57rem;color:var(--muted2);margin-bottom:.35rem;">Encontre questões pelo texto do enunciado (um conceito, termo jurídico etc.).</div>
+        <div style="display:flex;gap:.35rem;align-items:center;">
+          <input id="reforco-kw" type="text" placeholder="Ex: prescrição, ADPF, tributário..." class="inp"
+            style="flex:1;font-size:.6rem;padding:.25rem .5rem;height:auto;" onkeydown="if(event.key==='Enter')_reforcoKwOpen()"/>
+          <button class="btn" style="font-size:.58rem;padding:.25rem .6rem;white-space:nowrap;" onclick="_reforcoKwOpen()">🔍 Buscar</button>
+        </div>
+      </div>
+
+      <!-- Estratégia 5: Simulado Proporcional ao Edital -->
+      <div style="background:rgba(30,30,50,.5);border:1px solid var(--border);border-radius:8px;padding:.5rem .7rem;">
+        <div style="font-size:.62rem;font-weight:700;color:var(--text);margin-bottom:.25rem;">5. Simulado Proporcional ao Edital</div>
+        <div style="font-size:.57rem;color:var(--muted2);margin-bottom:.4rem;">Abre a disciplina de maior peso do edital para simular questões proporcionais.</div>
+        <button class="btn" style="font-size:.58rem;padding:.25rem .6rem;background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.3);color:#f59e0b;"
+          onclick="_reforcoEdital()">📋 Abrir Disciplina Prioritária</button>
+      </div>
+
+    </div>`;
+
+  // Wire keyword search
+  window._reforcoKwOpen = function(){
+    const kw = (document.getElementById('reforco-kw')?.value||'').trim();
+    if(!kw) return;
+    openTecReforco('', 'Busca: ' + kw.slice(0,20), kw, '');
+  };
+  // Wire edital strategy
+  window._reforcoEdital = function(){
+    const weights = state.edital?.weights || {};
+    const top = Object.entries(weights).sort((a,b)=>b[1]-a[1])[0];
+    if(!top){ alert('Configure os pesos do edital primeiro.'); return; }
+    const disc = state.disciplines.find(d=>d.id===top[0]);
+    const name = disc?.name || top[0];
+    openTecReforco(name, 'Simulado ' + name.slice(0,20), '', '');
+  };
+}
+
 function updateAll(){updateStats();renderDisciplines();renderProgress();renderQPerf();renderLog();}
 
 function goPage(name,el){
@@ -19895,7 +20048,7 @@ window.addEventListener('beforeunload', function() {
     cronPersist();
   }
 });
-loadTheme();loadState();ensureDisciplines();renderColorPicker();renderAll();updateTimerUI();checkExtStatus();renderDashTecRanking();renderDiagAvSummary();
+loadTheme();loadState();ensureDisciplines();renderColorPicker();renderAll();updateTimerUI();checkExtStatus();renderDashTecRanking();renderDiagAvSummary();renderReforcoSummary();
 try{ wrongHistoryUpdateBadge(); }catch(e){}
 initModalBackdrops();
 try{ renderProvaCountdown(); }catch(e){}
