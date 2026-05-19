@@ -538,15 +538,32 @@
     const assM = tx.match(/Assunto:\s*([^\n\r×]+)/i);
     if (assM) info.assunto = assM[1].replace(/\s*[××].*$/, '').trim();
 
-    // Lê hrefs dos links nativos do TEC (matéria e assunto são links clicáveis na página)
-    const allPageLinks = [...document.querySelectorAll('a[href*="tecconcursos"]')];
+    // Lê hrefs dos links nativos do TEC — breadcrumb e metadados da questão
+    // Inclui links relativos (sem "tecconcursos" no href)
+    const allPageLinks = [...document.querySelectorAll('a[href]')];
+    function _resolveHref(a) {
+      const h = a.href || '';
+      if (h.startsWith('http')) return h;
+      if (h.startsWith('/')) return 'https://www.tecconcursos.com.br' + h;
+      return h;
+    }
     if (info.materia) {
-      const mLink = allPageLinks.find(a => (a.textContent||'').trim().toLowerCase() === info.materia.toLowerCase());
-      if (mLink) info.materiaUrl = mLink.href;
+      const matLow = info.materia.toLowerCase();
+      const mLink = allPageLinks.find(a => {
+        const t = (a.textContent || '').trim().toLowerCase();
+        return t === matLow && _resolveHref(a).includes('tecconcursos');
+      });
+      if (mLink) info.materiaUrl = _resolveHref(mLink);
     }
     if (info.assunto) {
-      const aLink = allPageLinks.find(a => (a.textContent||'').trim().toLowerCase() === info.assunto.toLowerCase());
-      if (aLink) info.assuntoUrl = aLink.href;
+      const assLow = info.assunto.toLowerCase();
+      const aLink = allPageLinks.find(a => {
+        const t = (a.textContent || '').trim().toLowerCase();
+        // Aceita correspondência parcial para assuntos longos (>40 chars)
+        return (t === assLow || (assLow.length > 40 && t.startsWith(assLow.slice(0, 35).toLowerCase())))
+          && _resolveHref(a).includes('tecconcursos');
+      });
+      if (aLink) info.assuntoUrl = _resolveHref(aLink);
     }
 
     for (const p of [/Banca[:\s]+([A-ZÁÉÍÓÚ][^\n\r,·×]{2,25})/i, /Organiza[çc][aã]o[:\s]+([^\n\r,]{2,25})/i]) {
