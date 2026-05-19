@@ -1486,59 +1486,80 @@
     const found = [];
     const seen  = new Set([qi.qid]);
 
-    // — Estratégia 1: Links de questões embarcados na página atual
+    // Termos-chave da questão errada para validar relevância
+    const materiaKey = (qi.materia || '').toLowerCase();
+    const assuntoKey = (qi.assunto || '').toLowerCase();
+    const bancaKey   = (qi.banca   || '').toLowerCase();
+
+    function _isRelevant(q) {
+      // Aceita se não há metadados suficientes para filtrar (API não retornou campos)
+      if (!q.materia && !q.assunto && !q.banca) return true;
+      const qMat = (q.materia || '').toLowerCase();
+      const qAss = (q.assunto || '').toLowerCase();
+      const qBan = (q.banca   || '').toLowerCase();
+      // Rejeita se matéria claramente diferente (e temos ambas)
+      if (materiaKey && qMat && !qMat.includes(materiaKey.slice(0, 8)) && !materiaKey.includes(qMat.slice(0, 8))) return false;
+      // Bônus se banca bate
+      return true;
+    }
+
+    // — Estratégia 1: Script tag JSON parsing — extrai APENAS questões do mesmo assunto/matéria
     try {
-      for (const a of document.querySelectorAll('a[href*="/questoes/"]')) {
-        const m = a.href.match(/\/questoes\/(\d{5,9})/);
-        if (m && !seen.has(m[1])) {
-          seen.add(m[1]);
-          found.push({ qid: m[1], url: a.href, label: (a.textContent || '').trim().slice(0, 90) || `Questão #${m[1]}`, source: 'dom' });
+      for (const sc of document.querySelectorAll('script:not([src])')) {
+        const src = sc.textContent;
+        if (src.length < 500 || src.length > 800000) continue;
+        // Só analisa scripts que mencionam a matéria da questão errada
+        if (materiaKey && !src.toLowerCase().includes(materiaKey.slice(0, 6))) continue;
+        const idMs = src.match(/"(?:id|questao_id)"\s*:\s*(\d{5,9})/g);
+        if (!idMs) continue;
+        for (const m of idMs) {
+          const id = m.match(/\d+/)[0];
+          if (seen.has(id)) continue;
+          // Extrai contexto ao redor do ID para validar matéria/assunto
+          const ctxIdx = src.indexOf(m);
+          const ctx = src.slice(Math.max(0, ctxIdx - 300), ctxIdx + 400);
+          const ctxLow = ctx.toLowerCase();
+          // Só inclui se o contexto menciona a matéria ou assunto
+          const materiaOk = !materiaKey || ctxLow.includes(materiaKey.slice(0, 8));
+          const assuntoOk = !assuntoKey || ctxLow.includes(assuntoKey.slice(0, 8));
+          if (!materiaOk && !assuntoOk) continue;
+          seen.add(id);
+          const enM = ctx.match(/"enunciado"\s*:\s*"([^"]{10,100})/);
+          const assM = ctx.match(/"assunto"\s*:\s*"([^"]{2,40})/);
+          const banM = ctx.match(/"banca"\s*:\s*"([^"]{2,20})/);
+          found.push({
+            qid: id,
+            url: `https://www.tecconcursos.com.br/questoes/${id}`,
+            label: enM ? enM[1] : `Questão #${id}`,
+            assunto: assM ? assM[1] : (qi.assunto || ''),
+            banca:   banM ? banM[1] : (qi.banca   || ''),
+            source: 'script',
+          });
           if (found.length >= 5) break;
         }
+        if (found.length >= 5) break;
       }
     } catch(e) {}
 
-    // — Estratégia 2: JSON embutido em <script> — extrai IDs do estado do SPA
-    if (found.length < 3) {
+    // — Estratégia 2: API REST do TEC (via cookies autenticados da sessão)
+    const endpoints = _tecApi.base
+      ? [_tecApi.base, '/api/questoes', '/api/v1/questoes', '/api/v2/questoes']
+      : ['/api/questoes', '/api/v1/questoes', '/api/v2/questoes'];
+
+    for (const ep of endpoints) {
       try {
-        for (const sc of document.querySelectorAll('script:not([src])')) {
-          const src = sc.textContent;
-          if (src.length < 200 || src.length > 600000) continue;
-          const idMs = src.match(/"(?:id|questao_id)"\s*:\s*(\d{5,9})/g);
-          if (!idMs) continue;
-          for (const m of idMs) {
-            const id = m.match(/\d+/)[0];
-            if (!seen.has(id)) {
-              seen.add(id);
-              // Tenta extrair label do JSON context ao redor
-              const ctxStart = src.indexOf(m) - 200;
-              const ctx = src.slice(Math.max(0, ctxStart), ctxStart + 400);
-              const enM = ctx.match(/"enunciado"\s*:\s*"([^"]{10,100})/);
-              const label = enM ? enM[1] : `Questão #${id}`;
-              found.push({ qid: id, url: `https://www.tecconcursos.com.br/questoes/${id}`, label, source: 'script' });
-              if (found.length >= 5) break;
-            }
+        const apiFound = await _tryTecApi(ep, qi);
+        for (const q of apiFound) {
+          if (!seen.has(q.qid) && _isRelevant(q)) {
+            seen.add(q.qid);
+            found.push(q);
           }
-          if (found.length >= 5) break;
         }
+        if (found.length >= 4) break;
       } catch(e) {}
     }
 
-    // — Estratégia 3: API do TEC (via cookies autenticados)
-    if (found.length < 3) {
-      const endpoints = _tecApi.base ? [_tecApi.base, ...['', '/api', '/api/v1', '/api/v2'].map(p => p + '/questoes')] : ['', '/api', '/api/v1', '/api/v2'].map(p => p + '/questoes');
-      for (const ep of endpoints) {
-        if (!ep) continue;
-        try {
-          const apiFound = await _tryTecApi(ep, qi);
-          for (const q of apiFound) {
-            if (!seen.has(q.qid)) { seen.add(q.qid); found.push(q); }
-          }
-          if (found.length >= 4) break;
-        } catch(e) {}
-      }
-    }
-
+    // Retorna vazío se nada relevante encontrado — não polui com questões aleatórias
     return found.slice(0, 6);
   }
 
@@ -1561,17 +1582,23 @@
     const items = Array.isArray(data) ? data : (data.data || data.questoes || data.items || data.results || []);
     if (!Array.isArray(items) || !items.length) return [];
 
-    return items.slice(0, 5).map(q => {
+    const materiaKey = (qi.materia || '').toLowerCase();
+    return items.map(q => {
       const id = String(q.id || q.questao_id || q.questao?.id || '');
+      const qMat = (q.materia?.nome || q.materia || '').toLowerCase();
+      // Rejeita resultados de matéria claramente diferente
+      if (materiaKey && qMat && !qMat.includes(materiaKey.slice(0,8)) && !materiaKey.includes(qMat.slice(0,8))) return null;
+      if (!id || id === qi.qid) return null;
       return {
         qid:     id,
         url:     q.url || q.link || `https://www.tecconcursos.com.br/questoes/${id}`,
         banca:   q.banca?.nome || q.banca || '',
         assunto: q.assunto?.nome || q.assunto || '',
+        materia: q.materia?.nome || q.materia || '',
         label:   (q.enunciado || q.texto || q.descricao || `Questão #${id}`).slice(0, 100),
         source:  'api',
       };
-    }).filter(q => q.qid && q.qid !== qi.qid);
+    }).filter(Boolean).slice(0, 5);
   }
 
   function _tecFilterUrl(qi) {
@@ -1639,9 +1666,12 @@
               </div>`
             : hasSim
               ? `<div style="font-size:9.5px;color:#6366f1;font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px;">
-                  📚 ${entry.similares.length} similar${entry.similares.length>1?'es':''} encontrada${entry.similares.length>1?'s':''}
+                  📚 ${entry.similares.length} similar${entry.similares.length>1?'es':''} de <strong style="color:#a5b4fc">${q.assunto||q.materia||''}</strong>
                 </div>${simRows}`
-              : `<div style="font-size:10px;color:#475569;margin-bottom:6px;">Nenhuma encontrada via API — use o filtro TEC:</div>`
+              : `<div style="display:flex;align-items:center;gap:6px;padding:8px;background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);border-radius:8px;margin-bottom:6px;">
+                  <span style="font-size:13px;">🔍</span>
+                  <span style="font-size:10px;color:#92400e;">API do TEC ainda não mapeada para este assunto. Use o filtro abaixo — a extensão preenche os campos automaticamente.</span>
+                </div>`
           }
           <a href="${_tecFilterUrl(q)}" target="_blank"
             style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:8px;
