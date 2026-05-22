@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Mockup Aurora</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{
+  width:340px;height:600px;overflow:hidden;
+  background:linear-gradient(160deg,#0d0f1e 0%,#111827 100%);
+  color:#e2e8f0;
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+  font-size:13px;
+}
+
+/* ── HEADER ── */
+.hd{
+  display:flex;align-items:center;gap:9px;
+  padding:12px 14px;
+  background:linear-gradient(135deg,#1e1b4b,#312e81,#1e1b4b);
+  border-bottom:1px solid rgba(99,102,241,.3);
+  position:relative;overflow:hidden;
+}
+.hd::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(90deg,transparent,rgba(139,92,246,.15),transparent);
+  animation:shimmer 3s ease infinite;
+}
+@keyframes shimmer{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+.hd-logo{
+  width:32px;height:32px;
+  background:linear-gradient(135deg,#7c3aed,#4f46e5);
+  border-radius:9px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:16px;font-weight:900;flex-shrink:0;
+  box-shadow:0 0 16px rgba(124,58,237,.5);
+  position:relative;
+}
+.hd-info{flex:1;}
+.hd-title{font-size:14px;font-weight:800;color:#f0f0ff;letter-spacing:.3px;}
+.hd-sub{font-size:10px;color:#7c83a8;margin-top:1px;}
+.hd-streak{
+  display:flex;align-items:center;gap:4px;
+  background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.4);
+  border-radius:20px;padding:3px 9px;font-size:10px;font-weight:700;color:#fbbf24;
+  box-shadow:0 0 8px rgba(245,158,11,.2);
+}
+
+/* ── STATUS BAR ── */
+.status-bar{
+  display:flex;align-items:center;gap:7px;
+  padding:7px 14px;
+  background:rgba(255,255,255,.03);
+  border-bottom:1px solid rgba(255,255,255,.06);
+}
+.s-dot{width:7px;height:7px;border-radius:50%;background:#374151;flex-shrink:0;}
+.s-dot.on{background:#22c55e;box-shadow:0 0 8px #22c55e;}
+.s-txt{flex:1;font-size:11px;color:#64748b;}
+.s-txt strong{color:#94a3b8;}
+.s-btn{
+  padding:3px 9px;
+  border:1px solid rgba(255,255,255,.09);
+  background:rgba(255,255,255,.05);color:#94a3b8;border-radius:6px;
+  font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap;
+}
+.s-btn.green{background:rgba(34,197,94,.1);border-color:rgba(34,197,94,.35);color:#22c55e;}
+
+/* ── ABAS ── */
+.tabs{
+  display:flex;
+  background:rgba(255,255,255,.02);
+  border-bottom:1px solid rgba(255,255,255,.06);
+}
+.tab{
+  flex:1;padding:9px 2px;font-size:10px;font-weight:700;
+  color:#374151;cursor:pointer;text-align:center;letter-spacing:.3px;
+  border-bottom:2px solid transparent;transition:all .2s;
+}
+.tab:hover{color:#6366f1;}
+.tab.active{
+  color:#a78bfa;border-bottom-color:#a78bfa;
+  background:linear-gradient(180deg,transparent,rgba(167,139,250,.04));
+}
+
+/* ── PAINEL ── */
+.panel{padding:13px 14px;}
+
+/* TIMER */
+.timer-box{
+  display:flex;align-items:center;gap:9px;
+  background:linear-gradient(135deg,rgba(79,70,229,.12),rgba(124,58,237,.08));
+  border:1px solid rgba(139,92,246,.2);
+  border-radius:12px;padding:11px 13px;margin-bottom:11px;
+}
+.timer-dot{width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 8px #22c55e;flex-shrink:0;}
+.timer-val{flex:1;font-family:'SF Mono','Courier New',monospace;font-size:22px;font-weight:800;color:#e2e8f0;letter-spacing:2px;}
+.timer-btn{
+  padding:4px 10px;border:1px solid rgba(255,255,255,.1);
+  background:rgba(255,255,255,.06);color:#94a3b8;border-radius:7px;
+  font-size:11px;font-weight:700;
+}
+
+/* FOCO */
+.foco-box{
+  background:linear-gradient(135deg,rgba(245,158,11,.08),rgba(251,191,36,.04));
+  border:1px solid rgba(245,158,11,.2);
+  border-radius:12px;padding:11px 13px;margin-bottom:11px;
+  display:flex;align-items:center;gap:11px;
+}
+.foco-ring-wrap{position:relative;width:48px;height:48px;flex-shrink:0;}
+.foco-ring-wrap canvas{position:absolute;top:0;left:0;}
+.foco-pct-txt{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:800;color:#fbbf24;
+}
+.foco-info{flex:1;}
+.foco-title{font-size:10px;font-weight:800;color:#fbbf24;letter-spacing:.8px;margin-bottom:3px;}
+.foco-meta{font-size:11px;color:#94a3b8;}
+.foco-bars{display:flex;gap:4px;align-items:flex-end;height:20px;}
+.foco-bar{width:3px;border-radius:2px;background:#6366f1;}
+
+/* POMODORO */
+.pom-section{
+  background:rgba(99,102,241,.06);border:1px solid rgba(99,102,241,.15);
+  border-radius:10px;padding:9px 12px;margin-bottom:11px;
+}
+.pom-header{display:flex;align-items:center;justify-content:space-between;}
+.pom-header-lbl{font-size:10px;font-weight:800;color:#818cf8;letter-spacing:.8px;}
+
+/* META */
+.goal-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;}
+.goal-label{font-size:11px;color:#64748b;}
+.goal-badge{
+  background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.25);
+  border-radius:20px;padding:1px 8px;font-size:9px;font-weight:800;color:#818cf8;
+}
+.goal-val{font-size:11px;font-weight:700;color:#a78bfa;}
+.goal-bar{height:5px;background:rgba(255,255,255,.06);border-radius:3px;margin-bottom:12px;overflow:hidden;}
+.goal-bar-fill{
+  height:100%;width:47%;
+  background:linear-gradient(90deg,#6366f1,#a78bfa,#c084fc);
+  border-radius:3px;
+}
+
+/* STATS */
+.stats-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-bottom:11px;}
+.sc{
+  background:rgba(255,255,255,.04);border-radius:11px;padding:10px 6px;text-align:center;
+  border:1px solid rgba(255,255,255,.07);
+  transition:transform .2s;
+}
+.sc-val{font-size:22px;font-weight:800;line-height:1;margin-bottom:3px;}
+.sc-lbl{font-size:9px;color:#475569;letter-spacing:.8px;font-weight:700;}
+.sc.blue .sc-val{color:#818cf8;}
+.sc.green .sc-val{color:#34d399;}
+.sc.red .sc-val{color:#f87171;}
+.sc.blue{border-color:rgba(99,102,241,.15);background:rgba(99,102,241,.06);}
+.sc.green{border-color:rgba(52,211,153,.12);background:rgba(52,211,153,.04);}
+.sc.red{border-color:rgba(248,113,113,.12);background:rgba(248,113,113,.04);}
+
+/* TAXA */
+.acc-ring{
+  display:flex;align-items:center;gap:10px;
+  background:rgba(52,211,153,.05);border-radius:12px;padding:11px 13px;
+  margin-bottom:11px;border:1px solid rgba(52,211,153,.15);
+}
+.ring-pct{font-size:24px;font-weight:800;color:#34d399;line-height:1;}
+.ring-lbl{font-size:10px;color:#64748b;margin-top:2px;}
+.ring-sub{font-size:10px;color:#475569;margin-top:6px;line-height:1.5;}
+
+/* APROVAÇÃO */
+.aprov-box{
+  background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);
+  border-radius:11px;padding:10px 13px;
+}
+.aprov-label{font-size:10px;color:#64748b;margin-bottom:6px;display:flex;justify-content:space-between;}
+.aprov-label span{font-weight:700;color:#94a3b8;}
+.aprov-track{height:8px;background:rgba(255,255,255,.04);border-radius:4px;overflow:visible;position:relative;margin-bottom:5px;}
+.aprov-fill{height:100%;width:50%;border-radius:4px;background:linear-gradient(90deg,#f59e0b,#fbbf24);}
+.aprov-line{position:absolute;top:-4px;left:70%;height:16px;width:2px;background:#f59e0b;border-radius:1px;}
+.aprov-line::before{content:'70%';position:absolute;top:-17px;left:50%;transform:translateX(-50%);font-size:8px;color:#f59e0b;font-weight:700;white-space:nowrap;}
+.aprov-status{font-size:11px;font-weight:700;text-align:center;color:#f59e0b;margin-top:3px;}
+.aprov-dev{
+  display:inline-flex;align-items:center;gap:5px;
+  background:rgba(245,158,11,.1);border-radius:20px;padding:3px 10px;font-size:10px;color:#f59e0b;
+}
+
+/* FOOTER */
+.footer{
+  position:absolute;bottom:0;left:0;right:0;
+  padding:6px 14px;border-top:1px solid rgba(255,255,255,.04);
+  font-size:9px;color:#1f2937;text-align:center;
+  background:rgba(255,255,255,.02);
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="hd">
+  <div class="hd-logo">≡</div>
+  <div class="hd-info">
+    <div class="hd-title">Painel Fiscal</div>
+    <div class="hd-sub">TEC Automator</div>
+  </div>
+  <div class="hd-streak">🔥 2d</div>
+</div>
+
+<!-- STATUS BAR -->
+<div class="status-bar">
+  <div class="s-dot on"></div>
+  <div class="s-txt"><strong>Ativo</strong> · ✓0 ✗1</div>
+  <div style="display:flex;gap:5px;">
+    <button class="s-btn">📝 TEC</button>
+    <button class="s-btn green">🖥 Painel</button>
+  </div>
+</div>
+
+<!-- ABAS -->
+<div class="tabs">
+  <div class="tab active">HOJE</div>
+  <div class="tab">REVISÃO</div>
+  <div class="tab">ANÁLISE</div>
+  <div class="tab">HIST.</div>
+  <div class="tab">CONFIG</div>
+</div>
+
+<div class="panel">
+
+  <!-- TIMER -->
+  <div class="timer-box">
+    <div class="timer-dot"></div>
+    <span class="timer-val">01 : 47</span>
+    <button class="timer-btn">⏸</button>
+    <button class="timer-btn">⏹</button>
+  </div>
+
+  <!-- FOCO HOJE -->
+  <div class="foco-box">
+    <div style="position:relative;width:48px;height:48px;flex-shrink:0;">
+      <svg width="48" height="48" viewBox="0 0 48 48">
+        <circle cx="24" cy="24" r="18" fill="none" stroke="rgba(245,158,11,.15)" stroke-width="4"/>
+        <circle cx="24" cy="24" r="18" fill="none" stroke="#f59e0b" stroke-width="4"
+          stroke-linecap="round" stroke-dasharray="113.1" stroke-dashoffset="39.6"
+          transform="rotate(-90 24 24)" style="filter:drop-shadow(0 0 4px #f59e0b)"/>
+      </svg>
+      <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fbbf24;">65%</div>
+    </div>
+    <div style="flex:1;">
+      <div class="foco-title">🎯 FOCO HOJE</div>
+      <div class="foco-meta">Produtivo: <strong style="color:#e2e8f0;">16m</strong> · Idle: <strong style="color:#ef4444;">9m</strong></div>
+    </div>
+    <div class="foco-bars">
+      <div class="foco-bar" style="height:8px;opacity:.4;"></div>
+      <div class="foco-bar" style="height:14px;opacity:.6;"></div>
+      <div class="foco-bar" style="height:18px;"></div>
+      <div class="foco-bar" style="height:12px;opacity:.7;"></div>
+      <div class="foco-bar" style="height:20px;background:#a78bfa;"></div>
+    </div>
+  </div>
+
+  <!-- POMODORO -->
+  <div class="pom-section">
+    <div class="pom-header">
+      <span class="pom-header-lbl">🍅 MODO POMODORO</span>
+      <span style="font-size:11px;color:#475569;">▼</span>
+    </div>
+  </div>
+
+  <!-- META -->
+  <div class="goal-row">
+    <span class="goal-label">Meta diária</span>
+    <span class="goal-badge">AUTO</span>
+    <span class="goal-val">14 / 30</span>
+  </div>
+  <div class="goal-bar"><div class="goal-bar-fill"></div></div>
+
+  <!-- STATS -->
+  <div class="stats-grid">
+    <div class="sc blue">
+      <div class="sc-val">14</div>
+      <div class="sc-lbl">FEITAS</div>
+    </div>
+    <div class="sc green">
+      <div class="sc-val">7</div>
+      <div class="sc-lbl">ACERTOS</div>
+    </div>
+    <div class="sc red">
+      <div class="sc-val">7</div>
+      <div class="sc-lbl">ERROS</div>
+    </div>
+  </div>
+
+  <!-- TAXA -->
+  <div class="acc-ring">
+    <svg width="52" height="52" viewBox="0 0 52 52">
+      <circle cx="26" cy="26" r="20" fill="none" stroke="rgba(52,211,153,.1)" stroke-width="5"/>
+      <circle cx="26" cy="26" r="20" fill="none" stroke="#34d399" stroke-width="5"
+        stroke-linecap="round" stroke-dasharray="125.7" stroke-dashoffset="62.8"
+        transform="rotate(-90 26 26)" style="filter:drop-shadow(0 0 6px rgba(52,211,153,.5))"/>
+    </svg>
+    <div>
+      <div class="ring-pct">50%</div>
+      <div class="ring-lbl">Taxa de acerto hoje</div>
+      <div class="ring-sub" style="color:#475569;">7 acertos · 7 erros hoje</div>
+    </div>
+  </div>
+
+  <!-- APROVAÇÃO -->
+  <div class="aprov-box">
+    <div class="aprov-label">
+      <span>Predição de Aprovação</span>
+      <span>Meta: 70% · Atual: <span style="color:#f59e0b;">50%</span></span>
+    </div>
+    <div class="aprov-track">
+      <div class="aprov-fill"></div>
+      <div class="aprov-line"></div>
+    </div>
+    <div style="text-align:center;">
+      <span class="aprov-dev">🟡 Em desenvolvimento</span>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">Painel Fiscal — TEC Automator Pro v2.0</div>
+</body>
+</html>

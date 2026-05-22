@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Mockup Obsidian</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{
+  width:340px;height:600px;overflow:hidden;
+  background:#0a0a0f;
+  color:#e2e8f0;
+  font-family:'SF Pro Display',-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+  font-size:13px;
+}
+
+/* ── HEADER ── */
+.hd{
+  display:flex;align-items:center;gap:10px;
+  padding:13px 16px;
+  background:linear-gradient(180deg,#141418 0%,#0f0f14 100%);
+  border-bottom:1px solid #1e1e26;
+}
+.hd-logo{
+  width:32px;height:32px;
+  background:linear-gradient(135deg,#c9a227,#f0c040);
+  border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:15px;font-weight:900;flex-shrink:0;color:#1a1100;
+  box-shadow:0 2px 12px rgba(201,162,39,.35);
+}
+.hd-info{flex:1;}
+.hd-title{font-size:15px;font-weight:700;color:#f5f0e8;letter-spacing:.1px;}
+.hd-sub{font-size:10px;color:#4a4a5a;margin-top:1px;font-weight:500;}
+.hd-streak{
+  display:flex;align-items:center;gap:4px;
+  background:rgba(201,162,39,.1);border:1px solid rgba(201,162,39,.25);
+  border-radius:6px;padding:4px 9px;font-size:10px;font-weight:700;color:#c9a227;
+}
+
+/* ── STATUS BAR ── */
+.status-bar{
+  display:flex;align-items:center;gap:7px;
+  padding:7px 16px;
+  background:#0d0d12;
+  border-bottom:1px solid #1a1a22;
+}
+.s-dot{width:6px;height:6px;border-radius:50%;background:#2a2a35;flex-shrink:0;}
+.s-dot.on{background:#2ecc71;box-shadow:0 0 6px #2ecc71;}
+.s-txt{flex:1;font-size:11px;color:#3a3a4a;}
+.s-txt strong{color:#6a6a7a;}
+.s-btn{
+  padding:3px 10px;
+  border:1px solid #1e1e28;
+  background:#13131a;color:#5a5a6a;border-radius:5px;
+  font-size:10px;font-weight:700;white-space:nowrap;
+}
+.s-btn.green{background:rgba(46,204,113,.08);border-color:rgba(46,204,113,.2);color:#2ecc71;}
+
+/* ── ABAS ── */
+.tabs{
+  display:flex;
+  background:#0a0a0f;
+  border-bottom:1px solid #1a1a22;
+}
+.tab{
+  flex:1;padding:9px 2px;font-size:10px;font-weight:700;
+  color:#2e2e3a;cursor:pointer;text-align:center;letter-spacing:.5px;
+  border-bottom:2px solid transparent;
+}
+.tab.active{
+  color:#c9a227;border-bottom-color:#c9a227;
+}
+
+/* ── PAINEL ── */
+.panel{padding:12px 14px;}
+
+/* TIMER */
+.timer-box{
+  display:flex;align-items:center;gap:9px;
+  background:#0f0f16;
+  border:1px solid #1e1e2a;
+  border-radius:10px;padding:11px 14px;margin-bottom:10px;
+  border-left:3px solid #c9a227;
+}
+.timer-dot{width:7px;height:7px;border-radius:50%;background:#2ecc71;flex-shrink:0;box-shadow:0 0 6px #2ecc71;}
+.timer-val{flex:1;font-family:'SF Mono','Courier New',monospace;font-size:22px;font-weight:700;color:#f5f0e8;letter-spacing:3px;}
+.timer-btn{
+  padding:4px 10px;border:1px solid #1e1e2a;
+  background:#141418;color:#4a4a5a;border-radius:6px;
+  font-size:11px;font-weight:700;
+}
+
+/* FOCO */
+.foco-box{
+  background:#0f0f16;border:1px solid #1e1e2a;
+  border-radius:10px;padding:11px 14px;margin-bottom:10px;
+  display:flex;align-items:center;gap:11px;
+  border-right:3px solid #c9a227;
+}
+.foco-title{font-size:10px;font-weight:700;color:#c9a227;letter-spacing:1px;margin-bottom:3px;}
+.foco-meta{font-size:11px;color:#3a3a4a;}
+.foco-meta strong{color:#8a8a9a;}
+.foco-meta strong.neg{color:#e74c3c;}
+
+/* POMODORO */
+.pom-section{
+  background:#0f0f16;border:1px solid #1e1e2a;
+  border-radius:10px;padding:9px 13px;margin-bottom:10px;
+}
+.pom-header-lbl{font-size:10px;font-weight:700;color:#3a3a4a;letter-spacing:.8px;}
+
+/* META */
+.goal-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;}
+.goal-label{font-size:11px;color:#3a3a4a;}
+.goal-badge{
+  background:#13131a;border:1px solid #1e1e2a;
+  border-radius:4px;padding:1px 7px;font-size:9px;font-weight:700;color:#3a3a4a;
+}
+.goal-val{font-size:11px;font-weight:700;color:#c9a227;}
+.goal-bar{height:4px;background:#141418;border-radius:2px;margin-bottom:11px;}
+.goal-bar-fill{height:100%;width:47%;background:linear-gradient(90deg,#7a6210,#c9a227);border-radius:2px;}
+
+/* STATS */
+.stats-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:10px;}
+.sc{
+  background:#0f0f16;border-radius:9px;padding:10px 6px;text-align:center;
+  border:1px solid #1a1a22;
+}
+.sc-val{font-size:21px;font-weight:700;line-height:1;margin-bottom:3px;}
+.sc-lbl{font-size:9px;color:#2e2e3a;letter-spacing:1px;font-weight:700;}
+.sc.blue .sc-val{color:#5588cc;}
+.sc.green .sc-val{color:#2ecc71;}
+.sc.red .sc-val{color:#e74c3c;}
+
+/* TAXA */
+.acc-ring{
+  display:flex;align-items:center;gap:11px;
+  background:#0f0f16;border-radius:10px;padding:11px 14px;
+  margin-bottom:10px;border:1px solid #1e1e2a;
+}
+.ring-pct{font-size:26px;font-weight:700;color:#c9a227;line-height:1;}
+.ring-lbl{font-size:10px;color:#3a3a4a;margin-top:2px;}
+.ring-sub{font-size:10px;color:#2a2a35;margin-top:5px;}
+
+/* APROVAÇÃO */
+.aprov-box{
+  background:#0f0f16;border:1px solid #1e1e2a;
+  border-radius:10px;padding:10px 14px;
+}
+.aprov-label{font-size:10px;color:#3a3a4a;margin-bottom:6px;display:flex;justify-content:space-between;}
+.aprov-label span{font-weight:700;color:#5a5a6a;}
+.aprov-track{height:7px;background:#141418;border-radius:3px;position:relative;margin-bottom:5px;}
+.aprov-fill{height:100%;width:50%;border-radius:3px;background:linear-gradient(90deg,#7a6210,#c9a227);}
+.aprov-line{position:absolute;top:-3px;left:70%;height:13px;width:2px;background:#c9a227;border-radius:1px;}
+.aprov-line::before{content:'70%';position:absolute;top:-15px;left:50%;transform:translateX(-50%);font-size:8px;color:#c9a227;font-weight:700;white-space:nowrap;}
+.aprov-status{font-size:10px;text-align:center;color:#3a3a4a;margin-top:3px;}
+.aprov-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:#c9a227;margin-right:5px;box-shadow:0 0 4px #c9a227;}
+</style>
+</head>
+<body>
+
+<div class="hd">
+  <div class="hd-logo">≡</div>
+  <div class="hd-info">
+    <div class="hd-title">Painel Fiscal</div>
+    <div class="hd-sub">TEC Automator</div>
+  </div>
+  <div class="hd-streak">🔥 2d</div>
+</div>
+
+<div class="status-bar">
+  <div class="s-dot on"></div>
+  <div class="s-txt"><strong>Ativo</strong> · ✓0 ✗1</div>
+  <div style="display:flex;gap:5px;">
+    <button class="s-btn">📝 TEC</button>
+    <button class="s-btn green">🖥 Painel</button>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab active">HOJE</div>
+  <div class="tab">REVISÃO</div>
+  <div class="tab">ANÁLISE</div>
+  <div class="tab">HIST.</div>
+  <div class="tab">CONFIG</div>
+</div>
+
+<div class="panel">
+
+  <div class="timer-box">
+    <div class="timer-dot"></div>
+    <span class="timer-val">01 : 47</span>
+    <button class="timer-btn">⏸</button>
+    <button class="timer-btn">⏹</button>
+  </div>
+
+  <div class="foco-box">
+    <div style="position:relative;width:46px;height:46px;flex-shrink:0;">
+      <svg width="46" height="46" viewBox="0 0 46 46">
+        <circle cx="23" cy="23" r="18" fill="none" stroke="#1a1a22" stroke-width="4"/>
+        <circle cx="23" cy="23" r="18" fill="none" stroke="#c9a227" stroke-width="4"
+          stroke-linecap="round" stroke-dasharray="113.1" stroke-dashoffset="39.6"
+          transform="rotate(-90 23 23)"/>
+      </svg>
+      <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#c9a227;">65%</div>
+    </div>
+    <div style="flex:1;">
+      <div class="foco-title">FOCO HOJE</div>
+      <div class="foco-meta">Produtivo: <strong>16m</strong> · Idle: <strong class="neg">9m</strong></div>
+    </div>
+    <div style="display:flex;gap:3px;align-items:flex-end;height:22px;">
+      <div style="width:3px;height:8px;border-radius:2px;background:#1e1e2a;"></div>
+      <div style="width:3px;height:13px;border-radius:2px;background:#3a3a10;"></div>
+      <div style="width:3px;height:18px;border-radius:2px;background:#7a6210;"></div>
+      <div style="width:3px;height:12px;border-radius:2px;background:#4a4a18;"></div>
+      <div style="width:3px;height:22px;border-radius:2px;background:#c9a227;"></div>
+    </div>
+  </div>
+
+  <div class="pom-section">
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+      <span class="pom-header-lbl">🍅 MODO POMODORO</span>
+      <span style="font-size:11px;color:#2e2e3a;">▼</span>
+    </div>
+  </div>
+
+  <div class="goal-row">
+    <span class="goal-label">Meta diária</span>
+    <span class="goal-badge">AUTO</span>
+    <span class="goal-val">14 / 30</span>
+  </div>
+  <div class="goal-bar"><div class="goal-bar-fill"></div></div>
+
+  <div class="stats-grid">
+    <div class="sc blue"><div class="sc-val">14</div><div class="sc-lbl">FEITAS</div></div>
+    <div class="sc green"><div class="sc-val">7</div><div class="sc-lbl">ACERTOS</div></div>
+    <div class="sc red"><div class="sc-val">7</div><div class="sc-lbl">ERROS</div></div>
+  </div>
+
+  <div class="acc-ring">
+    <svg width="50" height="50" viewBox="0 0 50 50">
+      <circle cx="25" cy="25" r="19" fill="none" stroke="#141418" stroke-width="5"/>
+      <circle cx="25" cy="25" r="19" fill="none" stroke="#c9a227" stroke-width="5"
+        stroke-linecap="round" stroke-dasharray="119.4" stroke-dashoffset="59.7"
+        transform="rotate(-90 25 25)"/>
+    </svg>
+    <div>
+      <div class="ring-pct">50%</div>
+      <div class="ring-lbl">Taxa de acerto hoje</div>
+      <div class="ring-sub">7 acertos · 7 erros hoje</div>
+    </div>
+  </div>
+
+  <div class="aprov-box">
+    <div class="aprov-label">
+      <span>Predição de Aprovação</span>
+      <span>Meta: 70% · Atual: <span style="color:#c9a227;">50%</span></span>
+    </div>
+    <div class="aprov-track">
+      <div class="aprov-fill"></div>
+      <div class="aprov-line"></div>
+    </div>
+    <div class="aprov-status">
+      <span class="aprov-dot"></span>Em desenvolvimento
+    </div>
+  </div>
+
+</div>
+
+<div style="position:absolute;bottom:0;left:0;right:0;padding:6px 14px;border-top:1px solid #14141c;font-size:9px;color:#1e1e26;text-align:center;">Painel Fiscal — TEC Automator Pro v2.0</div>
+</body>
+</html>

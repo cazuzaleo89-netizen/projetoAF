@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Mockup Arctic</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{
+  width:340px;height:600px;overflow:hidden;
+  background:#0e1521;
+  color:#cdd6e8;
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+  font-size:13px;
+}
+
+/* ── HEADER ── */
+.hd{
+  display:flex;align-items:center;gap:10px;
+  padding:11px 15px;
+  background:linear-gradient(135deg,#0b1929 0%,#0f2038 100%);
+  border-bottom:1px solid rgba(64,168,255,.12);
+}
+.hd-logo{
+  width:30px;height:30px;
+  background:linear-gradient(135deg,#0ea5e9,#38bdf8);
+  border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;font-weight:900;flex-shrink:0;color:#001824;
+  box-shadow:0 2px 12px rgba(14,165,233,.4);
+}
+.hd-info{flex:1;}
+.hd-title{font-size:14px;font-weight:700;color:#e4eeff;letter-spacing:.2px;}
+.hd-sub{font-size:10px;color:#2a4a6a;margin-top:1px;}
+.hd-streak{
+  display:flex;align-items:center;gap:4px;
+  background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.3);
+  border-radius:20px;padding:3px 9px;font-size:10px;font-weight:700;color:#fbbf24;
+}
+
+/* ── STATUS BAR ── */
+.status-bar{
+  display:flex;align-items:center;gap:7px;
+  padding:6px 15px;
+  background:#0b1929;
+  border-bottom:1px solid rgba(255,255,255,.04);
+}
+.s-dot{width:6px;height:6px;border-radius:50%;background:#1a2a3a;flex-shrink:0;}
+.s-dot.on{background:#22d3ee;box-shadow:0 0 6px #22d3ee;}
+.s-txt{flex:1;font-size:11px;color:#2a4a6a;}
+.s-txt strong{color:#4a7a9a;}
+.s-btn{
+  padding:3px 9px;
+  border:1px solid rgba(255,255,255,.07);
+  background:rgba(255,255,255,.04);color:#4a7a9a;border-radius:5px;
+  font-size:10px;font-weight:700;white-space:nowrap;
+}
+.s-btn.green{background:rgba(34,211,238,.08);border-color:rgba(34,211,238,.25);color:#22d3ee;}
+
+/* ── ABAS ── */
+.tabs{
+  display:flex;
+  background:#0b1929;
+  border-bottom:1px solid rgba(255,255,255,.05);
+}
+.tab{
+  flex:1;padding:9px 2px;font-size:10px;font-weight:700;
+  color:#1e3a4a;cursor:pointer;text-align:center;letter-spacing:.4px;
+  border-bottom:2px solid transparent;
+}
+.tab.active{
+  color:#38bdf8;border-bottom-color:#38bdf8;
+  background:rgba(56,189,248,.03);
+}
+
+/* ── PAINEL ── */
+.panel{padding:12px 14px;}
+
+/* TIMER */
+.timer-box{
+  display:flex;align-items:center;gap:9px;
+  background:rgba(14,165,233,.06);
+  border:1px solid rgba(14,165,233,.15);
+  border-radius:10px;padding:10px 14px;margin-bottom:10px;
+}
+.timer-dot{width:7px;height:7px;border-radius:50%;background:#22d3ee;flex-shrink:0;box-shadow:0 0 6px #22d3ee;}
+.timer-val{flex:1;font-family:'SF Mono','Courier New',monospace;font-size:21px;font-weight:700;color:#e4eeff;letter-spacing:2px;}
+.timer-btn{
+  padding:4px 10px;border:1px solid rgba(255,255,255,.07);
+  background:rgba(255,255,255,.04);color:#4a7a9a;border-radius:6px;
+  font-size:11px;
+}
+
+/* FOCO */
+.foco-box{
+  background:rgba(14,165,233,.05);border:1px solid rgba(14,165,233,.12);
+  border-radius:10px;padding:10px 14px;margin-bottom:10px;
+  display:flex;align-items:center;gap:10px;
+}
+.foco-title{font-size:10px;font-weight:700;color:#38bdf8;letter-spacing:.8px;margin-bottom:3px;}
+.foco-meta{font-size:11px;color:#2a4a6a;}
+.foco-meta strong{color:#7aacc4;}
+.foco-meta strong.neg{color:#e74c3c;}
+
+/* POMODORO */
+.pom-section{
+  background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.05);
+  border-radius:10px;padding:9px 13px;margin-bottom:10px;
+}
+
+/* META */
+.goal-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;}
+.goal-label{font-size:11px;color:#2a4a6a;}
+.goal-badge{
+  background:rgba(56,189,248,.08);border:1px solid rgba(56,189,248,.15);
+  border-radius:20px;padding:1px 8px;font-size:9px;font-weight:700;color:#38bdf8;
+}
+.goal-val{font-size:11px;font-weight:700;color:#38bdf8;}
+.goal-bar{height:4px;background:rgba(255,255,255,.04);border-radius:2px;margin-bottom:11px;}
+.goal-bar-fill{height:100%;width:47%;background:linear-gradient(90deg,#0ea5e9,#38bdf8,#7dd3fc);border-radius:2px;}
+
+/* STATS */
+.stats-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:10px;}
+.sc{
+  background:rgba(255,255,255,.03);border-radius:10px;padding:10px 6px;text-align:center;
+  border:1px solid rgba(255,255,255,.06);
+}
+.sc-val{font-size:21px;font-weight:700;line-height:1;margin-bottom:3px;}
+.sc-lbl{font-size:9px;letter-spacing:.8px;font-weight:700;}
+.sc.blue .sc-val{color:#38bdf8;}
+.sc.blue .sc-lbl{color:#1a3a5a;}
+.sc.green .sc-val{color:#34d399;}
+.sc.green .sc-lbl{color:#0a2a1a;}
+.sc.red .sc-val{color:#fb7185;}
+.sc.red .sc-lbl{color:#2a1a1a;}
+
+/* TAXA */
+.acc-ring{
+  display:flex;align-items:center;gap:11px;
+  background:rgba(52,211,153,.04);border-radius:10px;padding:11px 14px;
+  margin-bottom:10px;border:1px solid rgba(52,211,153,.1);
+}
+.ring-pct{font-size:24px;font-weight:700;color:#34d399;line-height:1;}
+.ring-lbl{font-size:10px;color:#2a4a6a;margin-top:2px;}
+.ring-sub{font-size:10px;color:#1a2a3a;margin-top:5px;}
+
+/* APROVAÇÃO */
+.aprov-box{
+  background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.05);
+  border-radius:10px;padding:10px 14px;
+}
+.aprov-label{font-size:10px;color:#2a4a6a;margin-bottom:6px;display:flex;justify-content:space-between;}
+.aprov-label span{font-weight:700;color:#4a7a9a;}
+.aprov-track{height:7px;background:rgba(255,255,255,.04);border-radius:3px;position:relative;margin-bottom:5px;}
+.aprov-fill{height:100%;width:50%;border-radius:3px;background:linear-gradient(90deg,#0ea5e9,#38bdf8);}
+.aprov-line{position:absolute;top:-3px;left:70%;height:13px;width:2px;background:#fbbf24;border-radius:1px;}
+.aprov-line::before{content:'70%';position:absolute;top:-16px;left:50%;transform:translateX(-50%);font-size:8px;color:#fbbf24;font-weight:700;white-space:nowrap;}
+.aprov-status{font-size:10px;text-align:center;color:#1a3a5a;margin-top:4px;}
+.status-pill{
+  display:inline-flex;align-items:center;gap:5px;
+  background:rgba(56,189,248,.08);border:1px solid rgba(56,189,248,.15);
+  border-radius:20px;padding:3px 10px;font-size:10px;color:#38bdf8;
+}
+</style>
+</head>
+<body>
+
+<div class="hd">
+  <div class="hd-logo">≡</div>
+  <div class="hd-info">
+    <div class="hd-title">Painel Fiscal</div>
+    <div class="hd-sub">TEC Automator</div>
+  </div>
+  <div class="hd-streak">🔥 2d</div>
+</div>
+
+<div class="status-bar">
+  <div class="s-dot on"></div>
+  <div class="s-txt"><strong>Ativo</strong> · ✓0 ✗1</div>
+  <div style="display:flex;gap:5px;">
+    <button class="s-btn">📝 TEC</button>
+    <button class="s-btn green">🖥 Painel</button>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab active">HOJE</div>
+  <div class="tab">REVISÃO</div>
+  <div class="tab">ANÁLISE</div>
+  <div class="tab">HIST.</div>
+  <div class="tab">CONFIG</div>
+</div>
+
+<div class="panel">
+
+  <div class="timer-box">
+    <div class="timer-dot"></div>
+    <span class="timer-val">01 : 47</span>
+    <button class="timer-btn">⏸</button>
+    <button class="timer-btn">⏹</button>
+  </div>
+
+  <div class="foco-box">
+    <div style="position:relative;width:46px;height:46px;flex-shrink:0;">
+      <svg width="46" height="46" viewBox="0 0 46 46">
+        <circle cx="23" cy="23" r="18" fill="none" stroke="rgba(14,165,233,.1)" stroke-width="4"/>
+        <circle cx="23" cy="23" r="18" fill="none" stroke="#38bdf8" stroke-width="4"
+          stroke-linecap="round" stroke-dasharray="113.1" stroke-dashoffset="39.6"
+          transform="rotate(-90 23 23)" style="filter:drop-shadow(0 0 4px rgba(56,189,248,.5))"/>
+      </svg>
+      <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#38bdf8;">65%</div>
+    </div>
+    <div style="flex:1;">
+      <div class="foco-title">FOCO HOJE</div>
+      <div class="foco-meta">Produtivo: <strong>16m</strong> · Idle: <strong class="neg">9m</strong></div>
+    </div>
+    <div style="display:flex;gap:3px;align-items:flex-end;height:22px;">
+      <div style="width:3px;height:7px;border-radius:2px;background:rgba(56,189,248,.15);"></div>
+      <div style="width:3px;height:13px;border-radius:2px;background:rgba(56,189,248,.3);"></div>
+      <div style="width:3px;height:18px;border-radius:2px;background:rgba(56,189,248,.55);"></div>
+      <div style="width:3px;height:11px;border-radius:2px;background:rgba(56,189,248,.35);"></div>
+      <div style="width:3px;height:22px;border-radius:2px;background:#38bdf8;filter:drop-shadow(0 0 3px #38bdf8);"></div>
+    </div>
+  </div>
+
+  <div class="pom-section">
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+      <span style="font-size:10px;font-weight:700;color:#1e3a4a;letter-spacing:.8px;">🍅 MODO POMODORO</span>
+      <span style="font-size:11px;color:#1a2a3a;">▼</span>
+    </div>
+  </div>
+
+  <div class="goal-row">
+    <span class="goal-label">Meta diária</span>
+    <span class="goal-badge">AUTO</span>
+    <span class="goal-val">14 / 30</span>
+  </div>
+  <div class="goal-bar"><div class="goal-bar-fill"></div></div>
+
+  <div class="stats-grid">
+    <div class="sc blue"><div class="sc-val">14</div><div class="sc-lbl">FEITAS</div></div>
+    <div class="sc green"><div class="sc-val">7</div><div class="sc-lbl">ACERTOS</div></div>
+    <div class="sc red"><div class="sc-val">7</div><div class="sc-lbl">ERROS</div></div>
+  </div>
+
+  <div class="acc-ring">
+    <svg width="50" height="50" viewBox="0 0 50 50">
+      <circle cx="25" cy="25" r="19" fill="none" stroke="rgba(52,211,153,.08)" stroke-width="5"/>
+      <circle cx="25" cy="25" r="19" fill="none" stroke="#34d399" stroke-width="5"
+        stroke-linecap="round" stroke-dasharray="119.4" stroke-dashoffset="59.7"
+        transform="rotate(-90 25 25)" style="filter:drop-shadow(0 0 5px rgba(52,211,153,.4))"/>
+    </svg>
+    <div>
+      <div class="ring-pct">50%</div>
+      <div class="ring-lbl">Taxa de acerto hoje</div>
+      <div class="ring-sub">7 acertos · 7 erros hoje</div>
+    </div>
+  </div>
+
+  <div class="aprov-box">
+    <div class="aprov-label">
+      <span>Predição de Aprovação</span>
+      <span>Meta: 70% · Atual: <span style="color:#38bdf8;">50%</span></span>
+    </div>
+    <div class="aprov-track">
+      <div class="aprov-fill"></div>
+      <div class="aprov-line"></div>
+    </div>
+    <div class="aprov-status">
+      <span class="status-pill">🔵 Em desenvolvimento</span>
+    </div>
+  </div>
+
+</div>
+
+<div style="position:absolute;bottom:0;left:0;right:0;padding:6px 14px;border-top:1px solid rgba(255,255,255,.04);font-size:9px;color:#0e2030;text-align:center;">Painel Fiscal — TEC Automator Pro v2.0</div>
+</body>
+</html>
