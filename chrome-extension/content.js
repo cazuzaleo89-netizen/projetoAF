@@ -213,14 +213,14 @@
         bn.style.cssText = `
           position:fixed;top:0;left:0;right:0;z-index:2147483647;
           background:linear-gradient(135deg,#1e1b4b,#312e81);
-          border-bottom:2px solid #818cf8;padding:10px 20px;
+          border-bottom:2px solid #3b82f6;padding:10px 20px;
           display:flex;align-items:center;gap:12px;
           font-family:-apple-system,BlinkMacSystemFont,sans-serif;
           box-shadow:0 4px 24px rgba(0,0,0,.4);`;
         bn.innerHTML = `
           <span style="font-size:18px;">🎯</span>
           <div style="flex:1;">
-            <div style="font-size:10px;font-weight:800;color:#a5b4fc;letter-spacing:.6px;text-transform:uppercase;">PAINEL FISCAL — REFORÇO INTELIGENTE</div>
+            <div style="font-size:10px;font-weight:800;color:#93c5fd;letter-spacing:.6px;text-transform:uppercase;">PAINEL FISCAL — REFORÇO INTELIGENTE</div>
             <div style="font-size:12px;color:#e2e8f0;margin-top:2px;"><strong>${label}</strong> — filtre as questões e clique em <em>Gerar Caderno</em></div>
           </div>
           <button id="_pfFiltBannerX" style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#e2e8f0;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;">✕ Fechar</button>`;
@@ -291,6 +291,7 @@
     fila: [],
     // UI
     minimized: false,
+    lastEval: '',          // 'cabi' | 'chutei' | 'naosabia'
     // Tempo por questão
     questionStart: Date.now(),
   };
@@ -668,10 +669,10 @@
       #_pfWidget2{
         position:fixed;bottom:20px;right:20px;z-index:2147483647;
         width:316px;
-        background:#1a1d2e;
-        border-radius:13px;
-        border:1px solid rgba(255,255,255,.09);
-        box-shadow:0 24px 70px rgba(0,0,0,.85),0 0 0 1px rgba(255,255,255,.04) inset;
+        background:#1e2432;
+        border-radius:14px;
+        border:1px solid rgba(59,130,246,.15);
+        box-shadow:0 24px 70px rgba(0,0,0,.85),0 8px 32px rgba(59,130,246,.08),0 0 0 1px rgba(255,255,255,.04) inset;
         font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
         color:#e2e8f0;overflow:hidden;user-select:none;
         animation:_pfSlide2 .32s cubic-bezier(.16,1,.3,1);
@@ -682,30 +683,32 @@
       ._pf2h{
         display:flex;align-items:center;gap:8px;
         padding:10px 12px;
-        background:linear-gradient(135deg,#252a40,#1e2338);
-        border-bottom:1px solid rgba(255,255,255,.07);
-        min-height:42px;
+        background:linear-gradient(135deg,#252d3d,#1e2432);
+        border-bottom:2px solid rgba(59,130,246,.2);
+        min-height:44px;
+        position:relative;
       }
       ._pf2logo{
-        width:26px;height:26px;background:#f59e0b;border-radius:6px;
+        width:28px;height:28px;background:linear-gradient(135deg,#2563eb,#3b82f6);border-radius:8px;
         display:flex;align-items:center;justify-content:center;
         font-size:14px;flex-shrink:0;font-weight:900;
+        box-shadow:0 2px 8px rgba(37,99,235,.4);
       }
       ._pf2title{flex:1;font-size:13px;font-weight:700;color:#e2e8f0;letter-spacing:.3px;}
       ._pf2hbtn{
-        width:22px;height:22px;border:none;cursor:pointer;
-        border-radius:5px;background:rgba(255,255,255,.07);
+        width:24px;height:24px;border:none;cursor:pointer;
+        border-radius:6px;background:rgba(255,255,255,.07);
         color:#94a3b8;font-size:13px;line-height:1;padding:0;
         display:flex;align-items:center;justify-content:center;
         transition:background .15s,color .15s;flex-shrink:0;
       }
-      ._pf2hbtn:hover{background:rgba(255,255,255,.14);color:#e2e8f0;}
+      ._pf2hbtn:hover{background:rgba(59,130,246,.2);color:#93c5fd;}
 
       /* ── Body ── */
       ._pf2body{padding:11px 12px;}
 
       ._pf2session{
-        font-size:12.5px;font-weight:700;color:#c7d2fe;
+        font-size:12.5px;font-weight:700;color:#bfdbfe;
         margin-bottom:5px;line-height:1.35;
         white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
       }
@@ -728,9 +731,10 @@
 
       /* Cronômetro */
       ._pf2timer{
-        display:flex;align-items:center;gap:7px;
-        background:#0f1220;border:1px solid rgba(255,255,255,.07);
-        border-radius:10px;padding:9px 12px;margin-bottom:10px;
+        display:flex;align-items:center;gap:8px;
+        background:#131c2e;border:1px solid rgba(59,130,246,.2);
+        border-radius:11px;padding:10px 13px;margin-bottom:10px;
+        border-left:3px solid #3b82f6;
       }
       ._pf2timerdot{
         width:7px;height:7px;border-radius:50%;flex-shrink:0;
@@ -738,24 +742,24 @@
       }
       ._pf2timerval{
         flex:1;font-family:'SF Mono','Courier New',monospace;
-        font-size:22px;font-weight:800;color:#e2e8f0;letter-spacing:1px;line-height:1;
+        font-size:23px;font-weight:800;color:#e2e8f0;letter-spacing:2px;line-height:1;
       }
       ._pf2timerbtn{
-        width:26px;height:26px;border:1px solid rgba(255,255,255,.1);
-        border-radius:7px;background:rgba(255,255,255,.06);
+        width:28px;height:28px;border:1px solid rgba(255,255,255,.1);
+        border-radius:8px;background:rgba(255,255,255,.06);
         color:#94a3b8;font-size:13px;cursor:pointer;
         display:flex;align-items:center;justify-content:center;
         transition:all .15s;flex-shrink:0;padding:0;
       }
-      ._pf2timerbtn:hover{background:rgba(255,255,255,.14);color:#e2e8f0;}
+      ._pf2timerbtn:hover{background:rgba(59,130,246,.2);color:#93c5fd;border-color:rgba(59,130,246,.3);}
       ._pf2timerbtn.paused{background:rgba(34,197,94,.1);border-color:#22c55e55;color:#22c55e;}
       ._pf2timerbtn.paused:hover{background:rgba(34,197,94,.2);}
 
       /* Barra de precisão */
-      ._pf2bar{height:3px;background:#2a2f47;border-radius:2px;margin-bottom:9px;overflow:hidden;}
+      ._pf2bar{height:3px;background:#1e2839;border-radius:2px;margin-bottom:9px;overflow:hidden;}
       ._pf2barfill{height:100%;background:linear-gradient(90deg,#22c55e,#4ade80);border-radius:2px;transition:width .5s cubic-bezier(.16,1,.3,1);}
 
-      ._pf2pos{font-size:11px;color:#6366f1;font-weight:700;margin-bottom:8px;letter-spacing:.3px;}
+      ._pf2pos{font-size:11px;color:#3b82f6;font-weight:700;margin-bottom:8px;letter-spacing:.3px;}
 
       /* ── Grade de círculos ── */
       ._pf2grid{
@@ -773,12 +777,12 @@
         position:relative;
       }
       ._pf2c:hover{transform:scale(1.15);z-index:2;}
-      ._pf2c.pending{background:#252a42;color:#4b5563;border-color:#2f3555;}
+      ._pf2c.pending{background:#252d3d;color:#4b5563;border-color:#2d3a4d;}
       ._pf2c.correct{background:#15803d;color:#fff;border-color:#22c55e;animation:_pfPop .25s ease;}
       ._pf2c.wrong{background:#b91c1c;color:#fff;border-color:#ef4444;animation:_pfPop .25s ease;}
-      ._pf2c.current.pending{background:#2a2640;border-color:#f59e0b;box-shadow:0 0 0 3px rgba(245,158,11,.2);color:#f59e0b;}
-      ._pf2c.current.correct{border-color:#f59e0b;box-shadow:0 0 0 3px rgba(245,158,11,.2);}
-      ._pf2c.current.wrong{border-color:#f59e0b;box-shadow:0 0 0 3px rgba(245,158,11,.2);}
+      ._pf2c.current.pending{background:#1e2d4d;border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.25);color:#3b82f6;}
+      ._pf2c.current.correct{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.2);}
+      ._pf2c.current.wrong{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.2);}
 
       /* ── Fila de revisão (mini banner) ── */
       ._pf2fila{
@@ -795,16 +799,16 @@
       ._pf2filakbd{font-size:8px;color:#64748b;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);padding:1px 5px;border-radius:3px;font-family:monospace;}
 
       /* ── Navegação ── */
-      ._pf2nav{display:flex;gap:7px;border-top:1px solid rgba(255,255,255,.06);padding-top:10px;}
+      ._pf2nav{display:flex;gap:8px;border-top:1px solid rgba(59,130,246,.12);padding-top:10px;}
       ._pf2navbtn{
-        flex:1;padding:8px 4px;border:1px solid rgba(255,255,255,.09);
-        background:#20243a;color:#94a3b8;border-radius:8px;
+        flex:1;padding:9px 6px;border:1px solid rgba(255,255,255,.1);
+        background:#252d3d;color:#94a3b8;border-radius:10px;
         font-size:12px;font-weight:700;cursor:pointer;
-        transition:all .15s;
+        transition:all .15s;letter-spacing:.2px;
       }
-      ._pf2navbtn:hover{background:#272c47;color:#e2e8f0;border-color:rgba(255,255,255,.18);}
-      ._pf2navbtn.primary{background:#4f46e5;border-color:#6366f1;color:#fff;}
-      ._pf2navbtn.primary:hover{background:#4338ca;border-color:#818cf8;}
+      ._pf2navbtn:hover{background:#2d3748;color:#e2e8f0;border-color:rgba(59,130,246,.3);}
+      ._pf2navbtn.primary{background:linear-gradient(135deg,#2563eb,#3b82f6);border-color:#3b82f6;color:#fff;box-shadow:0 2px 12px rgba(37,99,235,.3);}
+      ._pf2navbtn.primary:hover{background:linear-gradient(135deg,#1d4ed8,#2563eb);border-color:#60a5fa;box-shadow:0 4px 16px rgba(37,99,235,.4);}
 
       /* ── Estado minimizado ── */
       #_pfWidget2.pf2-min{
@@ -826,8 +830,8 @@
 
       /* ── Taxa ao vivo ── */
       ._pf2taxa{
-        display:flex;background:#0f1220;border:1px solid rgba(255,255,255,.07);
-        border-radius:9px;margin-bottom:9px;overflow:hidden;
+        display:flex;background:#131c2e;border:1px solid rgba(59,130,246,.12);
+        border-radius:10px;margin-bottom:9px;overflow:hidden;
       }
       ._pf2taxa-it{
         flex:1;display:flex;flex-direction:column;align-items:center;
@@ -843,32 +847,49 @@
       ._pf2mhd{width:10px;height:10px;border-radius:3px;flex-shrink:0;}
       ._pf2mhd.c{background:#15803d;border:1px solid rgba(34,197,94,.25);}
       ._pf2mhd.w{background:#b91c1c;border:1px solid rgba(239,68,68,.25);}
-      ._pf2mhd.p{background:#252a42;border:1px solid rgba(255,255,255,.06);}
+      ._pf2mhd.p{background:#252d3d;border:1px solid rgba(255,255,255,.06);}
 
       /* ── Hub mini ── */
       ._pf2hub-min{
         display:flex;align-items:center;gap:6px;
-        background:rgba(139,92,246,.07);border:1px solid rgba(139,92,246,.18);
-        border-radius:7px;padding:5px 9px;margin-bottom:8px;cursor:pointer;transition:background .15s;
+        background:rgba(59,130,246,.07);border:1px solid rgba(59,130,246,.18);
+        border-radius:8px;padding:5px 9px;margin-bottom:8px;cursor:pointer;transition:background .15s;
       }
-      ._pf2hub-min:hover{background:rgba(139,92,246,.14);}
-      ._pf2hub-min-txt{flex:1;font-size:10px;color:#c4b5fd;font-weight:700;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+      ._pf2hub-min:hover{background:rgba(59,130,246,.14);}
+      ._pf2hub-min-txt{flex:1;font-size:10px;color:#93c5fd;font-weight:700;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
       ._pf2hub-min-cd{font-size:10px;font-weight:800;flex-shrink:0;font-family:monospace;}
 
       /* ── Revisões SM-2 pendentes ── */
       ._pf2due{
         display:flex;align-items:center;gap:6px;
-        background:rgba(99,102,241,.07);border:1px solid rgba(99,102,241,.15);
-        border-radius:7px;padding:5px 9px;margin-bottom:8px;cursor:pointer;transition:background .15s;
+        background:rgba(59,130,246,.07);border:1px solid rgba(59,130,246,.15);
+        border-radius:8px;padding:5px 9px;margin-bottom:8px;cursor:pointer;transition:background .15s;
       }
-      ._pf2due:hover{background:rgba(99,102,241,.14);}
-      ._pf2due-dot{width:5px;height:5px;border-radius:50%;background:#6366f1;flex-shrink:0;}
-      ._pf2due-txt{flex:1;font-size:10px;color:#818cf8;font-weight:700;}
+      ._pf2due:hover{background:rgba(59,130,246,.14);}
+      ._pf2due-dot{width:5px;height:5px;border-radius:50%;background:#3b82f6;flex-shrink:0;}
+      ._pf2due-txt{flex:1;font-size:10px;color:#60a5fa;font-weight:700;}
       ._pf2reforco{
         display:flex;align-items:center;gap:6px;
-        background:rgba(99,102,241,.06);border:1px solid rgba(99,102,241,.2);
-        border-radius:7px;padding:5px 9px;margin-bottom:8px;
+        background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.2);
+        border-radius:8px;padding:5px 9px;margin-bottom:8px;
       }
+
+      /* ── Como foi? ── */
+      ._pf2eval{margin-bottom:10px;}
+      ._pf2eval-lbl{font-size:9.5px;font-weight:700;color:#64748b;letter-spacing:.8px;margin-bottom:5px;}
+      ._pf2eval-chips{display:flex;gap:5px;}
+      ._pf2chip{
+        flex:1;padding:6px 4px;border-radius:8px;
+        font-size:10.5px;font-weight:700;cursor:pointer;
+        border:1px solid rgba(255,255,255,.08);
+        background:#252d3d;color:#64748b;
+        transition:all .15s;text-align:center;
+        display:flex;align-items:center;justify-content:center;gap:3px;
+      }
+      ._pf2chip:hover{border-color:rgba(59,130,246,.35);color:#93c5fd;background:#1e2d4d;}
+      ._pf2chip.sel-cabi{background:rgba(34,197,94,.12);border-color:#22c55e55;color:#4ade80;}
+      ._pf2chip.sel-chutei{background:rgba(245,158,11,.1);border-color:#f59e0b44;color:#fbbf24;}
+      ._pf2chip.sel-naosabia{background:rgba(239,68,68,.1);border-color:#ef444433;color:#f87171;}
     `;
     document.head.appendChild(st);
   }
@@ -1019,12 +1040,20 @@
           return `<div class="_pf2reforco" id="_pf2reforcoRow">
             <span style="font-size:13px;flex-shrink:0;">🎯</span>
             <div style="flex:1;min-width:0;">
-              <div style="font-size:10px;font-weight:800;color:#a5b4fc;line-height:1.2;">${nErros} erro${nErros!==1?'s':''} · ${simTxt}</div>
+              <div style="font-size:10px;font-weight:800;color:#93c5fd;line-height:1.2;">${nErros} erro${nErros!==1?'s':''} · ${simTxt}</div>
               <div style="font-size:9px;color:#475569;margin-top:1px;">Rodada de Reforço</div>
             </div>
-            <button id="_pf2reforcoBtn" style="background:rgba(99,102,241,.28);border:1px solid rgba(99,102,241,.55);color:#a5b4fc;border-radius:7px;padding:3px 8px;font-size:10px;font-weight:800;cursor:pointer;white-space:nowrap;flex-shrink:0;">Ver ↗</button>
+            <button id="_pf2reforcoBtn" style="background:rgba(37,99,235,.28);border:1px solid rgba(37,99,235,.55);color:#93c5fd;border-radius:7px;padding:3px 8px;font-size:10px;font-weight:800;cursor:pointer;white-space:nowrap;flex-shrink:0;">Ver ↗</button>
           </div>`;
         })() : ''}
+        <div class="_pf2eval">
+          <div class="_pf2eval-lbl">COMO FOI?</div>
+          <div class="_pf2eval-chips">
+            <button class="_pf2chip ${S.lastEval === 'cabi' ? 'sel-cabi' : ''}" id="_pf2cabi">🧠 Cabi</button>
+            <button class="_pf2chip ${S.lastEval === 'chutei' ? 'sel-chutei' : ''}" id="_pf2chutei">🎲 Chutei</button>
+            <button class="_pf2chip ${S.lastEval === 'naosabia' ? 'sel-naosabia' : ''}" id="_pf2naosabia">😶 Não sabia</button>
+          </div>
+        </div>
         <div class="_pf2nav">
           <button class="_pf2navbtn" id="_pf2ant">← Ant</button>
           <button class="_pf2navbtn primary" id="_pf2prox">Prox →</button>
@@ -1073,6 +1102,12 @@
     };
     document.getElementById('_pf2ant').onclick = navClick('[class*="anterior"],[aria-label*="Anterior"]');
     document.getElementById('_pf2prox').onclick = navClick('[class*="proxim"],[aria-label*="Próxima"]');
+
+    // Chips "Como foi?"
+    ['cabi','chutei','naosabia'].forEach(val => {
+      const el = document.getElementById('_pf2' + val);
+      if (el) el.onclick = ev => { ev.stopPropagation(); S.lastEval = S.lastEval === val ? '' : val; renderWidget(); };
+    });
 
     // Clique em círculo → abre questão
     widgetEl.querySelectorAll('._pf2c[data-url]').forEach(c => {
@@ -1217,7 +1252,7 @@
 
     // Atualiza posição
     const pos = parsePosition();
-    if (pos && pos.n !== S.currentQ) { S.currentQ = pos.n; ensureQuestions(pos.t); renderWidget(); }
+    if (pos && pos.n !== S.currentQ) { S.currentQ = pos.n; S.lastEval = ''; ensureQuestions(pos.t); renderWidget(); }
 
     // Painel Desempenho abriu?
     const desempOpen = tx0.includes('Meu Desempenho') && tx0.includes('Desempenho Geral');
@@ -1358,7 +1393,7 @@
     if (ev.data.type === 'PF_OPEN_QUESTION' && ev.data.url) { window.open(ev.data.url, '_self'); return; }
     if (ev.data.type === 'PF_NO_FILA') {
       const nb = document.createElement('div');
-      nb.style.cssText = 'position:fixed;top:14px;left:50%;transform:translateX(-50%);background:#1a1d2e;color:#e2e8f0;padding:10px 18px;border-radius:10px;font-size:13px;z-index:2147483647;border:1px solid rgba(255,255,255,.12);font-family:sans-serif;';
+      nb.style.cssText = 'position:fixed;top:14px;left:50%;transform:translateX(-50%);background:#1e2432;color:#e2e8f0;padding:10px 18px;border-radius:10px;font-size:13px;z-index:2147483647;border:1px solid rgba(255,255,255,.12);font-family:sans-serif;';
       nb.textContent = '⏰ Fila vazia — nenhuma revisão pendente';
       document.body.appendChild(nb);
       setTimeout(() => nb.remove(), 3000);
@@ -1401,7 +1436,7 @@
     bn.id = '_pfHubBanner';
     bn.style.cssText = `
       position:fixed;top:14px;left:50%;transform:translateX(-50%);
-      background:linear-gradient(135deg,#1e1340,#0f1220);
+      background:linear-gradient(135deg,#1e2432,#131c2e);
       border:1px solid rgba(139,92,246,.4);
       border-radius:14px;padding:13px 16px;
       box-shadow:0 8px 32px rgba(139,92,246,.35),0 0 0 1px rgba(139,92,246,.15) inset;
@@ -1534,7 +1569,7 @@
     t.style.cssText = `position:fixed;bottom:76px;right:20px;z-index:2147483645;
       background:linear-gradient(135deg,#1e1b4b,#312e81);color:${color||'#a5b4fc'};
       padding:8px 14px;border-radius:10px;font:700 11px/1.5 -apple-system,sans-serif;
-      border:1px solid rgba(99,102,241,.4);box-shadow:0 4px 20px rgba(0,0,0,.5);
+      border:1px solid rgba(37,99,235,.4);box-shadow:0 4px 20px rgba(0,0,0,.5);
       transition:opacity .4s;display:flex;align-items:center;gap:8px;max-width:260px;`;
     t.innerHTML = msg;
     document.body.appendChild(t);
@@ -1785,14 +1820,14 @@
 
       const simRows = entry.similares.map((s, si) => `
         <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05);">
-          <div style="width:18px;height:18px;border-radius:50%;background:rgba(99,102,241,.18);border:1px solid rgba(99,102,241,.4);
-            display:flex;align-items:center;justify-content:center;font-size:9px;color:#818cf8;font-weight:800;flex-shrink:0;">${si+1}</div>
+          <div style="width:18px;height:18px;border-radius:50%;background:rgba(99,102,241,.18);border:1px solid rgba(37,99,235,.4);
+            display:flex;align-items:center;justify-content:center;font-size:9px;color:#60a5fa;font-weight:800;flex-shrink:0;">${si+1}</div>
           <div style="flex:1;min-width:0;">
             <div style="font-size:10.5px;color:#cbd5e1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${s.label}</div>
             ${s.banca || s.assunto ? `<div style="font-size:9px;color:#475569;">${[s.banca,s.assunto].filter(Boolean).join(' · ')}</div>` : ''}
           </div>
           <a href="${s.url}" target="_blank"
-            style="background:rgba(99,102,241,.2);border:1px solid rgba(99,102,241,.4);color:#a5b4fc;
+            style="background:rgba(37,99,235,.2);border:1px solid rgba(37,99,235,.4);color:#93c5fd;
             border-radius:6px;padding:3px 9px;font-size:10px;text-decoration:none;font-weight:700;white-space:nowrap;">Abrir ↗</a>
         </div>`).join('');
 
@@ -1809,11 +1844,11 @@
           </div>
           ${entry.loading
             ? `<div style="display:flex;align-items:center;gap:8px;padding:8px;background:rgba(99,102,241,.07);border-radius:8px;margin-bottom:8px;">
-                <div style="width:12px;height:12px;border:2px solid rgba(99,102,241,.25);border-top-color:#6366f1;border-radius:50%;animation:_pfSpin 1s linear infinite;flex-shrink:0;"></div>
+                <div style="width:12px;height:12px;border:2px solid rgba(99,102,241,.25);border-top-color:#3b82f6;border-radius:50%;animation:_pfSpin 1s linear infinite;flex-shrink:0;"></div>
                 <span style="font-size:10px;color:#64748b;">Buscando questões similares no banco do TEC…</span>
               </div>`
             : hasSim
-              ? `<div style="font-size:9.5px;color:#6366f1;font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px;">
+              ? `<div style="font-size:9.5px;color:#3b82f6;font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px;">
                   📚 ${entry.similares.length} similar${entry.similares.length>1?'es':''} de <strong style="color:#a5b4fc">${q.assunto||q.materia||''}</strong>
                 </div>${simRows}`
               : `<div style="display:flex;align-items:center;gap:6px;padding:8px;background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);border-radius:8px;margin-bottom:6px;">
@@ -1823,7 +1858,7 @@
           }
           <a href="${_tecFilterUrl(q)}" target="_blank"
             style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:8px;
-            background:rgba(20,18,48,.8);border:1px solid rgba(99,102,241,.35);color:#818cf8;
+            background:rgba(14,24,48,.85);border:1px solid rgba(37,99,235,.35);color:#818cf8;
             border-radius:8px;padding:7px;font-size:10.5px;font-weight:700;text-decoration:none;">
             📋 Gerar Caderno de Reforço no TEC
           </a>
@@ -1831,17 +1866,17 @@
     }).join('');
 
     overlay.innerHTML = `
-      <div style="background:#0b0d18;border:1px solid rgba(99,102,241,.4);border-radius:18px;
+      <div style="background:#0b0d18;border:1px solid rgba(37,99,235,.4);border-radius:18px;
         width:100%;max-width:520px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;
         box-shadow:0 0 0 1px rgba(99,102,241,.1) inset,0 28px 80px rgba(0,0,0,.75);">
         <!-- Header fixo -->
         <div style="background:linear-gradient(135deg,rgba(30,27,75,.95),rgba(49,46,129,.8));
-          padding:18px 20px 14px;border-bottom:1px solid rgba(99,102,241,.2);flex-shrink:0;">
+          padding:18px 20px 14px;border-bottom:1px solid rgba(37,99,235,.2);flex-shrink:0;">
           <div style="display:flex;align-items:center;gap:12px;margin-bottom:${nSim>0?'12':'0'}px;">
             <span style="font-size:26px;line-height:1;">🎯</span>
             <div style="flex:1;">
               <div style="font-size:15px;font-weight:800;color:#e2e8f0;">Rodada de Reforço</div>
-              <div style="font-size:11px;color:#6366f1;margin-top:3px;">
+              <div style="font-size:11px;color:#3b82f6;margin-top:3px;">
                 ${nErros} questão${nErros>1?'ões':''} errada${nErros>1?'s':''} ·
                 ${loading ? '⏳ buscando similares…' : nSim + ' similar' + (nSim!==1?'es':'') + ' encontrada' + (nSim!==1?'s':'')}
               </div>
