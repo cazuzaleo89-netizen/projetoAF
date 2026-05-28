@@ -277,7 +277,432 @@ option{background:var(--s3)}
   .g2,.g3{grid-template-columns:1fr}
   .sidebar{display:none}
 }
+</style><!--
+  ╔══════════════════════════════════════════════════════════╗
+  ║     CRONÔMETRO FLUTUANTE — Painel Fiscal                ║
+  ║     Adicione este bloco ao final do seu index.html,     ║
+  ║     antes do </body>                                     ║
+  ╚══════════════════════════════════════════════════════════╝
+-->
+
+<!-- ① CSS — adicione dentro do <style> existente ou aqui mesmo -->
+<style id="float-timer-styles">
+#painelFlutuante {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 260px;
+  background: rgba(10, 13, 26, 0.96);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(74, 108, 247, 0.45);
+  border-radius: 16px;
+  z-index: 9999;
+  overflow: hidden;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(74,108,247,0.1);
+  transition: opacity .2s, transform .2s, width .2s;
+  font-family: inherit;
+}
+#painelFlutuante.minimized { width: 210px; }
+#painelFlutuante.hidden    { opacity: 0; transform: scale(0.85) translateY(10px); pointer-events: none; }
+
+#ftHeader {
+  background: rgba(74, 108, 247, 0.12);
+  border-bottom: 1px solid rgba(74, 108, 247, 0.2);
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: grab;
+  user-select: none;
+}
+#ftHeader:active { cursor: grabbing; }
+
+.ft-icon-btn {
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.45);
+  width: 22px; height: 22px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 11px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background .15s;
+  padding: 0;
+}
+.ft-icon-btn:hover { background: rgba(255,255,255,0.14); color: #fff; }
+
+#ftBody { padding: 12px; }
+
+#ftDisc {
+  width: 100%;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(74,108,247,0.3);
+  border-radius: 8px;
+  color: #fff;
+  padding: 6px 9px;
+  font-size: 12px;
+  outline: none;
+  cursor: pointer;
+  margin-bottom: 12px;
+}
+#ftDisc option { background: #0e1120; }
+
+#ftDisplay {
+  text-align: center;
+  margin-bottom: 10px;
+}
+#ftClock {
+  font-size: 32px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: 2px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+#ftXpHint {
+  font-size: 9px;
+  color: rgba(74,108,247,0.65);
+  margin-top: 4px;
+  letter-spacing: 0.3px;
+}
+
+#ftProgressWrap {
+  height: 3px;
+  background: rgba(255,255,255,0.07);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+#ftProgressBar {
+  height: 100%;
+  width: 0%;
+  background: #4a6cf7;
+  border-radius: 2px;
+  transition: width 1s linear;
+}
+
+#ftControls { display: flex; gap: 6px; margin-bottom: 8px; }
+#ftPlayBtn {
+  flex: 1;
+  background: rgba(74,108,247,0.22);
+  border: 1px solid rgba(74,108,247,0.45);
+  color: #7c8ef5;
+  border-radius: 9px;
+  padding: 7px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background .15s;
+}
+#ftPlayBtn:hover { background: rgba(74,108,247,0.38); }
+#ftStopBtn {
+  width: 36px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.35);
+  border-radius: 9px;
+  padding: 7px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: background .15s;
+}
+#ftStopBtn:hover { background: rgba(239,68,68,0.18); border-color: rgba(239,68,68,0.35); color: #ef4444; }
+
+#ftFooter {
+  border-top: 1px solid rgba(255,255,255,0.05);
+  padding: 5px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+#ftStatusLabel { font-size: 9px; color: rgba(255,255,255,0.25); letter-spacing: 0.4px; }
+.ft-q-btn {
+  background: transparent;
+  border: 1px solid;
+  border-radius: 5px;
+  padding: 2px 7px;
+  font-size: 9px;
+  cursor: pointer;
+  transition: background .15s;
+}
+.ft-q-btn.acerto { border-color: rgba(34,197,94,0.4); color: #22c55e; }
+.ft-q-btn.acerto:hover { background: rgba(34,197,94,0.15); }
+.ft-q-btn.erro   { border-color: rgba(239,68,68,0.4); color: #ef4444; }
+.ft-q-btn.erro:hover   { background: rgba(239,68,68,0.15); }
+
+/* Minimized state */
+#ftMiniRow {
+  display: none;
+  padding: 8px 12px;
+  align-items: center;
+  gap: 8px;
+  justify-content: space-between;
+}
+#ftMiniRow .mini-disc { font-size: 10px; color: rgba(255,255,255,0.45); max-width: 70px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#ftMiniRow .mini-time { font-size: 14px; font-weight: 700; color: #fff; letter-spacing: 1px; font-variant-numeric: tabular-nums; }
+
+/* Toggle button (bottom-right, hidden when timer visible) */
+#ftToggleOpen {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 48px; height: 48px;
+  background: rgba(10,13,26,0.95);
+  border: 1px solid rgba(74,108,247,0.5);
+  border-radius: 50%;
+  color: #4a6cf7;
+  font-size: 20px;
+  cursor: pointer;
+  z-index: 9998;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  transition: transform .15s;
+}
+#ftToggleOpen:hover { transform: scale(1.08); }
 </style>
+
+<!-- ② HTML — adicione antes do </body> -->
+
+<div id="painelFlutuante">
+
+  <div id="ftHeader">
+    <div style="display:flex;align-items:center;gap:6px">
+      <span style="color:#4a6cf7;font-size:14px">⏱</span>
+      <span style="color:rgba(255,255,255,0.75);font-size:10px;font-weight:700;letter-spacing:0.6px">CRONÔMETRO</span>
+      <span id="ftDot" style="width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.2);display:inline-block;transition:background .3s"></span>
+    </div>
+    <div style="display:flex;gap:4px">
+      <button class="ft-icon-btn" id="ftMinBtn" title="Minimizar">—</button>
+      <button class="ft-icon-btn" id="ftHideBtn" title="Fechar">✕</button>
+    </div>
+  </div>
+
+  <div id="ftBody">
+    <!-- Discipline selector — IMPORTANT: populate with your disciplines -->
+    <select id="ftDisc">
+      <option value="">— disciplina —</option>
+      <!-- Populated by JS from your existing disciplines array -->
+    </select>
+
+    <div id="ftDisplay">
+      <div id="ftClock">00:00:00</div>
+      <div id="ftXpHint">selecione e inicie para ganhar XP</div>
+    </div>
+
+    <div id="ftProgressWrap">
+      <div id="ftProgressBar"></div>
+    </div>
+
+    <div id="ftControls">
+      <button id="ftPlayBtn">▶ Iniciar</button>
+      <button id="ftStopBtn">■</button>
+    </div>
+
+    <div id="ftFooter">
+      <span id="ftStatusLabel">PRONTO</span>
+      <span id="ftScoreLabel" style="font-size:9px;color:rgba(255,255,255,0.25)">✓ 0 · ✗ 0</span>
+      <div style="display:flex;gap:4px">
+        <button class="ft-q-btn acerto" id="ftAcertoBtn">✓</button>
+        <button class="ft-q-btn erro"   id="ftErroBtn">✗</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="ftMiniRow">
+    <span class="mini-disc" id="ftMiniDisc">—</span>
+    <span class="mini-time" id="ftMiniTime">00:00:00</span>
+    <button class="ft-icon-btn" id="ftExpandBtn" title="Expandir">⤢</button>
+  </div>
+
+</div>
+
+<button id="ftToggleOpen" title="Abrir cronômetro">⏱</button>
+
+<!-- ③ JavaScript — adicione antes do </body>, após o HTML acima -->
+<script>
+(function () {
+  'use strict';
+
+  /* ── Config ── */
+  const GOAL_SECONDS = 3600; // meta: 1 hora = 100% da barra
+
+  /* ── State ── */
+  let running = false, seconds = 0, certas = 0, erros = 0;
+  let interval = null;
+  let minimized = false;
+  let dragging = false, offX = 0, offY = 0, posX = null, posY = null;
+
+  /* ── Elements ── */
+  const ft       = document.getElementById('painelFlutuante');
+  const header   = document.getElementById('ftHeader');
+  const body     = document.getElementById('ftBody');
+  const miniRow  = document.getElementById('ftMiniRow');
+  const clock    = document.getElementById('ftClock');
+  const miniTime = document.getElementById('ftMiniTime');
+  const miniDisc = document.getElementById('ftMiniDisc');
+  const xpHint   = document.getElementById('ftXpHint');
+  const bar      = document.getElementById('ftProgressBar');
+  const dot      = document.getElementById('ftDot');
+  const statusLbl= document.getElementById('ftStatusLabel');
+  const scoreLbl = document.getElementById('ftScoreLabel');
+  const disc     = document.getElementById('ftDisc');
+  const playBtn  = document.getElementById('ftPlayBtn');
+  const stopBtn  = document.getElementById('ftStopBtn');
+  const acertoBtn= document.getElementById('ftAcertoBtn');
+  const erroBtn  = document.getElementById('ftErroBtn');
+  const minBtn   = document.getElementById('ftMinBtn');
+  const hideBtn  = document.getElementById('ftHideBtn');
+  const expandBtn= document.getElementById('ftExpandBtn');
+  const openBtn  = document.getElementById('ftToggleOpen');
+
+  /* ── Populate disciplines from your app ──
+     If your project stores disciplines in localStorage (key 'disciplines'),
+     this will auto-populate. Otherwise, edit STATIC_DISCS below. */
+  const STATIC_DISCS = [
+    'Dir. Tributário', 'Contabilidade', 'Dir. Administrativo',
+    'Dir. Financeiro', 'Processo Adm. Fiscal', 'Legislação Tributária',
+    'ICMS / IPI / ISS', 'Direito Constitucional'
+  ];
+  function populateDiscs() {
+    let list = STATIC_DISCS;
+    try {
+      const stored = JSON.parse(localStorage.getItem('disciplines') || '[]');
+      if (stored.length) list = stored.map(d => d.name || d);
+    } catch (_) {}
+    disc.innerHTML = '<option value="">— disciplina —</option>' +
+      list.map(n => `<option>${n}</option>`).join('');
+  }
+  populateDiscs();
+
+  /* ── Helpers ── */
+  function fmt(s) {
+    return String(Math.floor(s / 3600)).padStart(2, '0') + ':' +
+           String(Math.floor((s % 3600) / 60)).padStart(2, '0') + ':' +
+           String(s % 60).padStart(2, '0');
+  }
+  function xpFor(s) {
+    if (s < 60)   return 'inicie para ganhar XP';
+    if (s < 900)  return `+${Math.floor(s / 60 * 0.7)} XP acumulados`;
+    if (s < 3000) return '+35 XP · Deep Work ativo 🧠';
+    return '+70 XP · ELITE! Continue! 💪';
+  }
+  function updateDisplay() {
+    const t = fmt(seconds);
+    clock.textContent = t;
+    miniTime.textContent = t;
+    xpHint.textContent = xpFor(seconds);
+    bar.style.width = Math.min(100, (seconds / GOAL_SECONDS) * 100) + '%';
+    scoreLbl.textContent = `✓ ${certas} · ✗ ${erros}`;
+  }
+
+  /* ── Timer controls ── */
+  playBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    if (!running) {
+      running = true;
+      playBtn.textContent = '⏸ Pausar';
+      playBtn.style.background = 'rgba(74,108,247,0.38)';
+      statusLbl.textContent = '● EM ANDAMENTO';
+      statusLbl.style.color = '#4a6cf7';
+      dot.style.background = '#4a6cf7';
+      miniDisc.textContent = disc.value || '—';
+      interval = setInterval(() => { seconds++; updateDisplay(); }, 1000);
+    } else {
+      running = false;
+      clearInterval(interval);
+      playBtn.textContent = '▶ Retomar';
+      playBtn.style.background = 'rgba(74,108,247,0.22)';
+      statusLbl.textContent = '⏸ PAUSADO';
+      statusLbl.style.color = '#f59e0b';
+      dot.style.background = '#f59e0b';
+    }
+  });
+
+  stopBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    running = false;
+    clearInterval(interval);
+    /* ── Hook: integrate with your existing session registration ──
+       Call your app's existing registerSession() function here.
+       Example: if (typeof registrarSessao === 'function') registrarSessao({ ... });
+    */
+    seconds = certas = erros = 0;
+    playBtn.textContent = '▶ Iniciar';
+    playBtn.style.background = 'rgba(74,108,247,0.22)';
+    statusLbl.textContent = 'PRONTO';
+    statusLbl.style.color = 'rgba(255,255,255,0.25)';
+    dot.style.background = 'rgba(255,255,255,0.2)';
+    updateDisplay();
+  });
+
+  acertoBtn.addEventListener('click', e => { e.stopPropagation(); certas++; updateDisplay(); });
+  erroBtn.addEventListener('click',   e => { e.stopPropagation(); erros++;  updateDisplay(); });
+
+  /* ── Minimize / Expand ── */
+  minBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    minimized = true;
+    body.style.display = 'none';
+    miniRow.style.display = 'flex';
+    ft.classList.add('minimized');
+  });
+  expandBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    minimized = false;
+    body.style.display = 'block';
+    miniRow.style.display = 'none';
+    ft.classList.remove('minimized');
+  });
+
+  /* ── Hide / Show ── */
+  hideBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    ft.classList.add('hidden');
+    openBtn.style.display = 'flex';
+  });
+  openBtn.addEventListener('click', () => {
+    ft.classList.remove('hidden');
+    openBtn.style.display = 'none';
+  });
+
+  /* ── Drag ── */
+  header.addEventListener('mousedown', e => {
+    dragging = true;
+    const r = ft.getBoundingClientRect();
+    if (posX === null) { posX = r.left; posY = r.top; applyPos(); }
+    offX = e.clientX - posX;
+    offY = e.clientY - posY;
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    posX = Math.max(0, Math.min(e.clientX - offX, window.innerWidth  - ft.offsetWidth));
+    posY = Math.max(0, Math.min(e.clientY - offY, window.innerHeight - ft.offsetHeight));
+    applyPos();
+  });
+  document.addEventListener('mouseup', () => { dragging = false; });
+  function applyPos() {
+    ft.style.right  = 'auto';
+    ft.style.bottom = 'auto';
+    ft.style.left   = posX + 'px';
+    ft.style.top    = posY + 'px';
+  }
+
+  /* ── Keyboard shortcut: M = toggle minimize, Space = play/pause ── */
+  document.addEventListener('keydown', ev => {
+    if (['INPUT','TEXTAREA','SELECT'].includes(ev.target.tagName)) return;
+    if (ev.key === 'm' || ev.key === 'M') minBtn.click();
+    if (ev.key === ' ' && running !== undefined) { ev.preventDefault(); playBtn.click(); }
+  });
+
+  updateDisplay();
+})();
+</script>
 </head><script src="mobile-patch.js"></script>
 <body>
 <div class="app">
