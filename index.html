@@ -618,13 +618,8 @@ option{background:var(--s3)}
     'ICMS / IPI / ISS', 'Direito Constitucional'
   ];
   function populateDiscs() {
-    let list = STATIC_DISCS;
-    try {
-      const stored = JSON.parse(localStorage.getItem('disciplines') || '[]');
-      if (stored.length) list = stored.map(d => d.name || d);
-    } catch (_) {}
-    disc.innerHTML = '<option value="">— disciplina —</option>' +
-      list.map(n => `<option>${n}</option>`).join('');
+    /* Desativado: as disciplinas reais do app são sincronizadas em syncOpts()
+       a partir do seletor da aba Cronômetro (#tdisc). */
   }
   populateDiscs();
 
@@ -649,48 +644,44 @@ option{background:var(--s3)}
     scoreLbl.textContent = `✓ ${certas} · ✗ ${erros}`;
   }
 
-  /* ── Timer controls ── */
+  /* ── Timer controls — integrados ao cronômetro REAL do app ──
+     O painel flutua sobre todas as abas e controla a mesma sessão
+     (que salva no histórico e dá XP). Sem timer paralelo. */
+  const tdiscEl = () => document.getElementById('tdisc');
+
   playBtn.addEventListener('click', e => {
     e.stopPropagation();
-    if (!running) {
-      running = true;
-      playBtn.textContent = '⏸ Pausar';
-      playBtn.style.background = 'rgba(74,108,247,0.38)';
-      statusLbl.textContent = '● EM ANDAMENTO';
-      statusLbl.style.color = '#4a6cf7';
-      dot.style.background = '#4a6cf7';
-      miniDisc.textContent = disc.value || '—';
-      interval = setInterval(() => { seconds++; updateDisplay(); }, 1000);
-    } else {
-      running = false;
-      clearInterval(interval);
-      playBtn.textContent = '▶ Retomar';
-      playBtn.style.background = 'rgba(74,108,247,0.22)';
-      statusLbl.textContent = '⏸ PAUSADO';
-      statusLbl.style.color = '#f59e0b';
-      dot.style.background = '#f59e0b';
+    const td = tdiscEl();
+    if (typeof tRun === 'undefined') return;
+    if (!tRun) {                       // PRONTO → iniciar
+      if (td && disc.value) { td.value = disc.value; if (typeof updTDisc === 'function') updTDisc(); }
+      if (td && !td.value) { if (typeof nfy === 'function') nfy('Selecione uma disciplina!', 'err'); return; }
+      ft.classList.remove('hidden');
+      if (openBtn) openBtn.style.display = 'none';
+      if (typeof tStart === 'function') tStart();
+    } else if (!tPsd) {                 // EM ANDAMENTO → pausar
+      if (typeof tPause === 'function') tPause();
+    } else {                           // PAUSADO → retomar
+      if (typeof tResume === 'function') tResume();
     }
+    mirror();
   });
 
   stopBtn.addEventListener('click', e => {
     e.stopPropagation();
-    running = false;
-    clearInterval(interval);
-    /* ── Hook: integrate with your existing session registration ──
-       Call your app's existing registerSession() function here.
-       Example: if (typeof registrarSessao === 'function') registrarSessao({ ... });
-    */
-    seconds = certas = erros = 0;
-    playBtn.textContent = '▶ Iniciar';
-    playBtn.style.background = 'rgba(74,108,247,0.22)';
-    statusLbl.textContent = 'PRONTO';
-    statusLbl.style.color = 'rgba(255,255,255,0.25)';
-    dot.style.background = 'rgba(255,255,255,0.2)';
-    updateDisplay();
+    if ((tRun || tPsd) && typeof tStop === 'function') tStop();
+    mirror();
   });
 
-  acertoBtn.addEventListener('click', e => { e.stopPropagation(); certas++; updateDisplay(); });
-  erroBtn.addEventListener('click',   e => { e.stopPropagation(); erros++;  updateDisplay(); });
+  /* Placar ✓/✗ não é persistido — questões são registradas na aba Questões.
+     Ocultamos para não confundir. */
+  [acertoBtn, erroBtn, scoreLbl].forEach(el => { if (el) el.style.display = 'none'; });
+
+  /* Mantém a disciplina escolhida no painel em sincronia com a aba Cronômetro */
+  disc.addEventListener('change', () => {
+    const td = tdiscEl();
+    if (td) { td.value = disc.value; if (typeof updTDisc === 'function') updTDisc(); }
+  });
 
   /* ── Minimize / Expand ── */
   minBtn.addEventListener('click', e => {
@@ -742,14 +733,71 @@ option{background:var(--s3)}
     ft.style.top    = posY + 'px';
   }
 
-  /* ── Keyboard shortcut: M = toggle minimize, Space = play/pause ── */
+  /* ── Keyboard shortcut: M = minimizar (Espaço é tratado pelo app) ── */
   document.addEventListener('keydown', ev => {
     if (['INPUT','TEXTAREA','SELECT'].includes(ev.target.tagName)) return;
     if (ev.key === 'm' || ev.key === 'M') minBtn.click();
-    if (ev.key === ' ' && running !== undefined) { ev.preventDefault(); playBtn.click(); }
   });
 
-  updateDisplay();
+  /* ── Espelha o estado do timer real no painel flutuante ──
+     Roda a cada 500ms, mantendo o relógio, status e disciplina em sincronia
+     em qualquer aba que o usuário esteja. */
+  function syncOpts() {
+    const td = tdiscEl();
+    if (!td) return;
+    if (disc.dataset.opts !== td.innerHTML) {
+      const cur = disc.value;
+      disc.innerHTML = td.innerHTML;
+      disc.dataset.opts = td.innerHTML;
+      if (cur && [...disc.options].some(o => o.value === cur)) disc.value = cur;
+    }
+  }
+  function mirror() {
+    if (typeof tSec === 'undefined') return;
+    syncOpts();
+    const td = tdiscEl();
+    const running = (typeof tRun !== 'undefined') && tRun;
+    const paused  = (typeof tPsd !== 'undefined') && tPsd;
+    const t = (typeof fS === 'function') ? fS(tSec) : '00:00:00';
+    clock.textContent = t;
+    if (miniTime) miniTime.textContent = t;
+    let dname = '—';
+    if (running || paused) {
+      const rd = document.getElementById('rdisc');
+      if (rd && rd.textContent && rd.textContent.trim()) dname = rd.textContent.trim();
+    } else if (td && typeof discs === 'function') {
+      const d = discs().find(x => x.id === td.value); if (d) dname = d.name;
+    }
+    if (miniDisc) miniDisc.textContent = dname;
+    if (td && document.activeElement !== disc && !running && !paused) {
+      if ([...disc.options].some(o => o.value === td.value)) disc.value = td.value;
+    }
+    bar.style.width = Math.min(100, (tSec / GOAL_SECONDS) * 100) + '%';
+    if (!running && !paused) {
+      playBtn.textContent = '▶ Iniciar';
+      playBtn.style.background = 'rgba(74,108,247,0.22)';
+      statusLbl.textContent = 'PRONTO';
+      statusLbl.style.color = 'rgba(255,255,255,0.4)';
+      dot.style.background = 'rgba(255,255,255,0.2)';
+      xpHint.textContent = (dname === '—') ? 'selecione e inicie para ganhar XP' : 'pronto para iniciar';
+    } else if (!paused) {
+      playBtn.textContent = '⏸ Pausar';
+      playBtn.style.background = 'rgba(74,108,247,0.38)';
+      statusLbl.textContent = '● EM ANDAMENTO';
+      statusLbl.style.color = '#4a6cf7';
+      dot.style.background = '#4a6cf7';
+      xpHint.textContent = (typeof pomMode !== 'undefined' && pomMode) ? '🍅 Pomodoro em foco' : ('estudando · ' + dname);
+    } else {
+      playBtn.textContent = '▶ Retomar';
+      playBtn.style.background = 'rgba(74,108,247,0.22)';
+      statusLbl.textContent = '⏸ PAUSADO';
+      statusLbl.style.color = '#f59e0b';
+      dot.style.background = '#f59e0b';
+    }
+  }
+  window.__ftMirror = mirror;
+  setInterval(mirror, 500);
+  mirror();
 })();
 </script>
 </head>
