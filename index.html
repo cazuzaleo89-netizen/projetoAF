@@ -158,6 +158,15 @@ input,select,textarea{font-family:inherit;outline:none}
 .bg{background:var(--grbg);color:var(--green)}
 .by{background:var(--gbg);color:var(--gold)}
 .br{background:var(--rbg);color:var(--red)}
+.dbadge.bl{background:var(--abg2);color:var(--accent2)}
+/* EDITAL TOPICS */
+.ed-topics{display:flex;flex-direction:column;gap:6px;max-height:360px;overflow-y:auto}
+.ed-row{display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--s3);border:1px solid var(--border);border-radius:10px;cursor:pointer;transition:.15s}
+.ed-row:hover{border-color:var(--border2)}
+.ed-row input[type=checkbox]{width:16px;height:16px;flex-shrink:0;accent-color:var(--accent);cursor:pointer}
+.ed-name{flex:1;font-size:13px;color:var(--t1)}
+.ed-row.done .ed-name{text-decoration:line-through;color:var(--t3)}
+.ed-row.done{background:var(--grbg);border-color:rgba(29,185,106,.25)}
 /* SESSIONS */
 .slist{display:flex;flex-direction:column;gap:7px}
 .srow2{display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--s3);border:1px solid var(--border);border-radius:var(--r);transition:.15s}
@@ -831,6 +840,10 @@ option{background:var(--s3)}
       <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
       <span>Metas Semanais</span>
     </div>
+    <div class="ni" id="ni-r" onclick="go('r',this)">
+      <svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 3 5-6"/><circle cx="18" cy="8" r="1.4" fill="currentColor" stroke="none"/></svg>
+      <span>Edital &amp; Revisão</span>
+    </div>
     <div class="nlbl">Sistema</div>
     <div class="ni" id="ni-c" onclick="go('c',this)">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
@@ -906,13 +919,8 @@ option{background:var(--s3)}
         </div>
       </div>
 
-      <!-- Calendário mensal -->
-      <div class="g2 mb18">
-        <div class="card">
-          <div class="ch"><div class="ct">📅 Calendário do Mês</div><span style="font-size:12px;color:var(--t2);font-weight:600" id="cal-month"></span></div>
-          <div class="cal-grid" id="cal-hdr-row"></div>
-          <div class="cal-grid" id="cal-days"></div>
-        </div>
+      <!-- Diagnóstico automático -->
+      <div class="mb18">
         <div class="card">
           <div class="ch"><div class="ct">🚨 Diagnóstico Automático</div><span style="font-size:11px;color:var(--t3)">disciplinas críticas</span></div>
           <div class="diag-list" id="diaglist"></div>
@@ -1114,6 +1122,59 @@ option{background:var(--s3)}
       </div>
     </div>
 
+    <!-- EDITAL & REVISÃO -->
+    <div class="tab" id="tab-r">
+      <div class="card mb">
+        <div class="ch"><div class="ct">🧠 Revisão Inteligente</div><span style="font-size:11px;color:var(--t3)">prioridades de hoje</span></div>
+        <div id="revlist"></div>
+      </div>
+
+      <div class="card mb">
+        <div class="ch"><div class="ct">📋 Edital por Disciplina</div>
+          <select class="fi" style="width:auto;padding:5px 10px;font-size:12px" id="ed-disc" onchange="renderEdital()"><option value="">— selecione —</option></select>
+        </div>
+        <div id="ed-wrap">
+          <div style="display:grid;grid-template-columns:1fr auto;gap:10px;margin-bottom:6px">
+            <input type="text" class="fi" id="ed-topic" placeholder="Novo tópico do edital (ex: Crédito Tributário)" onkeydown="if(event.key==='Enter')addTopic()"/>
+            <button class="btn bp sm" onclick="addTopic()">+ Add</button>
+          </div>
+          <details style="margin-bottom:12px">
+            <summary style="font-size:12px;color:var(--accent2);cursor:pointer">Adicionar vários de uma vez</summary>
+            <div style="margin-top:8px">
+              <textarea class="fi" id="ed-bulk" rows="4" placeholder="Cole vários tópicos, um por linha" style="resize:vertical"></textarea>
+              <button class="btn bg2 sm" style="margin-top:6px" onclick="addTopicsBulk()">+ Adicionar lista</button>
+            </div>
+          </details>
+          <div id="ed-prog" style="margin-bottom:10px"></div>
+          <div id="ed-list"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="ch"><div class="ct">🎯 Caderno de Erros — TEC Concursos</div>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <label style="font-size:11.5px;color:var(--t2);display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="er-onlyrec" onchange="renderErros()"/> só recorrentes (2+)</label>
+            <label style="font-size:11.5px;color:var(--t2);display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="er-hidedone" checked onchange="renderErros()"/> ocultar resolvidas</label>
+          </div>
+        </div>
+        <div style="background:var(--s3);border:1px solid var(--border);border-radius:var(--r2);padding:13px;margin-bottom:14px">
+          <div style="display:grid;grid-template-columns:120px 1fr 1fr;gap:10px;margin-bottom:10px">
+            <div class="fg"><label class="fl">Código TEC</label><input type="text" class="fi" id="er-code" placeholder="ex: 272876" onkeydown="if(event.key==='Enter')addErro()"/></div>
+            <div class="fg"><label class="fl">Disciplina</label><select class="fi" id="er-disc"><option value="">— selecione —</option></select></div>
+            <div class="fg"><label class="fl">Assunto</label><input type="text" class="fi" id="er-ass" placeholder="ex: Crédito Tributário"/></div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 140px auto;gap:10px;align-items:end">
+            <div class="fg"><label class="fl">Banca (opcional)</label><input type="text" class="fi" id="er-banca" placeholder="FGV, CEBRASPE…"/></div>
+            <div class="fg"><label class="fl">Data</label><input type="date" class="fi" id="er-date"/></div>
+            <button class="btn bp sm" onclick="addErro()">+ Registrar erro</button>
+          </div>
+          <div style="font-size:11px;color:var(--t3);margin-top:9px;line-height:1.6">Cole o <b>número da questão</b> do TEC (aparece na URL: tecconcursos.com.br/questoes/<b>número</b>). Se você errar a mesma questão de novo, use o botão <b>errei+</b> na lista — quem erra 2+ vezes sobe para o topo da revisão.</div>
+        </div>
+        <div style="font-size:12px;color:var(--t3);margin-bottom:8px">Total: <b id="er-cnt" style="color:var(--t2)">0</b> · Recorrentes: <b id="er-rec" style="color:var(--red)">0</b></div>
+        <div class="tblw" id="er-tblw"></div>
+      </div>
+    </div>
+
   </div>
 </div>
 </div>
@@ -1142,8 +1203,11 @@ option{background:var(--s3)}
 
 <script>
 const COLS=['#4f72ff','#1db96a','#e8a020','#e84545','#8b5cf6','#06b6d4','#ec4899','#f97316','#84cc16','#14b8a6'];
-const TABS=['d','t','q','m','c'];
+const TABS=['d','t','q','m','r','c'];
 let ST=lSt();
+// Migração compatível: garante estruturas novas sem afetar dados existentes
+if(!ST.edital) ST.edital={};   // { discId: [ {id,name,done} ] }
+if(!ST.erros)  ST.erros=[];    // caderno de erros (TEC): [ {id,code,discId,assunto,banca,date,ts,count,done} ]
 let tSec=0,tRun=false,tPsd=false,tDur=0,tIv=null,cdIv=null,selC=COLS[0];
 let pomMode=false,pomPhase='work',pomCycle=0,pomTotal=4;
 let pendingSess=null;
@@ -1155,6 +1219,10 @@ function cfg(){return ST.cfg||{dh:4,dq:20}}
 function discs(){return ST.discs||[]}
 function sess(){return ST.sess||[]}
 function qs(){return ST.qs||[]}
+function edital(){return ST.edital||{}}
+function edTopics(discId){return (ST.edital&&ST.edital[discId])||[]}
+function erros(){return ST.erros||[]}
+function tecURL(code){const n=String(code||'').replace(/\D/g,'');return n?'https://www.tecconcursos.com.br/questoes/'+n:'';}
 function uid(){return Math.random().toString(36).slice(2)+Date.now().toString(36)}
 function td(){return new Date().toISOString().slice(0,10)}
 function p2(n){return String(n).padStart(2,'0')}
@@ -1174,7 +1242,7 @@ function toggleTheme(){
 }
 
 // NAVIGATION
-const TIT={d:'Dashboard',t:'Cronômetro',q:'Questões',m:'Metas Semanais',c:'Configurações'};
+const TIT={d:'Dashboard',t:'Cronômetro',q:'Questões',m:'Metas Semanais',r:'Edital & Revisão',c:'Configurações'};
 let curTab='d';
 function go(id,el){
   document.querySelectorAll('.tab').forEach(p=>p.classList.remove('on'));
@@ -1183,7 +1251,7 @@ function go(id,el){
   if(el) el.classList.add('on');
   document.getElementById('ptitle').textContent=TIT[id]||id;
   curTab=id;
-  const rf={d:renderD,q:renderQ,m:renderM,c:renderCfg};
+  const rf={d:renderD,q:renderQ,m:renderM,r:renderRev,c:renderCfg};
   if(rf[id]) rf[id]();
   if(id==='t'||id==='q'||id==='m') popSel();
 }
@@ -1509,7 +1577,7 @@ function renderD(){
   document.getElementById('ulvl').textContent=Math.floor(xp/100)+1;
   document.getElementById('xpbar').style.width=(xp%100)+'%';
   renderWChart(S);renderHMap(S);renderDPerf(S,Q);renderDSess(S);
-  renderLineChart(Q);renderCalendar(S);renderDiag(Q);startCD();
+  renderLineChart(Q);renderDiag(Q);startCD();
 }
 function renderWChart(S){
   const w=document.getElementById('wcht');
@@ -1571,6 +1639,7 @@ function renderLineChart(Q){
   labels.innerHTML=pts.filter((_,i)=>i%2===0).map(p=>'<span style="font-size:10px;color:var(--t3)">'+p.lbl+'</span>').join('');
 }
 function renderCalendar(S){
+  if(!document.getElementById('cal-days')) return;
   const now=new Date();
   const year=now.getFullYear(),month=now.getMonth();
   document.getElementById('cal-month').textContent=now.toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
@@ -1772,7 +1841,9 @@ function calcBestStreak(S){
 function popSel(){
   const ds=discs();
   const opts='<option value="">— selecione —</option>'+ds.map(d=>'<option value="'+d.id+'">'+d.name+'</option>').join('');
-  ['tdisc','mdisc','qdisc'].forEach(id=>{const el=document.getElementById(id);if(el) el.innerHTML=opts;});
+  ['tdisc','mdisc','qdisc','er-disc'].forEach(id=>{const el=document.getElementById(id);if(el) el.innerHTML=opts;});
+  const ed=document.getElementById('ed-disc');
+  if(ed){const cur=ed.value;ed.innerHTML=opts;if(cur)ed.value=cur;}
   const qf=document.getElementById('qfdisc');
   if(qf) qf.innerHTML='<option value="">Todas</option>'+ds.map(d=>'<option value="'+d.id+'">'+d.name+'</option>').join('');
 }
@@ -1802,8 +1873,135 @@ function resetConf(){
   openM('Resetar todos os dados','<strong>Ação irreversível.</strong> Faça um backup antes!',()=>{ST={};sSt();location.reload();});
 }
 
+/* ===== EDITAL & REVISÃO ===== */
+function renderRev(){ popSel(); renderRevInt(); renderEdital(); renderErros(); }
+
+// --- Revisão Inteligente: prioriza o que revisar hoje ---
+function daysSince(dateStr){ if(!dateStr) return 999; const d=new Date(dateStr+'T00:00:00'); return Math.floor((Date.now()-d.getTime())/86400000); }
+function renderRevInt(){
+  const w=document.getElementById('revlist'); if(!w) return;
+  const ds=discs();
+  if(!ds.length){ w.innerHTML='<div class="empty"><div class="eico">🧠</div><div class="etxt">Cadastre disciplinas para receber recomendações de revisão</div></div>'; return; }
+  const S=sess(),Q=qs(),E=erros();
+  const items=ds.map(d=>{
+    const ss=S.filter(s=>s.discId===d.id);
+    const last=ss.map(s=>s.date).sort().slice(-1)[0]||null;
+    const dgone=daysSince(last);
+    const qd=Q.filter(q=>q.discId===d.id);
+    const tot=qd.reduce((a,q)=>a+q.tot,0), cer=qd.reduce((a,q)=>a+q.cer,0);
+    const acc=tot?Math.round(cer/tot*100):null;
+    const rec=E.filter(e=>e.discId===d.id && !e.done && (e.count||1)>=2).length;
+    const tps=edTopics(d.id); const pend=tps.filter(t=>!t.done).length;
+    // pontuação de prioridade
+    let score=0; const reasons=[];
+    if(last===null){ score+=40; reasons.push({t:'nunca estudada',c:'br'}); }
+    else if(dgone>=3){ score+=Math.min(40,dgone*4); reasons.push({t:dgone+' dias sem estudar',c:dgone>=7?'br':'by'}); }
+    if(acc!==null && acc<70){ score+=(70-acc); reasons.push({t:'acerto '+acc+'%',c:acc<50?'br':'by'}); }
+    if(rec>0){ score+=rec*12; reasons.push({t:rec+' erro'+(rec>1?'s':'')+' recorrente'+(rec>1?'s':''),c:'br'}); }
+    if(pend>0 && tps.length){ score+=Math.min(15,pend); reasons.push({t:pend+' tópico'+(pend>1?'s':'')+' pendente'+(pend>1?'s':''),c:'bl'}); }
+    return {d,score,reasons};
+  }).filter(x=>x.score>0).sort((a,b)=>b.score-a.score);
+  if(!items.length){ w.innerHTML='<div class="empty"><div class="eico">✅</div><div class="etxt">Tudo em dia! Nenhuma disciplina precisa de revisão urgente.</div></div>'; return; }
+  w.innerHTML='<div class="slist">'+items.map(x=>{
+    const chips=x.reasons.map(r=>'<span class="dbadge '+r.c+'" style="font-size:10.5px">'+r.t+'</span>').join(' ');
+    return '<div class="srow2"><div class="sdot" style="background:'+x.d.color+';width:10px;height:10px"></div>'+
+      '<div class="smain"><div class="sname">'+x.d.name+'</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">'+chips+'</div></div>'+
+      '<button class="btn bg2 xs" onclick="go(\'t\',document.getElementById(\'ni-t\'))" title="Estudar agora">▶</button></div>';
+  }).join('')+'</div>';
+}
+
+// --- Edital por disciplina ---
+function addTopic(){
+  const dsel=document.getElementById('ed-disc'); const id=dsel.value;
+  if(!id){ nfy('Selecione uma disciplina','err'); return; }
+  const inp=document.getElementById('ed-topic'); const name=(inp.value||'').trim();
+  if(!name){ return; }
+  if(!ST.edital[id]) ST.edital[id]=[];
+  ST.edital[id].push({id:uid(),name,done:false,ts:Date.now()});
+  inp.value=''; sSt(); renderEdital(); renderRevInt();
+}
+function addTopicsBulk(){
+  const dsel=document.getElementById('ed-disc'); const id=dsel.value;
+  if(!id){ nfy('Selecione uma disciplina','err'); return; }
+  const ta=document.getElementById('ed-bulk');
+  const lines=(ta.value||'').split('\n').map(l=>l.trim()).filter(Boolean);
+  if(!lines.length) return;
+  if(!ST.edital[id]) ST.edital[id]=[];
+  lines.forEach(name=>ST.edital[id].push({id:uid(),name,done:false,ts:Date.now()}));
+  ta.value=''; sSt(); nfy(lines.length+' tópicos adicionados','ok'); renderEdital(); renderRevInt();
+}
+function toggleTopic(discId,tid){
+  const arr=ST.edital[discId]||[]; const t=arr.find(x=>x.id===tid); if(!t) return;
+  t.done=!t.done; sSt(); renderEdital(); renderRevInt();
+}
+function delTopic(discId,tid){
+  ST.edital[discId]=(ST.edital[discId]||[]).filter(x=>x.id!==tid); sSt(); renderEdital(); renderRevInt();
+}
+function renderEdital(){
+  const dsel=document.getElementById('ed-disc'); if(!dsel) return;
+  const id=dsel.value;
+  const prog=document.getElementById('ed-prog'), list=document.getElementById('ed-list');
+  if(!id){ prog.innerHTML=''; list.innerHTML='<div class="empty"><div class="eico">📋</div><div class="etxt">Selecione uma disciplina para ver e marcar os tópicos do edital</div></div>'; return; }
+  const tps=edTopics(id); const done=tps.filter(t=>t.done).length; const pct=tps.length?Math.round(done/tps.length*100):0;
+  prog.innerHTML=tps.length?('<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--t2);margin-bottom:5px"><span>'+done+' de '+tps.length+' concluídos</span><b style="color:var(--accent2)">'+pct+'%</b></div><div class="mbar"><div class="mfill bl" style="width:'+pct+'%"></div></div>'):'';
+  if(!tps.length){ list.innerHTML='<div class="empty" style="padding:20px"><div class="etxt">Nenhum tópico ainda. Adicione acima ou cole sua lista do edital.</div></div>'; return; }
+  list.innerHTML='<div class="ed-topics">'+tps.map(t=>
+    '<label class="ed-row'+(t.done?' done':'')+'"><input type="checkbox" '+(t.done?'checked':'')+' onchange="toggleTopic(\''+id+'\',\''+t.id+'\')"/><span class="ed-name">'+escapeHtml(t.name)+'</span><button class="btn bd xs" onclick="event.preventDefault();delTopic(\''+id+'\',\''+t.id+'\')">✕</button></label>'
+  ).join('')+'</div>';
+}
+
+// --- Caderno de Erros (TEC) ---
+function addErro(){
+  const code=(document.getElementById('er-code').value||'').replace(/\D/g,'');
+  const discId=document.getElementById('er-disc').value;
+  const ass=(document.getElementById('er-ass').value||'').trim();
+  const banca=(document.getElementById('er-banca').value||'').trim();
+  const date=document.getElementById('er-date').value||td();
+  if(!code){ nfy('Informe o código da questão (TEC)','err'); return; }
+  const ex=ST.erros.find(e=>e.code===code);
+  if(ex){ ex.count=(ex.count||1)+1; ex.done=false; if(ass)ex.assunto=ass; if(banca)ex.banca=banca; sSt(); nfy('Questão já existia — marcada como erro recorrente (×'+ex.count+')','info'); }
+  else { ST.erros.unshift({id:uid(),code,discId,assunto:ass,banca,date,ts:Date.now(),count:1,done:false}); sSt(); nfy('Erro registrado','ok'); }
+  document.getElementById('er-code').value=''; document.getElementById('er-ass').value='';
+  renderErros(); renderRevInt();
+}
+function erroAgain(id){ const e=ST.erros.find(x=>x.id===id); if(!e)return; e.count=(e.count||1)+1; e.done=false; sSt(); nfy('Marcado como erro recorrente (×'+e.count+')','info'); renderErros(); renderRevInt(); }
+function erroResolve(id){ const e=ST.erros.find(x=>x.id===id); if(!e)return; e.done=!e.done; sSt(); renderErros(); renderRevInt(); }
+function delErro(id){ ST.erros=ST.erros.filter(x=>x.id!==id); sSt(); renderErros(); renderRevInt(); }
+function renderErros(){
+  const w=document.getElementById('er-tblw'); if(!w) return;
+  const onlyRec=document.getElementById('er-onlyrec')?.checked;
+  const hideDone=document.getElementById('er-hidedone')?.checked;
+  let data=erros().slice();
+  const recCount=data.filter(e=>(e.count||1)>=2 && !e.done).length;
+  document.getElementById('er-cnt').textContent=data.length;
+  document.getElementById('er-rec').textContent=recCount;
+  if(onlyRec) data=data.filter(e=>(e.count||1)>=2);
+  if(hideDone) data=data.filter(e=>!e.done);
+  // ordena: recorrentes primeiro (maior count), depois mais recentes
+  data.sort((a,b)=>((b.count||1)-(a.count||1))||(b.ts-a.ts));
+  if(!data.length){ w.innerHTML='<div class="empty"><div class="eico">🎯</div><div class="etxt">Nenhum erro registrado. Adicione as questões do TEC que você errou.</div></div>'; return; }
+  const rows=data.slice(0,200).map(e=>{
+    const d=discs().find(x=>x.id===e.discId);
+    const url=tecURL(e.code);
+    const cnt=e.count||1;
+    const cntBadge=cnt>=2?'<span class="dbadge br" title="errou '+cnt+' vezes">×'+cnt+'</span>':'<span class="dbadge" style="background:var(--s4);color:var(--t2)">×1</span>';
+    const codeCell=url?'<a href="'+url+'" target="_blank" rel="noopener" style="color:var(--accent2);font-weight:600;text-decoration:none">#'+e.code+' ↗</a>':('#'+e.code);
+    return '<tr'+(e.done?' style="opacity:.45"':'')+'>'+
+      '<td>'+codeCell+'</td>'+
+      '<td><span style="display:flex;align-items:center;gap:6px"><span style="width:7px;height:7px;border-radius:50%;background:'+(d?.color||'#4a6080')+';display:inline-block;flex-shrink:0"></span>'+(d?.name||'—')+'</span></td>'+
+      '<td style="color:var(--t3)">'+(escapeHtml(e.assunto)||'—')+'</td>'+
+      '<td style="color:var(--t3)">'+(escapeHtml(e.banca)||'—')+'</td>'+
+      '<td>'+cntBadge+'</td>'+
+      '<td style="white-space:nowrap"><button class="btn bgo xs" title="Errei de novo" onclick="erroAgain(\''+e.id+'\')">errei+</button> <button class="btn bg2 xs" title="'+(e.done?'Reabrir':'Marcar resolvida')+'" onclick="erroResolve(\''+e.id+'\')">'+(e.done?'↩':'✔')+'</button> <button class="btn bd xs" onclick="delErro(\''+e.id+'\')">✕</button></td>'+
+    '</tr>';
+  }).join('');
+  w.innerHTML='<table class="tbl"><thead><tr><th>Questão</th><th>Disciplina</th><th>Assunto</th><th>Banca</th><th>Erros</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>';
+}
+function escapeHtml(s){return (s==null?'':String(s)).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
 // INIT
 document.addEventListener('DOMContentLoaded',()=>{
+  const erd=document.getElementById('er-date'); if(erd) erd.value=td();
   const t=td();
   document.getElementById('mdate').value=t;
   document.getElementById('qdate').value=t;
@@ -1845,6 +2043,157 @@ if('serviceWorker' in navigator){
     navigator.serviceWorker.register('sw.js').catch(()=>{});
   });
 }
+
+/* ===== Janela flutuante "sobre outras janelas/sites" (Picture-in-Picture) =====
+   Abre um mini-cronômetro numa janela que fica sempre por cima de tudo.
+   Disponível no Chrome/Edge (computador). Continua espelhando o timer real. */
+(function(){
+  const supported = ('documentPictureInPicture' in window);
+  let pipWin = null, pipIv = null;
+
+  // Botão no cabeçalho do painel flutuante
+  const header = document.getElementById('ftHeader');
+  const grp = header ? header.querySelector('div:last-child') : null;
+  if(!grp) return;
+  const pipBtn = document.createElement('button');
+  pipBtn.className = 'ft-icon-btn';
+  pipBtn.id = 'ftPipBtn';
+  pipBtn.title = 'Manter por cima de outras janelas';
+  pipBtn.textContent = '⧉';
+  grp.insertBefore(pipBtn, grp.firstChild);
+  if(!supported){ pipBtn.style.opacity = '0.5'; }
+
+  const PIP_CSS = `
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,'Segoe UI',Roboto,sans-serif;background:#0a0d1a;color:#fff;
+      height:100vh;display:flex;flex-direction:column;gap:8px;padding:15px;user-select:none}
+    .ph{display:flex;align-items:center;gap:6px;font-size:10px;font-weight:700;letter-spacing:.6px;color:rgba(255,255,255,.7)}
+    .pd{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.2);transition:background .3s}
+    .pdisc{font-size:11px;color:rgba(255,255,255,.55);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .pclock{font-size:42px;font-weight:800;text-align:center;letter-spacing:1px;font-variant-numeric:tabular-nums;line-height:1.05;margin:2px 0}
+    .pbar{height:4px;border-radius:3px;background:rgba(255,255,255,.1);overflow:hidden}
+    .pbar>i{display:block;height:100%;width:0;background:#4a6cf7;transition:width .35s}
+    .ppom{display:none;align-items:center;justify-content:center;gap:8px;font-size:10px;color:rgba(255,255,255,.72)}
+    .ppom .dots{display:flex;gap:4px}
+    .ppom .dots span{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.15);transition:.2s}
+    .ppom .dots span.done{background:#1db96a}
+    .ppom .dots span.active{background:#4a6cf7;box-shadow:0 0 0 3px rgba(74,108,247,.25)}
+    .pstatus{font-size:9.5px;color:rgba(255,255,255,.4);text-align:center}
+    .pctr{display:flex;gap:8px}
+    .pctr button{flex:1;border:none;border-radius:10px;padding:11px;font-size:13px;font-weight:700;color:#fff;
+      cursor:pointer;background:rgba(74,108,247,.25);transition:.15s}
+    .pctr button:hover{filter:brightness(1.15)}
+    .pctr .pstop{flex:0 0 46px;background:rgba(255,255,255,.08)}
+    .pdiv{height:1px;background:rgba(255,255,255,.08);margin:4px 0 2px}
+    .pday-h{font-size:9px;font-weight:700;letter-spacing:.8px;color:rgba(255,255,255,.35);text-align:center}
+    .pday{display:flex;gap:6px}
+    .pday .cell{flex:1;background:rgba(255,255,255,.04);border-radius:9px;padding:8px 4px;text-align:center}
+    .pday .v{font-size:15px;font-weight:800;line-height:1.1}
+    .pday .l{font-size:8px;color:rgba(255,255,255,.4);margin-top:2px;text-transform:uppercase;letter-spacing:.4px}
+    .pgoal{font-size:8.5px;color:rgba(255,255,255,.38);text-align:center;min-height:11px}
+  `;
+
+  function fmtT(s){ return (typeof fS==='function') ? fS(s) : '00:00:00'; }
+  function discName(running,paused){
+    const rd = document.getElementById('rdisc');
+    if((running||paused) && rd && rd.textContent.trim()) return rd.textContent.trim();
+    const td = document.getElementById('tdisc');
+    if(td && typeof discs==='function'){ const d=discs().find(x=>x.id===td.value); if(d) return d.name; }
+    return '—';
+  }
+
+  function syncPip(g){
+    if(!pipWin) return;
+    const running = (typeof tRun!=='undefined') && tRun;
+    const paused  = (typeof tPsd!=='undefined') && tPsd;
+    const sec = (typeof tSec==='number') ? tSec : 0;
+    g('pclock').textContent = fmtT(sec);
+    g('pdisc').textContent = discName(running,paused);
+    g('pbar').style.width = Math.min(100, sec/3600*100) + '%';
+    const play=g('pplay'), dot=g('pdot'), st=g('pstatus');
+    if(!running && !paused){
+      play.textContent='▶ Iniciar'; play.style.background='rgba(74,108,247,.25)';
+      st.textContent='PRONTO'; st.style.color='rgba(255,255,255,.4)'; dot.style.background='rgba(255,255,255,.2)';
+    } else if(!paused){
+      play.textContent='⏸ Pausar'; play.style.background='rgba(74,108,247,.45)';
+      st.textContent='● EM ANDAMENTO'; st.style.color='#4a6cf7'; dot.style.background='#4a6cf7';
+    } else {
+      play.textContent='▶ Retomar'; play.style.background='rgba(74,108,247,.25)';
+      st.textContent='⏸ PAUSADO'; st.style.color='#f59e0b'; dot.style.background='#f59e0b';
+    }
+
+    // Pomodoro (só aparece no modo Pomodoro e com sessão ativa)
+    const pom = g('ppom');
+    if(typeof pomMode!=='undefined' && pomMode && (running||paused)){
+      pom.style.display='flex';
+      const total = (typeof pomTotal!=='undefined')?pomTotal:4;
+      const cyc   = (typeof pomCycle!=='undefined')?pomCycle:0;
+      const phase = (typeof pomPhase!=='undefined')?pomPhase:'work';
+      g('ppomlbl').textContent = phase==='work' ? ('🍅 Foco · Ciclo '+(cyc+1)+'/'+total) : ('☕ Pausa · '+cyc+'/'+total);
+      let dots='';
+      for(let i=0;i<total;i++){ const c=i<cyc?'done':(i===cyc&&phase==='work'?'active':''); dots+='<span class="'+c+'"></span>'; }
+      g('ppomdots').innerHTML=dots;
+    } else {
+      pom.style.display='none';
+    }
+
+    // Resumo do dia
+    const today = (typeof td==='function')?td():'';
+    const S = (typeof sess==='function')?sess():[];
+    const todayS = S.filter(s=>s.date===today);
+    const liveSec = todayS.reduce((a,s)=>a+(s.sec||0),0) + ((running||paused)?sec:0);
+    g('pdtime').textContent = (typeof fH==='function') ? fH(liveSec) : (Math.round(liveSec/60)+'m');
+    g('pdsess').textContent = todayS.length + (((running||paused)&&sec>0)?1:0);
+    const Q = (typeof qs==='function')?qs():[];
+    const todayQ = Q.filter(q=>q.date===today);
+    const qTot = todayQ.reduce((a,q)=>a+(q.tot||0),0);
+    const qCer = todayQ.reduce((a,q)=>a+(q.cer||0),0);
+    g('pdq').textContent = qTot;
+    let goal='';
+    if(typeof cfg==='function'){ const c=cfg(); if(c && c.dh){ goal='meta '+c.dh+'h · '+Math.min(100,Math.round(liveSec/3600/c.dh*100))+'%'; } }
+    if(qTot>0) goal += (goal?'   ·   ':'')+'acerto '+Math.round(qCer/qTot*100)+'%';
+    g('pgoal').textContent = goal || ' ';
+  }
+
+  async function openPip(){
+    if(!supported){
+      if(typeof nfy==='function') nfy('Janela flutuante: use o Chrome ou o Edge no computador.','info');
+      return;
+    }
+    if(pipWin){ try{ pipWin.focus(); }catch(_){} return; }
+    let win;
+    try{ win = await window.documentPictureInPicture.requestWindow({width:292,height:366}); }
+    catch(_){ return; }
+    pipWin = win;
+    const style = win.document.createElement('style');
+    style.textContent = PIP_CSS;
+    win.document.head.appendChild(style);
+    win.document.body.innerHTML =
+      '<div class="ph"><span style="color:#4a6cf7">⏱</span><span>CRONÔMETRO</span><span class="pd" id="pdot"></span></div>'+
+      '<div class="pdisc" id="pdisc">—</div>'+
+      '<div class="pclock" id="pclock">00:00:00</div>'+
+      '<div class="pbar"><i id="pbar"></i></div>'+
+      '<div class="ppom" id="ppom"><span id="ppomlbl"></span><span class="dots" id="ppomdots"></span></div>'+
+      '<div class="pstatus" id="pstatus">PRONTO</div>'+
+      '<div class="pctr"><button id="pplay">▶ Iniciar</button><button class="pstop" id="pstop">■</button></div>'+
+      '<div class="pdiv"></div>'+
+      '<div class="pday-h">HOJE</div>'+
+      '<div class="pday">'+
+        '<div class="cell"><div class="v" id="pdtime">0m</div><div class="l">estudo</div></div>'+
+        '<div class="cell"><div class="v" id="pdsess">0</div><div class="l">sessões</div></div>'+
+        '<div class="cell"><div class="v" id="pdq">0</div><div class="l">questões</div></div>'+
+      '</div>'+
+      '<div class="pgoal" id="pgoal"> </div>';
+    const g = id => win.document.getElementById(id);
+    g('pplay').addEventListener('click', ()=>{ const b=document.getElementById('ftPlayBtn'); if(b) b.click(); syncPip(g); });
+    g('pstop').addEventListener('click', ()=>{ const b=document.getElementById('ftStopBtn'); if(b) b.click(); syncPip(g); });
+    syncPip(g);
+    pipIv = setInterval(()=>syncPip(g), 500);
+    win.addEventListener('pagehide', ()=>{ clearInterval(pipIv); pipIv=null; pipWin=null; });
+  }
+
+  pipBtn.addEventListener('click', e => { e.stopPropagation(); openPip(); });
+})();
 </script>
 
 <!-- BARRA DE NAVEGAÇÃO INFERIOR (MOBILE) -->
@@ -1864,6 +2213,10 @@ if('serviceWorker' in navigator){
   <button class="mni" data-tab="m" onclick="goM('m')" aria-label="Metas Semanais">
     <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
     <span>Metas</span>
+  </button>
+  <button class="mni" data-tab="r" onclick="goM('r')" aria-label="Edital e Revisão">
+    <svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 3 5-6"/></svg>
+    <span>Revisão</span>
   </button>
   <button class="mni" data-tab="c" onclick="goM('c')" aria-label="Configurações">
     <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
