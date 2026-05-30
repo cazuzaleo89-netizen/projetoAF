@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Planejador IA · Painel Fiscal</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07090f;--surf:#0c1220;--surf2:#090e1a;--bdr:#1a2640;--muted:#2d3f58;
+  --acc:#00e5a0;--acc-bg:rgba(0,229,160,.09);--acc-bdr:rgba(0,229,160,.35);
+  --good:#00e5a0;--good-bg:rgba(0,229,160,.09);--good-bdr:rgba(0,229,160,.25);
+  --warn:#f59e0b;--warn-bg:rgba(245,158,11,.09);--warn-bdr:rgba(245,158,11,.30);
+  --dng:#f43f5e;--dng-bg:rgba(244,63,94,.09);--dng-bdr:rgba(244,63,94,.30);
+  --txt:#dde6f0;--sub:#5a7898;
+  --mono:'JetBrains Mono',monospace;--sans:'Inter',sans-serif;--head:'Syne',sans-serif;
+}
+body{background:var(--bg);color:var(--txt);font-family:var(--sans);min-height:100vh}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:4px}
+.hdr{padding:16px 22px 13px;border-bottom:1px solid var(--bdr);background:linear-gradient(180deg,#0d1828 0%,transparent);display:flex;align-items:center;gap:13px}
+.hdr-icon{width:42px;height:42px;border-radius:10px;background:var(--acc-bg);border:1px solid var(--acc-bdr);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.hdr h1{font-family:var(--head);font-weight:800;font-size:17px;letter-spacing:-.02em}
+.hdr p{color:var(--sub);font-size:11px;margin-top:2px}
+.hdr-badge{margin-left:auto;padding:4px 11px;background:var(--acc-bg);border:1px solid var(--acc-bdr);border-radius:6px;font-size:11px;color:var(--acc);font-family:var(--mono);flex-shrink:0}
+.key-bar{padding:10px 22px;background:#060a14;border-bottom:1px solid var(--bdr);display:flex;align-items:center;gap:10px;font-size:12px;flex-wrap:wrap}
+.key-bar label{color:var(--sub);white-space:nowrap;font-weight:600}
+.key-bar input{flex:1;min-width:200px;background:var(--surf);border:1px solid var(--bdr);border-radius:6px;padding:6px 10px;color:var(--txt);font-size:12px;font-family:var(--mono);outline:none}
+.key-bar a{color:var(--acc);font-size:11px;white-space:nowrap;text-decoration:none}
+.key-bar span{color:var(--sub);font-size:11px}
+.tabs{padding:11px 22px;display:flex;gap:7px;overflow-x:auto;border-bottom:1px solid var(--bdr);background:var(--surf2)}
+.tab-btn{padding:6px 15px;border-radius:7px;cursor:pointer;font-size:12.5px;font-family:var(--head);font-weight:700;display:flex;align-items:center;gap:5px;white-space:nowrap;background:transparent;border:1px solid var(--bdr);color:var(--sub);transition:all .12s}
+.tab-btn.active{background:var(--acc-bg);border-color:var(--acc-bdr);color:var(--acc)}
+.content{padding:22px}
+.inner{max-width:900px;margin:0 auto}
+.card{background:var(--surf);border:1px solid var(--bdr);border-radius:12px;padding:20px;margin-bottom:14px}
+.card-t{font-family:var(--head);font-weight:700;font-size:15px;color:var(--txt);margin-bottom:16px}
+.card-t.acc{color:var(--acc)}
+.sub-note{color:var(--sub);font-size:12px;margin-bottom:14px;margin-top:-10px}
+.sub-note strong{color:var(--acc)}
+.how-step{display:flex;gap:11px;margin-bottom:10px;align-items:flex-start}
+.how-num{width:24px;height:24px;border-radius:6px;background:var(--acc-bg);border:1px solid var(--acc-bdr);color:var(--acc);font-family:var(--mono);font-weight:700;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.imp-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.btn-row{display:flex;gap:8px}
+textarea{width:100%;height:155px;background:#050810;border:1px solid var(--bdr);border-radius:8px;padding:10px 13px;color:var(--txt);font-size:11.5px;font-family:var(--mono);line-height:1.65;resize:vertical;outline:none}
+.parse-err{margin-top:8px;padding:8px 12px;background:var(--dng-bg);border:1px solid var(--dng-bdr);border-radius:6px;color:var(--dng);font-size:12px}
+.btn{padding:10px 22px;border-radius:8px;cursor:pointer;font-size:13px;font-family:var(--head);font-weight:700;transition:all .12s;border:none}
+.btn-acc{background:var(--acc-bg);border:1px solid var(--acc-bdr);color:var(--acc)}
+.btn-ghost{background:transparent;border:1px solid var(--bdr);color:var(--sub)}
+.btn-sm{padding:5px 11px;font-size:11.5px}
+.btn-full{width:100%;padding:11px 0;font-size:14px;margin-top:13px}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.actions{display:flex;gap:10px;justify-content:flex-end;margin-top:18px}
+.kpi-grid{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+.kpi{flex:1 1 120px;background:var(--surf);border:1px solid var(--bdr);border-radius:10px;padding:14px 16px}
+.kpi-icon{font-size:18px;margin-bottom:5px}
+.kpi-val{font-family:var(--mono);font-size:26px;font-weight:700;line-height:1}
+.kpi-lbl{font-size:11px;color:var(--sub);margin-top:5px}
+.alert{padding:12px 16px;border-radius:10px;display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.alert.dng{background:var(--dng-bg);border:1px solid var(--dng-bdr)}
+.alert-icon{font-size:20px}
+.alert-t{font-family:var(--head);font-weight:700;font-size:13px;color:var(--dng)}
+.alert-b{font-size:12px;margin-top:2px;color:#f87f90}
+.disc-list{display:flex;flex-direction:column;gap:16px}
+.disc-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
+.disc-name{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600}
+.disc-badge{font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;letter-spacing:.07em}
+.disc-pct{font-family:var(--mono);font-size:15px;font-weight:700}
+.disc-gap{font-size:10.5px;color:var(--sub)}
+.disc-bar-wrap{height:7px;background:#0b1422;border-radius:99px;position:relative}
+.disc-bar{height:100%;border-radius:99px;transition:width .7s ease}
+.disc-meta{width:1.5px;position:absolute;top:-3px;bottom:-3px;background:var(--muted);border-radius:1px}
+.disc-foot{display:flex;justify-content:space-between;margin-top:4px;font-size:10.5px;color:var(--sub)}
+.cad-list{display:flex;flex-direction:column;gap:8px}
+.cad-item{display:flex;align-items:center;gap:12px;padding:10px 14px;background:#060a14;border-radius:8px;border:1px solid var(--bdr)}
+.cad-rank{font-family:var(--mono);font-size:10px;font-weight:700;color:var(--dng);background:var(--dng-bg);padding:2px 7px;border-radius:4px;flex-shrink:0}
+.cad-info{flex:1}
+.cad-name{font-weight:600;font-size:13px}
+.cad-hint{font-size:11px;color:var(--sub);margin-top:2px}
+.cad-pct{font-family:var(--mono);font-weight:700;font-size:14px;flex-shrink:0}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.fg label{display:block;font-size:11px;color:var(--sub);font-weight:600;margin-bottom:6px;letter-spacing:.04em}
+.fg input{width:100%;background:#060a14;border:1px solid var(--bdr);border-radius:6px;padding:8px 12px;color:var(--txt);font-size:13px;color-scheme:dark;font-family:var(--sans);outline:none}
+.w-list{display:flex;flex-direction:column;gap:13px}
+.w-row{display:flex;align-items:center;gap:10px}
+.w-name{flex:1;font-size:12.5px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.w-row input[type=range]{width:100px;accent-color:var(--acc)}
+.w-pct{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--acc);width:40px;text-align:right;flex-shrink:0}
+.w-meta{width:52px;background:#060a14;border:1px solid var(--bdr);border-radius:5px;padding:4px 7px;color:var(--txt);font-size:12px;text-align:center;outline:none}
+.w-meta-lbl{font-size:10px;color:var(--sub);flex-shrink:0}
+.w-total{margin-top:12px;padding:10px 14px;background:#060a14;border-radius:6px;display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--sub)}
+.spinner-wrap{text-align:center;padding:64px 0}
+.spinner{width:50px;height:50px;margin:0 auto 18px;border:3px solid var(--bdr);border-top-color:var(--acc);border-radius:50%;animation:spin .85s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.fade-in{animation:fade .35s ease}
+.plan-out{font-size:13.5px;line-height:1.9;color:var(--txt)}
+.ph3{font-family:var(--head);font-weight:800;font-size:14px;color:var(--acc);margin-top:24px;margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid var(--bdr)}
+.pbold{font-weight:700;color:#c5dcef;margin-top:14px;margin-bottom:3px}
+.pbullet{padding-left:18px;color:#8dacc4;margin-bottom:4px;position:relative}
+.pbullet::before{content:"▶";position:absolute;left:4px;color:var(--acc);font-size:10px;top:4px}
+.ptxt{color:#8dacc4;margin-bottom:2px}
+.ptxt b{color:var(--txt);font-weight:600}
+.plan-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+.plan-hdr h2{font-family:var(--head);font-weight:800;font-size:19px}
+.stats-row{display:flex;gap:11px;flex-wrap:wrap;margin-top:16px}
+.stat{flex:1 1 110px;padding:12px 15px;border-radius:8px}
+.stat-v{font-family:var(--mono);font-size:22px;font-weight:700;line-height:1}
+.stat-l{font-size:11px;color:var(--sub);margin-top:5px}
+.empty{text-align:center;padding:64px 0}
+.empty-icon{font-size:50px;margin-bottom:16px}
+.empty h3{font-family:var(--head);font-weight:800;font-size:19px;margin-bottom:8px}
+.empty p{color:var(--sub);font-size:13px;margin-bottom:24px}
+@media(max-width:600px){.form-grid{grid-template-columns:1fr}.w-row input[type=range]{width:70px}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<input type="file" id="fi" accept=".csv,.txt" style="display:none">
+<script>
+const S = {
+  tab:'import', csv:'', err:'', discs:[], generating:false, plano:'',
+  cfg:{ concurso:'', examDate:'', dailyHours:6, weeklyDays:6, cutoff:70, disciplines:[] },
+  apiKey: sessionStorage.getItem('pf_key') || ''
+};
+
+const pc = t => t>=70?'var(--good)':t>=50?'var(--warn)':'var(--dng)';
+const pbg= t => t>=70?'var(--good-bg)':t>=50?'var(--warn-bg)':'var(--dng-bg)';
+const pbdr=t => t>=70?'var(--good-bdr)':t>=50?'var(--warn-bdr)':'var(--dng-bdr)';
+const plbl=t => t>=70?'EM FORMA':t>=50?'PROGRESSO':'CRÍTICA';
+const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+function parseTEC(raw) {
+  const lines = raw.trim().split(/\r?\n/).filter(Boolean);
+  if(lines.length<2) throw new Error('CSV deve ter pelo menos 2 linhas');
+  const sep = (lines[0].match(/;/g)||[]).length>=(lines[0].match(/,/g)||[]).length?';':',';
+  const norm = s=>(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9 ]/g,'').trim();
+  const hdrs = lines[0].split(sep).map(h=>norm(h.replace(/"/g,'')));
+  const fi=(...ts)=>{for(const t of ts){const i=hdrs.findIndex(h=>h.includes(norm(t)));if(i>=0)return i;}return -1;};
+  const mi=fi('materia','disciplina','assunto pai'),ai=fi('assunto','topico','conteudo','tema');
+  const ri=fi('resolvidas','respondidas','total questoes','questoes'),ci=fi('acertos','corretas','certas');
+  const ti=fi('taxa','percentual','aproveitamento','acerto');
+  const mc=mi>=0?mi:ai>=0?ai:0;
+  return lines.slice(1).map(line=>{
+    const v=line.split(sep).map(x=>x.trim().replace(/"/g,''));
+    const res=ri>=0?parseInt(v[ri])||0:0,ace=ci>=0?parseInt(v[ci])||0:0;
+    let taxa=ti>=0?parseFloat((v[ti]||'0').replace('%','').replace(',','.'))||0:res>0?(ace/res)*100:0;
+    return{materia:v[mc]||'Outros',resolvidas:res,acertos:ace,taxa:Math.round(taxa*10)/10};
+  }).filter(r=>r.materia&&r.materia!=='Outros'||r.resolvidas>0);
+}
+
+function groupByMateria(rows){
+  const m={};
+  rows.forEach(r=>{if(!m[r.materia])m[r.materia]={materia:r.materia,resolvidas:0,acertos:0};m[r.materia].resolvidas+=r.resolvidas;m[r.materia].acertos+=r.acertos;});
+  return Object.values(m).map(d=>({...d,taxa:d.resolvidas>0?Math.round(d.acertos/d.resolvidas*1000)/10:0}));
+}
+
+function daysLeft(){if(!S.cfg.examDate)return null;return Math.max(0,Math.ceil((new Date(S.cfg.examDate+'T00:00:00')-new Date())/86400000));}
+function projScore(){
+  if(!S.discs.length||!S.cfg.disciplines.length)return 0;
+  const tp=S.cfg.disciplines.reduce((s,d)=>s+d.peso,0)||1;
+  return Math.round(S.discs.reduce((s,d)=>{const c=S.cfg.disciplines.find(x=>x.nome===d.materia);return s+(d.taxa/100)*(c?c.peso:100/S.discs.length);},0)/tp*100);
+}
+function tots(){return{q:S.discs.reduce((s,d)=>s+d.resolvidas,0),avg:S.discs.length?Math.round(S.discs.reduce((s,d)=>s+d.taxa,0)/S.discs.length):0,crit:S.discs.filter(d=>d.taxa<50).length};}
+
+const SAMPLE=`Matéria;Assunto;Resolvidas;Acertos;Taxa
+Direito Tributário;ICMS;180;108;60%
+Direito Tributário;ISS;90;45;50%
+Direito Administrativo;Atos Administrativos;150;120;80%
+Direito Administrativo;Licitações;100;75;75%
+Contabilidade Geral;Balanço Patrimonial;200;160;80%
+Contabilidade Pública;Lei 4320;100;40;40%
+Contabilidade Pública;SIAFI;60;21;35%
+Matemática Financeira;Juros Compostos;80;48;60%
+Legislação Específica;Estatuto Servidores;130;104;80%
+Raciocínio Lógico;Lógica Formal;90;45;50%
+Português;Gramática;100;80;80%`;
+
+function formatPlan(text){
+  return text.split('\n').map(line=>{
+    if(/^###\s/.test(line))return`<div class="ph3">${esc(line.replace(/^###\s*/,''))}</div>`;
+    if(/^\*\*[^*]+\*\*$/.test(line.trim()))return`<div class="pbold">${esc(line.replace(/\*\*/g,''))}</div>`;
+    if(/^[•\-\*] /.test(line))return`<div class="pbullet">${esc(line.replace(/^[•\-\*] /,''))}</div>`;
+    if(line.trim()==='')return'<div style="height:6px"></div>';
+    return`<div class="ptxt">${line.replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>')}</div>`;
+  }).join('');
+}
+
+function renderImport(){
+  return`<div style="max-width:680px;margin:0 auto">
+  <div class="card">
+    <div class="card-t acc">Como exportar do TEC Concursos</div>
+    ${[['1','Estatísticas','Acesse tecconcursos.com.br → menu Estatísticas'],['2','Configure','Filtre por disciplinas e período desejado'],['3','Exporte','Botão "Exportar para planilha" → salve o arquivo .csv'],['4','Cole abaixo','Abra o arquivo CSV, selecione tudo (Ctrl+A) e cole']].map(([n,v,d])=>`
+    <div class="how-step"><div class="how-num">${n}</div><div><span style="color:var(--txt);font-weight:600;font-size:13px">${v}: </span><span style="color:var(--sub);font-size:12.5px">${d}</span></div></div>`).join('')}
+  </div>
+  <div class="card" style="border-color:${S.err?'var(--dng-bdr)':'var(--bdr)'}">
+    <div class="imp-top">
+      <div class="card-t" style="margin:0">Cole o CSV aqui</div>
+      <div class="btn-row">
+        <button class="btn btn-ghost btn-sm" id="btn-sample">📋 Exemplo</button>
+        <button class="btn btn-acc btn-sm" id="btn-upload">📁 Upload .csv</button>
+      </div>
+    </div>
+    <textarea id="csv-ta" placeholder="Matéria;Assunto;Resolvidas;Acertos;Taxa&#10;Direito Tributário;ICMS;150;90;60%&#10;...">${esc(S.csv)}</textarea>
+    ${S.err?`<div class="parse-err">⚠ ${esc(S.err)}</div>`:''}
+    <button class="btn btn-acc btn-full" id="btn-parse" ${!S.csv.trim()?'disabled':''}>⚡ Processar e Analisar →</button>
+  </div>
+  <div style="margin-top:12px;padding:12px 14px;background:#060a14;border-radius:8px;border:1px solid var(--bdr);font-family:var(--mono);font-size:11px;color:var(--sub);line-height:2">
+    <div style="color:rgba(0,229,160,.6);margin-bottom:4px">// Formato aceito (separador ; ou ,)</div>
+    <div>Matéria;Assunto;Resolvidas;Acertos;Taxa de Acerto</div>
+    <div>Direito Tributário;ICMS;150;90;60%</div>
+    <div style="margin-top:6px;font-size:10px;color:rgba(90,120,152,.7)">Colunas mínimas: disciplina + questões resolvidas + acertos (ou taxa)</div>
+  </div>
+  </div>`;
+}
+
+function renderDiagnostic(){
+  const t=tots(),dias=daysLeft(),ps=projScore();
+  const kpis=[
+    {icon:'📝',v:t.q.toLocaleString('pt-BR'),l:'Questões Resolvidas',c:'var(--acc)'},
+    {icon:'🎯',v:`${t.avg}%`,l:'Acerto Médio',c:pc(t.avg)},
+    {icon:'🚨',v:t.crit,l:'Disciplinas Críticas',c:t.crit>0?'var(--dng)':'var(--good)'},
+    {icon:'📈',v:`${ps}%`,l:`Nota Proj. (meta ${S.cfg.cutoff}%)`,c:ps>=S.cfg.cutoff?'var(--good)':'var(--dng)'},
+    ...(dias!==null?[{icon:'⏳',v:dias,l:'Dias para a Prova',c:dias>60?'var(--acc)':dias>20?'var(--warn)':'var(--dng)'}]:[])
+  ];
+  const sorted=[...S.discs].sort((a,b)=>a.taxa-b.taxa);
+  const criticos=sorted.filter(d=>d.taxa<70);
+  return`
+  <div class="kpi-grid">${kpis.map(k=>`<div class="kpi"><div class="kpi-icon">${k.icon}</div><div class="kpi-val" style="color:${k.c}">${k.v}</div><div class="kpi-lbl">${k.l}</div></div>`).join('')}</div>
+  ${ps<S.cfg.cutoff?`<div class="alert dng"><div class="alert-icon">🔴</div><div><div class="alert-t">Nota projetada abaixo do corte</div><div class="alert-b">Precisa melhorar ${S.cfg.cutoff-ps} pontos na nota ponderada. Foco nas disciplinas críticas de alto peso.</div></div></div>`:''}
+  <div class="card">
+    <div class="card-t">📊 Desempenho por Disciplina</div>
+    <div class="disc-list" id="disc-list">
+      ${sorted.map(d=>{const c=S.cfg.disciplines.find(x=>x.nome===d.materia),meta=c?.meta||70,gap=meta-d.taxa;return`
+      <div>
+        <div class="disc-hdr">
+          <div class="disc-name">${esc(d.materia)}<span class="disc-badge" style="background:${pbg(d.taxa)};color:${pc(d.taxa)};border:1px solid ${pbdr(d.taxa)}">${plbl(d.taxa)}</span></div>
+          <div style="display:flex;align-items:baseline;gap:6px"><span class="disc-pct" style="color:${pc(d.taxa)}">${d.taxa}%</span>${gap>0?`<span class="disc-gap">-${gap.toFixed(1)}%</span>`:''}</div>
+        </div>
+        <div class="disc-bar-wrap">
+          <div class="disc-bar" style="width:${Math.min(d.taxa,100)}%;background:linear-gradient(90deg,${pc(d.taxa)}70,${pc(d.taxa)})"></div>
+          <div class="disc-meta" style="left:${meta}%" title="Meta: ${meta}%"></div>
+        </div>
+        <div class="disc-foot"><span>${d.resolvidas.toLocaleString('pt-BR')} questões · ${d.acertos.toLocaleString('pt-BR')} acertos</span><span>meta: ${meta}%</span></div>
+      </div>`;}).join('')}
+    </div>
+  </div>
+  ${criticos.length>0?`<div class="card">
+    <div class="card-t">📋 Cadernos TEC — Ataques Prioritários</div>
+    <div class="sub-note">Crie estes cadernos no TEC para atacar seus pontos fracos de forma cirúrgica</div>
+    <div class="cad-list">${criticos.slice(0,6).map((d,i)=>`
+    <div class="cad-item">
+      <div class="cad-rank">#${i+1}</div>
+      <div class="cad-info"><div class="cad-name">${esc(d.materia)}</div><div class="cad-hint">${d.taxa<50?'Filtro: todas as questões · nível médio + difícil · ciclo completo':'Filtro: questões erradas · revisão dos assuntos críticos'} · Meta: +${Math.max(5,Math.ceil(70-d.taxa))}%</div></div>
+      <div class="cad-pct" style="color:${pc(d.taxa)}">${d.taxa}%</div>
+    </div>`).join('')}
+    </div>
+  </div>`:''}
+  <div class="actions">
+    <button class="btn btn-ghost" id="btn-go-cfg">⚙️ Configurar Edital</button>
+    <button class="btn btn-acc" id="btn-gen" ${S.generating?'disabled':''}>${S.generating?'⏳ Gerando...':'🧠 Gerar Plano com IA →'}</button>
+  </div>`;
+}
+
+function renderConfig(){
+  const fields=[{l:'Concurso / Cargo',k:'concurso',t:'text',p:'ex: SEFAZ-SP Auditor Fiscal'},{l:'Data da Prova',k:'examDate',t:'date'},{l:'Horas de estudo / dia',k:'dailyHours',t:'number',min:1,max:14},{l:'Dias de estudo / semana',k:'weeklyDays',t:'number',min:1,max:7},{l:'Nota de Corte Estimada (%)',k:'cutoff',t:'number',min:40,max:100}];
+  const totalPeso=S.cfg.disciplines.reduce((s,d)=>s+d.peso,0);
+  return`<div style="max-width:680px;margin:0 auto">
+  <div class="card">
+    <div class="card-t">📋 Dados do Concurso</div>
+    <div class="form-grid">${fields.map(f=>`<div class="fg"><label>${f.l}</label><input type="${f.t}" value="${esc(S.cfg[f.k])}" data-key="${f.k}" ${f.min?`min="${f.min}"`:''} ${f.max?`max="${f.max}"`:''} ${f.p?`placeholder="${f.p}"`:''} class="cfg-input"></div>`).join('')}</div>
+  </div>
+  ${S.cfg.disciplines.length>0?`<div class="card">
+    <div class="card-t">⚖️ Pesos do Edital por Disciplina</div>
+    <div class="sub-note">% da prova que cada disciplina representa · Total: <strong style="color:${Math.abs(totalPeso-100)<6?'var(--good)':'var(--warn)'}">${totalPeso}%</strong></div>
+    <div class="w-list" id="w-list">${S.cfg.disciplines.map((d,i)=>`
+    <div class="w-row">
+      <span class="w-name">${esc(d.nome)}</span>
+      <input type="range" min="1" max="40" value="${d.peso}" data-wi="${i}" class="w-peso">
+      <span class="w-pct" id="wpct-${i}">${d.peso}%</span>
+      <input type="number" min="50" max="100" value="${d.meta}" data-wi="${i}" class="w-meta-input w-meta" title="Meta de acerto">
+      <span class="w-meta-lbl">meta%</span>
+    </div>`).join('')}
+    </div>
+  </div>`:''}
+  <div class="actions">
+    <button class="btn btn-acc" id="btn-gen2" ${S.generating?'disabled':''}>${S.generating?'⏳ Gerando...':'🧠 Gerar Planejamento com IA →'}</button>
+  </div>
+  </div>`;
+}
+
+function renderPlan(){
+  const dias=daysLeft(),ps=projScore();
+  if(S.generating)return`<div class="spinner-wrap"><div class="spinner"></div><p style="color:var(--sub);font-size:13px">Consultando a IA · Gerando plano personalizado com base nos seus dados do TEC...</p></div>`;
+  if(!S.plano)return`<div class="empty"><div class="empty-icon">🧠</div><h3>Plano não gerado ainda</h3><p>Importe seus dados do TEC e clique em "Gerar Plano com IA"</p>${S.discs.length>0?'<button class="btn btn-acc" id="btn-gen3">⚡ Gerar Agora</button>':''}</div>`;
+  const chipsCfg=[
+    {v:`${S.cfg.dailyHours*S.cfg.weeklyDays}h`,l:'horas/semana',c:'var(--acc)',bg:'var(--acc-bg)',bdr:'var(--acc-bdr)'},
+    {v:`${S.discs.filter(d=>d.taxa<70).length}`,l:'disciplinas p/ reforço',c:'var(--warn)',bg:'var(--warn-bg)',bdr:'var(--warn-bdr)'},
+    {v:`${ps}%`,l:`nota proj. (corte ${S.cfg.cutoff}%)`,c:ps>=S.cfg.cutoff?'var(--good)':'var(--dng)',bg:ps>=S.cfg.cutoff?'var(--good-bg)':'var(--dng-bg)',bdr:ps>=S.cfg.cutoff?'var(--good-bdr)':'var(--dng-bdr)'},
+    ...(dias!==null?[{v:`${dias}d`,l:'até a prova',c:dias>30?'var(--acc)':'var(--dng)',bg:dias>30?'var(--acc-bg)':'var(--dng-bg)',bdr:dias>30?'var(--acc-bdr)':'var(--dng-bdr)'}]:[])
+  ];
+  return`<div class="fade-in">
+  <div class="plan-hdr"><h2>🗓 Planejamento Semanal</h2><button class="btn btn-ghost btn-sm" id="btn-regen">↻ Regenerar</button></div>
+  <div class="card"><div class="plan-out">${formatPlan(S.plano)}</div></div>
+  <div class="stats-row">${chipsCfg.map(s=>`<div class="stat" style="background:${s.bg};border:1px solid ${s.bdr}"><div class="stat-v" style="color:${s.c}">${s.v}</div><div class="stat-l">${s.l}</div></div>`).join('')}</div>
+  </div>`;
+}
+
+function buildHTML(){
+  const TABS=[{id:'import',icon:'📥',label:'Importar TEC',show:true},{id:'diagnostic',icon:'📊',label:'Diagnóstico',show:S.discs.length>0},{id:'config',icon:'⚙️',label:'Configurar',show:S.discs.length>0},{id:'plan',icon:'🧠',label:'Plano IA',show:S.discs.length>0}];
+  return`
+  <div class="hdr">
+    <div class="hdr-icon">⚔️</div>
+    <div><h1>Planejamento Inteligente</h1><p>Metodologia Guruja · TEC Concursos · Powered by Claude AI</p></div>
+    ${S.discs.length>0?`<div class="hdr-badge">✓ ${S.discs.length} disciplinas</div>`:''}
+  </div>
+  <div class="key-bar">
+    <label>🔑 Chave Anthropic API:</label>
+    <input type="password" id="key-inp" value="${esc(S.apiKey)}" placeholder="sk-ant-api03-... (necessária para Plano IA)">
+    <span>|</span>
+    <a href="https://console.anthropic.com/settings/keys" target="_blank">Obter chave grátis →</a>
+    <span style="color:rgba(90,120,152,.6);font-size:10px">(salva só nesta aba)</span>
+  </div>
+  <div class="tabs">${TABS.filter(t=>t.show).map(t=>`<button class="tab-btn${S.tab===t.id?' active':''}" data-tab="${t.id}">${t.icon} ${t.label}</button>`).join('')}</div>
+  <div class="content"><div class="inner">
+    ${S.tab==='import'?renderImport():''}
+    ${S.tab==='diagnostic'&&S.discs.length>0?renderDiagnostic():''}
+    ${S.tab==='config'?renderConfig():''}
+    ${S.tab==='plan'?renderPlan():''}
+  </div></div>`;
+}
+
+function render(){document.getElementById('root').innerHTML=buildHTML();bind();}
+
+function bind(){
+  document.querySelectorAll('.tab-btn').forEach(b=>b.addEventListener('click',()=>{S.tab=b.dataset.tab;render();}));
+  const csv=document.getElementById('csv-ta');if(csv)csv.addEventListener('input',e=>S.csv=e.target.value);
+  const ki=document.getElementById('key-inp');if(ki)ki.addEventListener('change',e=>{S.apiKey=e.target.value;sessionStorage.setItem('pf_key',S.apiKey);});
+  const bs=document.getElementById('btn-sample');if(bs)bs.addEventListener('click',()=>{S.csv=SAMPLE;render();});
+  const bu=document.getElementById('btn-upload');if(bu)bu.addEventListener('click',()=>document.getElementById('fi').click());
+  const bp=document.getElementById('btn-parse');if(bp)bp.addEventListener('click',doParse);
+  const bc=document.getElementById('btn-go-cfg');if(bc)bc.addEventListener('click',()=>{S.tab='config';render();});
+  document.querySelectorAll('#btn-gen,#btn-gen2,#btn-gen3,#btn-regen').forEach(b=>{if(b)b.addEventListener('click',doGenerate);});
+  document.querySelectorAll('.cfg-input').forEach(inp=>inp.addEventListener('input',e=>{S.cfg[e.target.dataset.key]=e.target.type==='number'?+e.target.value:e.target.value;}));
+  document.querySelectorAll('.w-peso').forEach(r=>r.addEventListener('input',e=>{const i=+e.target.dataset.wi;S.cfg.disciplines[i].peso=+e.target.value;const s=document.getElementById(`wpct-${i}`);if(s)s.textContent=`${e.target.value}%`;}));
+  document.querySelectorAll('.w-meta-input').forEach(r=>r.addEventListener('input',e=>{S.cfg.disciplines[+e.target.dataset.wi].meta=+e.target.value;}));
+}
+
+function doParse(){
+  S.err='';
+  try{
+    const rows=parseTEC(S.csv);
+    const d=groupByMateria(rows).sort((a,b)=>a.taxa-b.taxa);
+    S.discs=d;
+    S.cfg.disciplines=d.map(x=>({nome:x.materia,peso:Math.round(100/d.length),meta:70}));
+    S.tab='diagnostic';render();
+  }catch(e){S.err=e.message;render();}
+}
+
+async function doGenerate(){
+  if(!S.discs.length)return;
+  if(!S.apiKey){alert('Cole sua chave Anthropic API no campo no topo da página.\nObtenha em: console.anthropic.com/settings/keys');return;}
+  S.generating=true;S.plano='';S.tab='plan';render();
+  const dias=daysLeft();
+  const crit=S.discs.filter(d=>d.taxa<50),prog=S.discs.filter(d=>d.taxa>=50&&d.taxa<70),boas=S.discs.filter(d=>d.taxa>=70);
+  const prompt=`Você é um consultor sênior de aprovação em concursos fiscais com a metodologia Guruja. Gere um planejamento semanal estratégico.
+
+## Perfil
+- Concurso: ${S.cfg.concurso||'Concurso Fiscal'}
+- Data da prova: ${S.cfg.examDate||'Não definida'}${dias!==null?` (${dias} dias restantes)`:''}
+- Disponibilidade: ${S.cfg.dailyHours}h/dia × ${S.cfg.weeklyDays} dias = ${S.cfg.dailyHours*S.cfg.weeklyDays}h/semana
+- Nota de corte: ${S.cfg.cutoff}%
+- Nota projetada atual: ${projScore()}%
+
+## Estatísticas TEC Concursos
+${S.discs.map(d=>{const c=S.cfg.disciplines.find(x=>x.nome===d.materia);return`- ${d.materia}: ${d.taxa}% | ${d.resolvidas} questões | Peso edital: ${c?.peso||'?'}%`;}).join('\n')}
+
+## Lacunas
+- CRÍTICAS (<50%): ${crit.map(d=>`${d.materia} (${d.taxa}%)`).join(', ')||'Nenhuma'}
+- PROGRESSO (50-70%): ${prog.map(d=>`${d.materia} (${d.taxa}%)`).join(', ')||'Nenhuma'}
+- EM FORMA (≥70%): ${boas.map(d=>d.materia).join(', ')||'Nenhuma'}
+
+Responda EXATAMENTE neste formato:
+
+### 🎯 DIAGNÓSTICO EXECUTIVO
+[2-3 frases precisas sobre a situação e maior risco de reprovação]
+
+### 🚨 3 PRIORIDADES DA SEMANA
+**1. [Disciplina]** — [por que urgente + estratégia com número de questões]
+**2. [Disciplina]** — [estratégia]
+**3. [Disciplina]** — [estratégia]
+
+### 📅 CRONOGRAMA DIA A DIA
+**Segunda-feira**
+• [Disciplina + Assunto]: [X]h teoria + [Y] questões
+• Meta de acerto: [Z]%
+• Caderno TEC: [filtro sugerido]
+
+[Repita para Terça, Quarta, Quinta, Sexta, Sábado]
+
+### 📊 METAS DA SEMANA
+- Total de questões: [N]
+- Total de horas: [N]h
+- Acerto alvo geral: [N]%
+- Disciplina foco: [nome]
+
+### ⚡ ALERTA CRÍTICO
+[Uma frase sobre o ponto mais urgente e a ação imediata]
+
+Seja preciso, tático e baseado nos dados reais.`;
+
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':S.apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:prompt}]})});
+    if(!res.ok){const e=await res.json();throw new Error(e.error?.message||`HTTP ${res.status}`);}
+    const data=await res.json();
+    S.plano=data.content?.find(c=>c.type==='text')?.text||'Erro ao gerar.';
+  }catch(e){S.plano=`### ⚠️ Erro\n\n${e.message}\n\nVerifique se a chave API está correta e tente novamente.`;}
+  S.generating=false;render();
+}
+
+document.getElementById('fi').addEventListener('change',e=>{
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();r.onload=ev=>{S.csv=ev.target.result;render();};r.readAsText(f,'UTF-8');
+});
+
+render();
+</script>
+</body>
+</html>
