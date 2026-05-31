@@ -1,0 +1,1902 @@
+/**
+ * Painel Fiscal — TEC Automator v3.0
+ * Widget visual no TEC, scraper de ranking, comunicação com painel externo e
+ * com o service worker.
+ *
+ * Mudanças vs v2.2.0:
+ *   • Scraper de ranking não envia mais duplicados (flag global)
+ *   • timeSpent é enviado em todos os QUESTION_CORRECT / QUESTION_WRONG
+ *   • Mensagens já existentes (TEC_QUESTION, TEC_STATS_UPDATE, etc) intactas
+ */
+// Logger gateado (logs detalhados só com _pfDebug = true; erros sempre aparecem)
+var _pfDebug = false;
+var PFLog = {
+  log:  (...a) => { if (_pfDebug) console['log']('[PF]', ...a); },
+  warn: (...a) => { if (_pfDebug) console['warn']('[PF]', ...a); },
+  error:(...a) => { console['error']('[PF]', ...a); },
+};
+(function () {
+  'use strict';
+  if (window._pfTecAuto2) return;
+  window._pfTecAuto2 = true;
+
+  // ── Seletores do TEC centralizados (facilita manutenção se o TEC mudar o HTML) ──
+  const TEC_SEL = {
+    stats:         '[class*="acerto"],[class*="erro"],[class*="correct"],[class*="wrong"],[class*="stat"]',
+    questionLink:  "a[href*='/questoes/']",
+    questionBox:   '[class*="quest" i]',
+    questionBoxId: '[id*="quest" i]',
+    semantic:      'article, section, main',
+    alternativa:   '[class*="alternativ" i],[class*="opcao" i]',
+    lists:         'ol, ul',
+    gabarito:      '[class*="gabarito" i],[class*="comentario" i],[class*="resposta" i]',
+  };
+
+  const PANEL_URL = 'https://cazuzaleo89-netizen.github.io/projetofiscal/';
+
+  // Heartbeat para o painel detectar extensão ativa
+  if (location.hostname === 'cazuzaleo89-netizen.github.io') {
+    const beat = () => localStorage.setItem('_pf_ext_heartbeat', Date.now());
+    beat();
+    setInterval(beat, 8000);
+    const syncRanking = () => {
+      try {
+        chrome.runtime.sendMessage({ type: 'GET_TEC_RANKING' }, r => {
+          if (r && r.data) localStorage.setItem('_pf_tec_ranking', JSON.stringify(r.data));
+        });
+      } catch (x) {}
+    };
+    syncRanking();
+    setInterval(syncRanking, 30000);
+    return;
+  }
+
+  // Scraper de ranking (página /estatisticas/comparar)
+  if (location.pathname.includes('/estatisticas/comparar')) {
+    let _scraped = false;  // dedupe
+
+    function _pfToast(msg, ok) {
+      const t = document.createElement('div');
+      t.style.cssText = `position:fixed;bottom:20px;right:20px;z-index:2147483647;
+        background:${ok ? '#15803d' : '#92400e'};color:#fff;
+        padding:10px 16px;border-radius:10px;font:700 12px/1.4 -apple-system,sans-serif;
+        box-shadow:0 4px 20px rgba(0,0,0,.45);transition:opacity .4s;max-width:320px;`;
+      t.textContent = msg;
+      document.body.appendChild(t);
+      setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 500); }, 5000);
+    }
+
+    function scrapeTecRanking() {
+      if (_scraped) return true;
+      const txt = document.body.innerText || '';
+      if (txt.length < 150) return false;
+
+      const data = { scrapedAt: Date.now(), url: location.href };
+      const gM = location.pathname.match(/\/comparar\/(\d+)/);
+      if (gM) data.groupId = gM[1];
+
+      for (const p of [
+        /(\d+)\s*participantes?/i, /(\d+)\s*usu[aá]rios?/i,
+        /(\d+)\s*membros?/i, /total[:\s]+(\d+)/i, /de\s+(\d{2,4})\b/,
+      ]) {
+        const m = txt.match(p);
+        if (m && parseInt(m[1]) > 5) { data.totalUsers = parseInt(m[1]); break; }
+      }
+
+      const extractMetric = (metricVariants, isPercent) => {
+        let startIdx = -1;
+        for (const v of metricVariants) {
+          const i = txt.search(new RegExp(v, 'i'));
+          if (i >= 0) { startIdx = i; break; }
+        }
+        if (startIdx < 0) return null;
+        const block = txt.slice(startIdx, startIdx + 900);
+
+        const grabNum = (src, labelVariants, pct) => {
+          for (const lv of labelVariants) {
+            const li = src.search(new RegExp(lv, 'i'));
+            if (li < 0) continue;
+            const after = src.slice(li, li + 120);
+            const m = pct
+              ? after.match(/([\d]+[,.]\d+)\s*%/) || after.match(/(\d+)\s*%/)
+              : after.match(/[\s\n:]+(\d+)/);
+            if (m) return parseFloat((m[1] || m[0]).replace(',', '.'));
+          }
+          return null;
+        };
+
+        const posGrab = (src) => {
+          for (const p of [
+            /posi[çc][ãa]o[\s\S]{0,25}?(\d+)/i,
+            /(\d+)\s*[°º]/, /posição\s*(\d+)/i, /lugar[:\s]+(\d+)/i,
+          ]) { const m = src.match(p); if (m) return parseInt(m[1]); }
+          return null;
+        };
+
+        const voce    = grabNum(block, ['você','voce','VOCÊ','VOCE','vc\\b'], isPercent);
+        const media   = grabNum(block, ['média','media','MÉDIA','MEDIA','méd'], isPercent);
+        const posicao = posGrab(block);
+
+        if (voce === null && posicao === null) return null;
+        return { voce, media, posicao };
+      };
+
+      data.metrics = {};
+      const res = extractMetric(['resolu[çc][õo]es','resolucoes','resoluções'], false);
+      if (res) data.metrics.resolucoes = res;
+      const ace = extractMetric(['acertos','acerto'], false);
+      if (ace) data.metrics.acertos = ace;
+      const des = extractMetric(['desempenho'], true);
+      if (des) data.metrics.desempenho = des;
+
+      if (!Object.keys(data.metrics).length) {
+        try {
+          const leaves = [];
+          const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+          while (w.nextNode()) {
+            const t2 = (w.currentNode.textContent || '').trim();
+            if (t2) leaves.push(t2);
+          }
+          const joined = leaves.join('\n');
+          if (joined.length > 200) {
+            for (const [variants, key] of [
+              [['resolu'], 'resolucoes'],
+              [['acerto'], 'acertos'],
+              [['desempenho'], 'desempenho'],
+            ]) {
+              const idx = joined.search(new RegExp(variants[0], 'i'));
+              if (idx < 0) continue;
+              const blk = joined.slice(idx, idx + 900);
+              const nums = [...blk.matchAll(/\d+[,.]?\d*/g)].map(m => parseFloat(m[0].replace(',','.')));
+              if (nums.length >= 1) {
+                data.metrics[key] = { voce: nums[0] || null, media: nums[1] || null, posicao: null };
+              }
+            }
+          }
+        } catch(x) {}
+      }
+
+      const ok = Object.keys(data.metrics).length > 0;
+      if (ok) {
+        _scraped = true;  // marca antes de enviar para evitar race
+        try { chrome.runtime.sendMessage({ type: 'SAVE_TEC_RANKING', data }, () => {}); } catch(x) {}
+        _pfToast('✅ Painel Fiscal: ranking capturado!', true);
+      } else {
+        _pfToast('⚠️ Painel Fiscal: não encontrei os dados — use "Inserir manualmente"', false);
+      }
+      return ok;
+    }
+
+    [800, 2000, 4500, 9000].forEach(d => setTimeout(scrapeTecRanking, d));
+    const _obs = new MutationObserver(() => { if (!_scraped) scrapeTecRanking(); });
+    _obs.observe(document.body, { childList: true, subtree: true });
+    setTimeout(() => _obs.disconnect(), 25000);
+    return;
+  }
+
+  // ════════════════════════════════════════════════════════
+  // ESTADO
+  // ════════════════════════════════════════════════════════
+  const S = {
+    pfw: null,
+    A: 0, E: 0,
+    connectTime: Date.now(),
+    lastUrl: '',
+    endSent: false,
+    desempenhoOpen: false,
+    autoFetchKey: '',
+    textDetectKey: '',
+    hiddenSince: 0,
+    questions: [],
+    totalQ: 0,
+    currentQ: 0,
+    caderno: '',
+    materia: '',
+    assunto: '',
+    localAce: 0,
+    localErr: 0,
+    stats: { elapsed: 0, acertos: 0, erros: 0, resolved: 0, running: false, paused: false, discName: '', dificuldade: '' },
+    fila: [],
+    minimized: false,
+    questionStart: Date.now(),
+  };
+
+  let widgetEl = null;
+  let observer = null;
+  let timerInterval = null;
+  let timerElapsed  = 0;
+  let timerRunning  = false;
+  let _pfDragPos  = null;
+  let _pfHubNext  = null;
+  let _pfDueCount = 0;
+  let _syncTick   = 0;
+
+  // ════════════════════════════════════════════════════════
+  // COMUNICAÇÃO
+  // ════════════════════════════════════════════════════════
+
+  function findPanelWindow() {
+    if (window.opener && !window.opener.closed) return window.opener;
+    try { const w = window.open('', '_pfPanel'); if (w && !w.closed && w !== window) return w; } catch (x) {}
+    return null;
+  }
+
+  function send(result, qi) {
+    const msg = { type: 'TEC_QUESTION', result };
+    if (qi) Object.assign(msg, qi);
+    if (S.pfw && !S.pfw.closed) { try { S.pfw.postMessage(msg, '*'); return true; } catch (x) {} }
+    S.pfw = findPanelWindow();
+    if (S.pfw && !S.pfw.closed) { try { S.pfw.postMessage(msg, '*'); return true; } catch (x) {} }
+    try { chrome.runtime.sendMessage({ type: 'RELAY_TO_PANEL', payload: msg }); return true; } catch (x) {}
+    return false;
+  }
+
+  function sendRaw(msg) {
+    if (S.pfw && !S.pfw.closed) { try { S.pfw.postMessage(msg, '*'); return; } catch (x) {} }
+    S.pfw = findPanelWindow();
+    if (S.pfw && !S.pfw.closed) { try { S.pfw.postMessage(msg, '*'); return; } catch (x) {} }
+    try { chrome.runtime.sendMessage({ type: 'RELAY_TO_PANEL', payload: msg }); } catch (x) {}
+  }
+
+  function toBg(type, payload, callback) {
+    try {
+      if (callback) {
+        chrome.runtime.sendMessage({ type, payload }, res => {
+          if (chrome.runtime.lastError) return; // aba fechada etc
+          callback(res);
+        });
+      } else {
+        chrome.runtime.sendMessage({ type, payload });
+      }
+    } catch (x) {}
+  }
+
+  // ════════════════════════════════════════════════════════
+  // CRONÔMETRO
+  // ════════════════════════════════════════════════════════
+
+  function fmtTimer(secs) {
+    const h = Math.floor(secs / 3600);
+    const m = Math.floor((secs % 3600) / 60);
+    const s = secs % 60;
+    const pad = n => String(n).padStart(2, '0');
+    return h > 0 ? `${pad(h)}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
+  }
+
+  function updateTimerDisplay() {
+    const display = document.getElementById('_pf2timerVal');
+    const dot     = document.getElementById('_pf2timerDot');
+    const togBtn  = document.getElementById('_pf2timerTog');
+    if (!display) return;
+    if (timerRunning) timerElapsed++;
+    display.textContent = fmtTimer(timerElapsed);
+    if (dot) {
+      dot.style.background = timerRunning ? '#22c55e' : '#38bdf8';
+      dot.style.boxShadow  = timerRunning ? '0 0 6px #22c55e' : '0 0 5px #38bdf8';
+    }
+    if (togBtn) togBtn.textContent = timerRunning ? '⏸' : '▶';
+  }
+
+  function syncTimerFromBg() {
+    try {
+      chrome.runtime.sendMessage({ type: 'TIMER_GET' }, resp => {
+        if (resp) { timerElapsed = resp.elapsed || 0; timerRunning = !!resp.running; updateTimerDisplay(); }
+      });
+    } catch (x) {}
+  }
+
+  function startTimerTick() {
+    if (timerInterval) clearInterval(timerInterval);
+    syncTimerFromBg();
+    timerInterval = setInterval(() => {
+      updateTimerDisplay();
+      _syncTick++;
+      updateHubCd();
+      if (_syncTick % 15 === 0) syncHubStatus();
+      if (_syncTick % 30 === 0) { syncDueCount(); _syncTick = 0; }
+    }, 1000);
+    setInterval(syncTimerFromBg, 10000);
+  }
+
+  function syncHubStatus() {
+    try {
+      chrome.runtime.sendMessage({ type: 'HUBERMAN_GET' }, resp => {
+        if (!resp) return;
+        const queue = resp.hub || [];
+        if (!queue.length) { if (_pfHubNext) { _pfHubNext = null; renderWidget(); } return; }
+        const next = queue.sort((a, b) => a.reviewAt - b.reviewAt)[0];
+        const wasNull = !_pfHubNext;
+        _pfHubNext = next;
+        if (wasNull) renderWidget();
+      });
+    } catch (x) {}
+  }
+
+  function updateHubCd() {
+    const cdEl = document.getElementById('_pf2hubcd');
+    if (!cdEl || !_pfHubNext) return;
+    const remNow = Math.max(0, Math.round((_pfHubNext.reviewAt - Date.now()) / 1000));
+    const cdTxt = remNow > 0 ? `⏱ ${Math.floor(remNow/60)}:${String(remNow%60).padStart(2,'0')}` : '⚡ REVISAR';
+    cdEl.textContent = cdTxt;
+    cdEl.style.color = remNow <= 0 ? '#38bdf8' : '#a78bfa';
+  }
+
+  function syncDueCount() {
+    try {
+      chrome.runtime.sendMessage({ type: 'GET_DUE_COUNT' }, resp => {
+        if (!resp) return;
+        if (resp.dueCount !== _pfDueCount) { _pfDueCount = resp.dueCount || 0; renderWidget(); }
+      });
+    } catch (x) {}
+  }
+
+  function initDrag() {
+    if (!widgetEl) return;
+    let dragging = false, ox = 0, oy = 0, sl = 0, st = 0;
+
+    widgetEl.addEventListener('mousedown', e => {
+      if (!e.target.closest('._pf2h') || e.target.closest('button')) return;
+      dragging = true;
+      const r = widgetEl.getBoundingClientRect();
+      ox = e.clientX; oy = e.clientY;
+      sl = r.left;    st = r.top;
+      widgetEl.style.right  = 'auto';
+      widgetEl.style.bottom = 'auto';
+      widgetEl.style.left   = sl + 'px';
+      widgetEl.style.top    = st + 'px';
+      widgetEl.style.cursor = 'grabbing';
+      e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', e => {
+      if (!dragging) return;
+      const nl = Math.max(0, Math.min(window.innerWidth - widgetEl.offsetWidth, sl + e.clientX - ox));
+      const nt = Math.max(0, Math.min(window.innerHeight - 40, st + e.clientY - oy));
+      widgetEl.style.left = nl + 'px';
+      widgetEl.style.top  = nt + 'px';
+    }, { passive: true });
+
+    document.addEventListener('mouseup', () => {
+      if (!dragging) return;
+      dragging = false;
+      widgetEl.style.cursor = '';
+      _pfDragPos = { left: parseFloat(widgetEl.style.left), top: parseFloat(widgetEl.style.top) };
+      try { localStorage.setItem('_pfPos', JSON.stringify(_pfDragPos)); } catch (x) {}
+    });
+  }
+
+  function applyDragPos() {
+    if (!widgetEl) return;
+    try {
+      const saved = _pfDragPos || JSON.parse(localStorage.getItem('_pfPos') || 'null');
+      if (saved && saved.left != null) {
+        _pfDragPos = saved;
+        widgetEl.style.right  = 'auto';
+        widgetEl.style.bottom = 'auto';
+        widgetEl.style.left   = Math.min(saved.left, window.innerWidth - 50)  + 'px';
+        widgetEl.style.top    = Math.min(saved.top,  window.innerHeight - 50) + 'px';
+      }
+    } catch (x) {}
+  }
+
+  function timerControl(action) {
+    try {
+      chrome.runtime.sendMessage({ type: action }, resp => {
+        if (resp) { timerElapsed = resp.elapsed || 0; timerRunning = !!resp.running; updateTimerDisplay(); }
+      });
+    } catch (x) {}
+  }
+
+  // ════════════════════════════════════════════════════════
+  // PARSERS
+  // ════════════════════════════════════════════════════════
+
+  function parseCounter() {
+    const tx = document.body.innerText || '';
+    let m = tx.match(/(\d+)\s+Acertos?\s+e\s+(\d+)\s+Erros?/i);
+    if (!m) m = tx.match(/Acertos?[:\s]+(\d+)[^\d]+Erros?[:\s]+(\d+)/i);
+    if (!m) m = tx.match(/(\d+)\s+certos?\s+e\s+(\d+)\s+errados?/i);
+    if (!m) {
+      const els = document.querySelectorAll(TEC_SEL.stats);
+      let a = null, e = null;
+      els.forEach(el => {
+        const t = el.textContent || '';
+        if (/acerto/i.test(t)) { const n = t.match(/\d+/); if (n) a = parseInt(n[0]); }
+        if (/erro/i.test(t))   { const n = t.match(/\d+/); if (n) e = parseInt(n[0]); }
+      });
+      if (a !== null && e !== null) return { a, e };
+    }
+    return m ? { a: parseInt(m[1]), e: parseInt(m[2]) } : null;
+  }
+
+  function parsePosition() {
+    const tx = document.body.innerText || '';
+    let m = tx.match(/Quest[aã]o\s+(\d+)\s+de\s+(\d+)/i);
+    if (!m) m = tx.match(/(\d+)\s*\/\s*(\d+)\s*quest/i);
+    if (!m) m = tx.match(/(\d+)\s+de\s+(\d+)/i);
+    return m ? { n: parseInt(m[1]), t: parseInt(m[2]) } : null;
+  }
+
+  function getInfo() {
+    const info = { url: '', desc: '', materia: '', assunto: '', qid: '', myTotal: 0, myErrors: 0, timeSpent: 0 };
+    const tx = document.body.innerText || '';
+
+    const urlPM = window.location.pathname.match(/\/questoes\/(\d{5,9})(?:\/|$)/);
+    if (urlPM) { info.qid = urlPM[1]; info.url = 'https://www.tecconcursos.com.br/questoes/' + urlPM[1]; }
+    if (!info.qid) {
+      const links = document.querySelectorAll(TEC_SEL.questionLink);
+      for (const l of links) {
+        const lm = l.href.match(/\/questoes\/(\d{5,9})/);
+        if (lm) { info.qid = lm[1]; info.url = 'https://www.tecconcursos.com.br/questoes/' + lm[1]; break; }
+      }
+    }
+    if (!info.qid) { const idM = tx.match(/#(\d{5,9})\b/); if (idM) { info.qid = idM[1]; info.url = 'https://www.tecconcursos.com.br/questoes/' + idM[1]; } }
+    if (!info.url) info.url = window.location.href;
+
+    const matM = tx.match(/Mat[eé]ria:\s*([^\n\r×]+)/i);
+    if (matM) info.materia = matM[1].replace(/\s*[××].*$/, '').trim();
+    const assM = tx.match(/Assunto:\s*([^\n\r×]+)/i);
+    if (assM) info.assunto = assM[1].replace(/\s*[××].*$/, '').trim();
+    const parts = [];
+    if (info.materia) parts.push(info.materia);
+    if (info.assunto) parts.push(info.assunto);
+    info.desc = parts.join(' — ') || (info.qid ? 'Questão #' + info.qid : 'Questão');
+
+    const myResM = tx.match(/Total de resolu[çc][õo]es[:\s]+(\d+)/i);
+    info.myTotal = myResM ? parseInt(myResM[1]) : 0;
+    const myErrArr = tx.match(/\bErrou\b/gi);
+    info.myErrors = myErrArr ? myErrArr.length : 0;
+    const myErrNumM = tx.match(/(\d+)\s*(?:erros?\b|[x×]\s*errou)/i) || tx.match(/errou[\s:]+(\d+)/i);
+    if (myErrNumM) { const ne = parseInt(myErrNumM[1]); if (ne > info.myErrors) info.myErrors = ne; }
+
+    info.timeSpent = Math.round((Date.now() - S.questionStart) / 1000);
+    return info;
+  }
+
+  // ════════════════════════════════════════════════════════
+  // EXTRAÇÃO DE ENUNCIADO + ALTERNATIVAS (TEC)
+  // ════════════════════════════════════════════════════════
+  // O TEC pode renderizar questões em diversos layouts. Implementamos
+  // 4 estratégias em cascata; a primeira que retorna 4+ alternativas vence.
+
+  function _normTxt(s) {
+    return String(s || '').replace(/\s+/g, ' ').trim();
+  }
+
+  // Tenta achar o container principal da questão (limita o escopo da busca)
+  function _findQuestionContainer() {
+    // Prefere o que tenha "Comentário"/"Gabarito" perto, indicando bloco de questão
+    const candidates = [
+      ...document.querySelectorAll(TEC_SEL.questionBox),
+      ...document.querySelectorAll(TEC_SEL.questionBoxId),
+      ...document.querySelectorAll(TEC_SEL.semantic),
+    ];
+    for (const c of candidates) {
+      const t = c.textContent || '';
+      // Tem que ter pelo menos 4 letras A-E como marcadores em algum lugar
+      const lettersFound = (t.match(/(?:^|\s|[\(\)])\s*[A-E]\)/g) || []).length;
+      if (lettersFound >= 4 && t.length > 200 && t.length < 30000) return c;
+    }
+    return document.body;
+  }
+
+  // Estratégia 1: radio buttons com value A-E ou labels A-E
+  function _extractFromRadios(container) {
+    const out = {};
+    const radios = container.querySelectorAll('input[type="radio"]');
+    if (radios.length < 4) return null;
+
+    for (const r of radios) {
+      let letter = '';
+      // Tenta extrair letra do value
+      const v = (r.value || '').toUpperCase().trim();
+      if (/^[A-E]$/.test(v)) letter = v;
+
+      // Se não, tenta extrair do label "for=id"
+      if (!letter && r.id) {
+        const lbl = container.querySelector(`label[for="${r.id}"]`);
+        if (lbl) {
+          const lt = (lbl.textContent || '').match(/^\s*([A-E])\s*[\)\.\-]/i);
+          if (lt) letter = lt[1].toUpperCase();
+        }
+      }
+
+      // Se ainda não, ignora
+      if (!letter || /^[A-E]$/.test(letter) === false) continue;
+      if (out[letter]) continue; // já capturado
+
+      // Busca o texto da alternativa: label ou ancestral próximo
+      let text = '';
+      // label[for=id]
+      if (r.id) {
+        const lbl = container.querySelector(`label[for="${r.id}"]`);
+        if (lbl) text = _normTxt(lbl.textContent);
+      }
+      // pai label
+      if (!text) {
+        const parentLbl = r.closest('label');
+        if (parentLbl) text = _normTxt(parentLbl.textContent);
+      }
+      // próximo irmão / pai com classe alternativ
+      if (!text) {
+        const altParent = r.closest(TEC_SEL.alternativa);
+        if (altParent) text = _normTxt(altParent.textContent);
+      }
+      // último recurso: próximo nó de texto
+      if (!text && r.parentElement) {
+        text = _normTxt(r.parentElement.textContent);
+      }
+
+      // Remove a letra inicial se estiver no texto ("A) texto" → "texto")
+      text = text.replace(/^\s*[A-E]\s*[\)\.\-]\s*/i, '').trim();
+      if (text && text.length > 2 && text.length < 2000) out[letter] = text;
+    }
+
+    return Object.keys(out).length >= 4 ? out : null;
+  }
+
+  // Estratégia 2: elementos com classe contendo "alternativ" ou "opcao"
+  function _extractFromClassed(container) {
+    const sel = '[class*="alternativ" i],[class*="opcao" i],[class*="option" i]';
+    const els = container.querySelectorAll(sel);
+    if (els.length < 4) return null;
+    const out = {};
+    for (const el of els) {
+      // Pula radios pra evitar duplicar com estratégia 1
+      if (el.querySelector('input[type="radio"]') && Object.keys(out).length === 0) {
+        // Se for o container da estratégia 1, pula
+        continue;
+      }
+      const t = _normTxt(el.textContent);
+      const lm = t.match(/^\s*([A-E])\s*[\)\.\-]\s*(.+)/i);
+      if (!lm) continue;
+      const letter = lm[1].toUpperCase();
+      const text   = lm[2].trim();
+      if (!out[letter] && text.length > 2 && text.length < 2000) out[letter] = text;
+    }
+    return Object.keys(out).length >= 4 ? out : null;
+  }
+
+  // Estratégia 3: ol/ul com 4-5 li próximos do enunciado
+  function _extractFromList(container) {
+    const lists = container.querySelectorAll(TEC_SEL.lists);
+    for (const list of lists) {
+      const lis = list.querySelectorAll(':scope > li');
+      if (lis.length < 4 || lis.length > 6) continue;
+      const out = {};
+      const letters = ['A', 'B', 'C', 'D', 'E'];
+      lis.forEach((li, i) => {
+        if (i >= 5) return;
+        const t = _normTxt(li.textContent);
+        // Remove letra inicial se houver
+        const cleaned = t.replace(/^\s*[A-E]\s*[\)\.\-]\s*/i, '').trim();
+        if (cleaned && cleaned.length > 2 && cleaned.length < 2000) {
+          out[letters[i]] = cleaned;
+        }
+      });
+      if (Object.keys(out).length >= 4) return out;
+    }
+    return null;
+  }
+
+  // Estratégia 4: parse no texto bruto via regex (fallback)
+  function _extractFromRawText(container) {
+    const tx = container.textContent || '';
+    // Regex: captura "A) texto até próximo B) ou fim"
+    const out = {};
+    const pattern = /\b([A-E])\s*\)\s*([\s\S]+?)(?=\s+[A-E]\s*\)|\s*Gabarito|\s*Coment[áa]rio|$)/g;
+    let m;
+    while ((m = pattern.exec(tx)) !== null) {
+      const letter = m[1].toUpperCase();
+      const text   = _normTxt(m[2]);
+      if (!out[letter] && text.length > 2 && text.length < 2000) out[letter] = text;
+    }
+    return Object.keys(out).length >= 4 ? out : null;
+  }
+
+  function extractAlternativas() {
+    try {
+      const container = _findQuestionContainer();
+      // Tenta em ordem de confiança
+      let alts = _extractFromRadios(container);
+      if (alts) return { alts, strategy: 'radios' };
+      alts = _extractFromClassed(container);
+      if (alts) return { alts, strategy: 'classed' };
+      alts = _extractFromList(container);
+      if (alts) return { alts, strategy: 'list' };
+      alts = _extractFromRawText(container);
+      if (alts) return { alts, strategy: 'raw' };
+      return null;
+    } catch (e) { return null; }
+  }
+
+  // Tenta extrair o enunciado completo (texto da pergunta antes das alternativas)
+  function extractEnunciado() {
+    try {
+      const container = _findQuestionContainer();
+      const clone = container.cloneNode(true);
+
+      // 1. Remove containers de alternativas
+      clone.querySelectorAll(TEC_SEL.alternativa).forEach(el => el.remove());
+      // 2. Remove labels que contenham radio
+      clone.querySelectorAll('label').forEach(lbl => {
+        if (lbl.querySelector('input[type="radio"]')) lbl.remove();
+      });
+      // 3. Remove radios remanescentes
+      clone.querySelectorAll('input[type="radio"]').forEach(r => {
+        const wrap = r.parentElement;
+        if (wrap && wrap !== clone) wrap.remove();
+      });
+      // 4. Remove blocos de gabarito/comentário/resposta
+      clone.querySelectorAll(TEC_SEL.gabarito).forEach(el => el.remove());
+      // 4b. Remove listas curtas (4-6 itens) — provavelmente são as alternativas
+      clone.querySelectorAll('ol, ul').forEach(list => {
+        const lis = list.querySelectorAll(':scope > li');
+        if (lis.length >= 4 && lis.length <= 6) list.remove();
+      });
+      // 5. Remove blocos cujo texto começa com cabeçalho metadado (Matéria/Assunto/Banca/Ano/Tipo)
+      const headerRe = /^\s*(?:Mat[eé]ria|Assunto|Banca|Ano|Tipo|Disciplina|Origem|N[ií]vel|Pasta)\s*:/i;
+      clone.querySelectorAll('p, span, div, h1, h2, h3, h4, h5, h6, li').forEach(el => {
+        // Só remove se o elemento for "folha" (sem outros descendentes textuais relevantes)
+        const txt = (el.textContent || '').trim();
+        if (headerRe.test(txt) && txt.length < 200) el.remove();
+      });
+
+      let enunciado = _normTxt(clone.textContent);
+
+      // 6. Fallback: se ainda contiver "Matéria:" ou "Assunto:" no texto, tenta cortar
+      enunciado = enunciado
+        .replace(/Mat[eé]ria:\s+\S+(?:\s+\S+){0,4}?(?=\s+(?:Assunto|Banca|Ano|Quest|Sobre|De\s+acordo|Considerando|A\s+respeito|Em\s+rela|Analise|Assinale|Marque|Julgue|Acerca|Avalie|Leia|Conforme))/gi, '')
+        .replace(/Assunto:\s+\S+(?:\s+\S+){0,6}?(?=\s+(?:Mat|Banca|Ano|Quest|Sobre|De\s+acordo|Considerando|A\s+respeito|Em\s+rela|Analise|Assinale|Marque|Julgue|Acerca|Avalie|Leia|Conforme))/gi, '')
+        .replace(/Banca:\s+\S+(?:\s+\S+){0,3}?(?=\s+(?:Mat|Assunto|Ano|Quest|Sobre|De\s+acordo|Considerando))/gi, '')
+        .replace(/Ano:\s*\d{4}\s*/gi, '')
+        .replace(/Quest[aã]o\s+\d+\s+de\s+\d+\s*/gi, '');
+
+      // 7. Se ainda tem "A)" remanescente, corta antes
+      const firstAlt = enunciado.match(/\s+[A-E]\s*\)\s+\S/);
+      if (firstAlt && firstAlt.index > 30) {
+        enunciado = enunciado.slice(0, firstAlt.index);
+      }
+
+      enunciado = _normTxt(enunciado);
+
+      if (enunciado.length > 4000) enunciado = enunciado.slice(0, 4000) + '...';
+      return enunciado.length > 20 ? enunciado : '';
+    } catch (e) { return ''; }
+  }
+
+  // Wrapper que combina enunciado + alternativas + estatísticas de debug
+  function captureQuestionPayload() {
+    const enunciado = extractEnunciado();
+    const altResult = extractAlternativas();
+    return {
+      enunciado: enunciado || '',
+      alternativas: altResult?.alts || null,
+      _altStrategy: altResult?.strategy || 'none',
+    };
+  }
+
+  // Helper centralizado: monta o payload completo enviado pro background
+  // em QUESTION_CORRECT / QUESTION_WRONG. Inclui enunciado e alternativas.
+  function makeQuestionPayload(qi, curPos) {
+    const cap = captureQuestionPayload();
+    return {
+      qid: qi.qid, url: qi.url, materia: qi.materia, assunto: qi.assunto,
+      desc: qi.desc, timeSpent: qi.timeSpent, pos: curPos, timestamp: Date.now(),
+      enunciado: cap.enunciado || qi.desc || '',
+      alternativas: cap.alternativas || null,
+      _altStrategy: cap._altStrategy,
+    };
+  }
+
+  // ════════════════════════════════════════════════════════
+  // GRADE
+  // ════════════════════════════════════════════════════════
+
+  function ensureQuestions(total) {
+    if (!total || total <= 0) return;
+    S.totalQ = total;
+    while (S.questions.length < total) {
+      S.questions.push({ result: null, qid: '', url: '', materia: '', assunto: '', timeSpent: 0 });
+    }
+  }
+
+  function setQuestionResult(pos, result, qi) {
+    if (!pos || pos < 1) return;
+    ensureQuestions(Math.max(S.totalQ, pos));
+    const q = S.questions[pos - 1];
+    q.result = result;
+    if (qi) {
+      if (qi.qid) q.qid = qi.qid;
+      if (qi.url) q.url = qi.url;
+      if (qi.materia) q.materia = qi.materia;
+      if (qi.assunto) q.assunto = qi.assunto;
+      if (qi.timeSpent) q.timeSpent = qi.timeSpent;
+    }
+  }
+
+  // ════════════════════════════════════════════════════════
+  // ESTILOS
+  // ════════════════════════════════════════════════════════
+
+  function injectStyles() {
+    if (document.getElementById('_pfStyles2')) return;
+    const st = document.createElement('style');
+    st.id = '_pfStyles2';
+    st.textContent = `
+      @keyframes _pfSlide2{from{opacity:0;transform:translateY(18px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+      @keyframes _pfPop{0%{transform:scale(.65)}55%{transform:scale(1.2)}100%{transform:scale(1)}}
+      @keyframes _pfPulse2{0%,100%{opacity:1}50%{opacity:.4}}
+      @keyframes _pfFadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+      @keyframes _pfMetaIn{from{opacity:0;max-height:0}to{opacity:1;max-height:60px}}
+
+      #_pfWidget2{
+        position:fixed;bottom:20px;right:20px;z-index:2147483647;
+        width:322px;background:#1a1a1a;
+        border-radius:14px;
+        border:1px solid rgba(56,189,248,.18);
+        box-shadow:0 32px 80px rgba(0,0,0,.92),0 8px 24px rgba(0,0,0,.7),0 0 40px rgba(56,189,248,.06) inset;
+        font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',system-ui,sans-serif;
+        color:#e2e8f0;overflow:hidden;user-select:none;
+        animation:_pfSlide2 .36s cubic-bezier(.16,1,.3,1);
+        font-feature-settings:'tnum';
+      }
+      #_pfWidget2 *{box-sizing:border-box;}
+
+      /* HEADER */
+      ._pf2h{
+        display:flex;align-items:center;gap:8px;
+        padding:11px 13px;
+        background:linear-gradient(180deg,#222 0%,#1a1a1a 100%);
+        border-bottom:1px solid rgba(56,189,248,.2);
+        position:relative;
+        cursor:grab;
+      }
+      ._pf2h::after{
+        content:'';position:absolute;inset:0;
+        background:radial-gradient(ellipse 50% 100% at 15% 0%,rgba(56,189,248,.08),transparent 60%);
+        pointer-events:none;
+      }
+      ._pf2h:active{cursor:grabbing;}
+      ._pf2drag{display:flex;flex-direction:column;gap:2.5px;flex-shrink:0;opacity:.25;pointer-events:none;z-index:1;}
+      ._pf2drag span{display:block;width:13px;height:1.5px;background:#94a3b8;border-radius:1px;}
+      ._pf2logo{
+        width:28px;height:28px;
+        background:linear-gradient(135deg,#0369a1,#38bdf8);
+        border-radius:8px;display:flex;align-items:center;justify-content:center;
+        font-size:15px;flex-shrink:0;font-weight:900;color:#000;
+        box-shadow:0 2px 8px rgba(3,105,161,.5),inset 0 1px 0 rgba(255,255,255,.2);
+        z-index:1;
+      }
+      ._pf2title{
+        flex:1;font-size:13px;font-weight:800;color:#fef9ee;
+        letter-spacing:-.015em;z-index:1;line-height:1.2;
+      }
+      ._pf2title small{font-size:10px;color:#525252;font-weight:500;display:block;margin-top:1px;letter-spacing:0;}
+      ._pf2hbtn{
+        width:24px;height:24px;border:1px solid rgba(255,255,255,.08);
+        cursor:pointer;border-radius:6px;
+        background:rgba(255,255,255,.04);
+        color:#525252;font-size:14px;line-height:1;padding:0;
+        display:flex;align-items:center;justify-content:center;
+        transition:all .12s;flex-shrink:0;z-index:1;
+      }
+      ._pf2hbtn:hover{background:rgba(56,189,248,.15);color:#7dd3fc;border-color:rgba(56,189,248,.3);}
+
+      /* BODY */
+      ._pf2body{padding:12px 13px 13px;}
+
+      /* SESSION + STATS */
+      ._pf2session{
+        font-size:12px;font-weight:700;color:#fde68a;
+        margin-bottom:4px;line-height:1.3;
+        white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+        letter-spacing:-.01em;
+      }
+      ._pf2stats{
+        display:flex;align-items:center;gap:6px;
+        font-size:10.5px;color:#525252;margin-bottom:10px;
+      }
+      ._pf2stats .qtotal{color:#6b7280;font-weight:600;}
+      ._pf2stats .qcerto{color:#22c55e;font-weight:700;}
+      ._pf2stats .qreforco{color:#38bdf8;font-weight:700;}
+      ._pf2syncbtn{
+        margin-left:auto;width:22px;height:22px;border:1px solid rgba(255,255,255,.06);
+        cursor:pointer;background:rgba(255,255,255,.04);border-radius:50%;
+        color:#525252;font-size:13px;display:flex;align-items:center;justify-content:center;
+        transition:all .3s;
+      }
+      ._pf2syncbtn:hover{background:rgba(56,189,248,.12);color:#38bdf8;transform:rotate(180deg);}
+
+      /* CONTEXT BADGE */
+      ._pf2ctx{
+        display:none;align-items:center;gap:5px;
+        background:rgba(56,189,248,.07);border:1px solid rgba(56,189,248,.18);
+        border-radius:7px;padding:5px 9px;margin-bottom:9px;
+        animation:_pfFadeIn .25s ease;
+      }
+      ._pf2ctx.show{display:flex;}
+      ._pf2ctx-icon{font-size:11px;flex-shrink:0;}
+      ._pf2ctx-txt{flex:1;font-size:10px;font-weight:700;color:#7dd3fc;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+      ._pf2ctx-rate{font-size:10px;font-weight:800;flex-shrink:0;padding:2px 7px;border-radius:99px;}
+      ._pf2ctx-rate.ok{background:rgba(34,197,94,.12);color:#4ade80;}
+      ._pf2ctx-rate.warn{background:rgba(56,189,248,.12);color:#7dd3fc;}
+      ._pf2ctx-rate.bad{background:rgba(239,68,68,.1);color:#f87171;}
+
+      /* TAXA ROW */
+      ._pf2taxa{
+        display:flex;background:#111;border:1px solid rgba(255,255,255,.06);
+        border-radius:10px;margin-bottom:10px;overflow:hidden;
+      }
+      ._pf2taxa-it{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 4px;}
+      ._pf2taxa-it+._pf2taxa-it{border-left:1px solid rgba(255,255,255,.05);}
+      ._pf2taxa-v{font-size:17px;font-weight:800;line-height:1;letter-spacing:-.02em;}
+      ._pf2taxa-l{font-size:8px;color:#3a3a3a;font-weight:700;letter-spacing:.08em;margin-top:3px;text-transform:uppercase;}
+
+      /* MINI HIST */
+      ._pf2mhist{display:flex;align-items:center;gap:3px;margin-bottom:9px;}
+      ._pf2mhist-lbl{font-size:9px;color:#3a3a3a;font-weight:700;margin-right:3px;flex-shrink:0;letter-spacing:.04em;text-transform:uppercase;}
+      ._pf2mhd{width:11px;height:11px;border-radius:3px;flex-shrink:0;}
+      ._pf2mhd.c{background:rgba(34,197,94,.25);border:1px solid rgba(34,197,94,.4);}
+      ._pf2mhd.w{background:rgba(239,68,68,.2);border:1px solid rgba(239,68,68,.35);}
+
+      /* TIMER */
+      ._pf2timer{
+        display:flex;align-items:center;gap:8px;
+        background:#111;border:1px solid rgba(56,189,248,.18);
+        border-radius:11px;padding:10px 13px;margin-bottom:4px;
+        border-left:3px solid #38bdf8;
+      }
+      ._pf2timerdot{width:7px;height:7px;border-radius:50%;flex-shrink:0;transition:all .3s;}
+      ._pf2timerval{
+        flex:1;font-family:'SF Mono','JetBrains Mono','Courier New',monospace;
+        font-size:26px;font-weight:800;color:#fef9ee;
+        letter-spacing:.04em;line-height:1;
+      }
+      ._pf2timerbtn{
+        width:28px;height:28px;
+        border:1px solid rgba(255,255,255,.07);border-radius:7px;
+        background:rgba(255,255,255,.04);color:#525252;
+        font-size:13px;cursor:pointer;
+        display:flex;align-items:center;justify-content:center;
+        transition:all .12s;flex-shrink:0;padding:0;
+      }
+      ._pf2timerbtn:hover{background:rgba(56,189,248,.15);color:#7dd3fc;border-color:rgba(56,189,248,.3);}
+      ._pf2timerbtn.paused{background:rgba(34,197,94,.1);border-color:rgba(34,197,94,.3);color:#22c55e;}
+      ._pf2timerbtn.paused:hover{background:rgba(34,197,94,.2);}
+      ._pf2timerctx{
+        font-size:9.5px;color:#3a3a3a;font-weight:600;
+        text-align:center;margin-bottom:9px;letter-spacing:.01em;
+        display:none;
+      }
+      ._pf2timerctx.show{display:block;}
+
+      /* PROGRESS BAR */
+      ._pf2bar{height:3px;background:#1e1e1e;border-radius:2px;margin-bottom:10px;overflow:hidden;}
+      ._pf2barfill{height:100%;background:linear-gradient(90deg,#22c55e,#4ade80);border-radius:2px;transition:width .5s cubic-bezier(.16,1,.3,1);}
+
+      /* POSITION + GRID */
+      ._pf2pos{
+        font-size:10px;color:#38bdf8;font-weight:800;
+        margin-bottom:8px;letter-spacing:.04em;
+        display:flex;align-items:center;gap:5px;
+      }
+      ._pf2pos-pct{
+        margin-left:auto;font-size:9px;color:#525252;font-weight:600;
+        background:rgba(255,255,255,.04);padding:2px 7px;border-radius:99px;
+        border:1px solid rgba(255,255,255,.07);
+      }
+      ._pf2grid{display:grid;grid-template-columns:repeat(9,1fr);gap:4px;margin-bottom:10px;}
+      ._pf2c{
+        width:100%;aspect-ratio:1;border-radius:50%;
+        display:flex;align-items:center;justify-content:center;
+        font-size:9.5px;font-weight:800;cursor:pointer;
+        border:1.5px solid transparent;
+        transition:transform .12s,box-shadow .15s,border-color .2s;
+        position:relative;
+      }
+      ._pf2c:hover{transform:scale(1.18);z-index:2;}
+      ._pf2c.pending{background:#222;color:#333;border-color:#2a2a2a;}
+      ._pf2c.correct{background:rgba(21,128,61,.7);color:#4ade80;border-color:#22c55e44;animation:_pfPop .25s ease;}
+      ._pf2c.wrong{background:rgba(185,28,28,.7);color:#f87171;border-color:#ef444444;animation:_pfPop .25s ease;}
+      ._pf2c.current.pending{background:#030c1e;border-color:#38bdf8;box-shadow:0 0 0 3px rgba(56,189,248,.2);color:#38bdf8;}
+      ._pf2c.current.correct{border-color:#38bdf8;box-shadow:0 0 0 3px rgba(56,189,248,.2);}
+      ._pf2c.current.wrong{border-color:#38bdf8;box-shadow:0 0 0 3px rgba(56,189,248,.2);}
+
+      /* METACOGNIÇÃO */
+      ._pf2meta{
+        overflow:hidden;max-height:0;opacity:0;
+        transition:max-height .3s cubic-bezier(.16,1,.3,1),opacity .2s;
+        margin-bottom:0;
+      }
+      ._pf2meta.open{max-height:70px;opacity:1;margin-bottom:9px;}
+      ._pf2meta-lbl{font-size:9.5px;color:#525252;font-weight:700;letter-spacing:.05em;margin-bottom:5px;text-transform:uppercase;}
+      ._pf2meta-btns{display:flex;gap:5px;}
+      ._pf2meta-btn{
+        flex:1;padding:6px 4px;border:1px solid rgba(255,255,255,.07);
+        border-radius:7px;font-size:10.5px;font-weight:700;cursor:pointer;
+        background:#222;color:#525252;
+        transition:all .12s;text-align:center;
+      }
+      ._pf2meta-btn:hover{transform:translateY(-1px);}
+      ._pf2meta-btn.knew{border-color:rgba(34,197,94,.2);}
+      ._pf2meta-btn.knew:hover{background:rgba(34,197,94,.12);color:#4ade80;border-color:rgba(34,197,94,.4);}
+      ._pf2meta-btn.guessed{border-color:rgba(56,189,248,.2);}
+      ._pf2meta-btn.guessed:hover{background:rgba(56,189,248,.1);color:#7dd3fc;border-color:rgba(56,189,248,.35);}
+      ._pf2meta-btn.didnt{border-color:rgba(148,163,184,.1);}
+      ._pf2meta-btn.didnt:hover{background:rgba(148,163,184,.07);color:#9ca3af;}
+      ._pf2meta-btn.selected{opacity:.5;cursor:default;transform:none;}
+      ._pf2meta-btn.active-knew{background:rgba(34,197,94,.15);color:#4ade80;border-color:rgba(34,197,94,.5);}
+      ._pf2meta-btn.active-guessed{background:rgba(56,189,248,.12);color:#7dd3fc;border-color:rgba(56,189,248,.4);}
+      ._pf2meta-btn.active-didnt{background:rgba(148,163,184,.1);color:#9ca3af;border-color:rgba(148,163,184,.25);}
+
+      /* HUB MINI */
+      ._pf2hub-min{
+        display:flex;align-items:center;gap:7px;
+        background:rgba(56,189,248,.06);border:1px solid rgba(56,189,248,.16);
+        border-radius:8px;padding:6px 10px;margin-bottom:8px;
+        cursor:pointer;transition:background .12s;
+      }
+      ._pf2hub-min:hover{background:rgba(56,189,248,.12);}
+      ._pf2hub-min-txt{flex:1;font-size:10px;color:#7dd3fc;font-weight:700;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+      ._pf2hub-min-cd{font-size:10px;font-weight:800;flex-shrink:0;font-family:monospace;}
+
+      /* DUE BANNER */
+      ._pf2due{
+        display:flex;align-items:center;gap:7px;
+        background:rgba(56,189,248,.06);border:1px solid rgba(56,189,248,.14);
+        border-radius:8px;padding:6px 10px;margin-bottom:8px;
+        cursor:pointer;transition:background .12s;
+      }
+      ._pf2due:hover{background:rgba(56,189,248,.12);}
+      ._pf2due-dot{width:6px;height:6px;border-radius:50%;background:#38bdf8;flex-shrink:0;animation:_pfPulse2 2s ease infinite;}
+      ._pf2due-txt{flex:1;font-size:10px;color:#7dd3fc;font-weight:700;}
+
+      /* FILA BANNER */
+      ._pf2fila{
+        display:flex;align-items:center;gap:7px;
+        background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.18);
+        border-radius:8px;padding:6px 10px;margin-bottom:9px;
+        cursor:pointer;transition:background .12s;
+      }
+      ._pf2fila:hover{background:rgba(239,68,68,.13);}
+      ._pf2filadot{width:6px;height:6px;border-radius:50%;background:#ef4444;flex-shrink:0;animation:_pfPulse2 1.2s ease infinite;}
+      ._pf2filatxt{flex:1;font-size:10px;color:#fca5a5;font-weight:700;}
+      ._pf2filakbd{
+        font-size:8px;color:#525252;background:rgba(255,255,255,.04);
+        border:1px solid rgba(255,255,255,.07);padding:2px 6px;
+        border-radius:4px;font-family:monospace;letter-spacing:.02em;
+      }
+
+      /* NAV BUTTONS */
+      ._pf2nav{display:flex;gap:7px;border-top:1px solid rgba(56,189,248,.1);padding-top:11px;}
+      ._pf2navbtn{
+        flex:1;padding:9px 4px;
+        border:1px solid rgba(255,255,255,.08);
+        background:#222;color:#6b7280;
+        border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;
+        transition:all .12s;letter-spacing:-.01em;
+      }
+      ._pf2navbtn:hover{background:#2a2a2a;color:#e2e8f0;border-color:rgba(56,189,248,.25);}
+      ._pf2navbtn.primary{
+        background:linear-gradient(135deg,#0369a1,#38bdf8);
+        border-color:#7dd3fc;color:#000;
+        box-shadow:0 2px 12px rgba(3,105,161,.4);
+        font-weight:800;
+      }
+      ._pf2navbtn.primary:hover{box-shadow:0 4px 16px rgba(3,105,161,.55);transform:translateY(-1px);}
+      ._pf2navbtn.primary:active{transform:translateY(0);}
+
+      /* MINIMIZADO */
+      #_pfWidget2.pf2-min{width:auto;border-radius:50px;cursor:pointer;}
+      #_pfWidget2.pf2-min ._pf2body{display:none;}
+      #_pfWidget2.pf2-min ._pf2h{border-radius:50px;border:none;padding:9px 16px;gap:10px;cursor:pointer;}
+    `;
+    document.head.appendChild(st);
+  }
+
+  // ════════════════════════════════════════════════════════
+  // RENDER
+  // ════════════════════════════════════════════════════════
+
+  function renderWidget() {
+    if (!widgetEl) return;
+    injectStyles();
+
+    if (S.minimized) {
+      widgetEl.className = 'pf2-min';
+      widgetEl.innerHTML = `
+        <div class="_pf2h">
+          <div class="_pf2logo">≡</div>
+          <div class="_pf2title">Painel Fiscal</div>
+          <span style="font-size:11px;color:#22c55e;font-weight:700;">✓${S.localAce}</span>
+          <span style="font-size:11px;color:#ef4444;font-weight:700;">✕${S.localErr}</span>
+        </div>`;
+      widgetEl.onclick = () => { S.minimized = false; renderWidget(); };
+      return;
+    }
+
+    widgetEl.className = '';
+    widgetEl.onclick = null;
+
+    const pos = parsePosition();
+    const curQ = pos ? pos.n : S.currentQ;
+    const totalQ = pos ? pos.t : (S.totalQ || 0);
+    if (totalQ > 0) ensureQuestions(totalQ);
+
+    const answered = S.questions.filter(q => q.result !== null).length;
+    const correct  = S.questions.filter(q => q.result === 'correct').length;
+    const reforco  = S.questions.filter(q => q.result === 'wrong').length;
+    const pct      = answered > 0 ? Math.round(correct / answered * 100) : 0;
+
+    const caderno = S.caderno || S.materia || document.title.replace(/\s*[|·\-]\s*TecConcursos.*$/i, '').trim() || 'Sessão TEC';
+    const shortCaderno = caderno.length > 36 ? caderno.slice(0, 34) + '…' : caderno;
+
+    const showTotal = Math.max(totalQ, S.questions.length, 1);
+    let circlesHtml = '';
+    for (let i = 0; i < showTotal; i++) {
+      const q = S.questions[i] || { result: null };
+      const num = i + 1;
+      const isCurrent = num === curQ;
+      let cls = 'pending';
+      let label = num;
+      if (q.result === 'correct') { cls = 'correct'; label = '✓'; }
+      else if (q.result === 'wrong') { cls = 'wrong'; label = '✕'; }
+      if (isCurrent) cls += ' current';
+      const url = q.url ? `data-url="${q.url}"` : '';
+      circlesHtml += `<div class="_pf2c ${cls}" data-n="${num}" ${url} title="Q${num}${q.materia ? ' · ' + q.materia : ''}">${label}</div>`;
+    }
+
+    const filaBanner = S.fila.length > 0 ? `
+      <div class="_pf2fila" id="_pf2filarow">
+        <div class="_pf2filadot"></div>
+        <span class="_pf2filatxt">${S.fila.length} revisão${S.fila.length > 1 ? 'ões' : ''} pendente${S.fila.length > 1 ? 's' : ''}</span>
+        <kbd class="_pf2filakbd">Alt+R</kbd>
+      </div>` : '';
+
+    const taxaColor = pct >= 70 ? '#22c55e' : pct >= 50 ? '#38bdf8' : '#ef4444';
+    const ritmo = timerElapsed >= 60 ? Math.round(answered / (timerElapsed / 3600)) : 0;
+    const taxaRow = answered > 0 ? `
+      <div class="_pf2taxa">
+        <div class="_pf2taxa-it">
+          <div class="_pf2taxa-v" style="color:${taxaColor}">${pct}%</div>
+          <div class="_pf2taxa-l">TAXA</div>
+        </div>
+        <div class="_pf2taxa-it">
+          <div class="_pf2taxa-v" style="color:#94a3b8">${answered}</div>
+          <div class="_pf2taxa-l">RESPONDIDAS</div>
+        </div>
+        <div class="_pf2taxa-it">
+          <div class="_pf2taxa-v" style="color:#64748b">${ritmo > 0 ? '~' + ritmo : '—'}</div>
+          <div class="_pf2taxa-l">Q/HORA</div>
+        </div>
+      </div>` : '';
+
+    const lastAnswered = S.questions.filter(q => q.result !== null).slice(-9);
+    const histDots = lastAnswered.map(q => `<div class="_pf2mhd ${q.result === 'correct' ? 'c' : 'w'}"></div>`).join('');
+    const miniHist = lastAnswered.length > 0 ? `
+      <div class="_pf2mhist">
+        <span class="_pf2mhist-lbl">Últimas:</span>
+        ${histDots}
+      </div>` : '';
+
+    const hubMini = _pfHubNext ? (() => {
+      const remNow = Math.max(0, Math.round((_pfHubNext.reviewAt - Date.now()) / 1000));
+      const cdTxt = remNow > 0 ? `⏱ ${Math.floor(remNow/60)}:${String(remNow%60).padStart(2,'0')}` : '⚡ REVISAR';
+      const cdColor = remNow <= 0 ? '#38bdf8' : '#a78bfa';
+      return `<div class="_pf2hub-min" id="_pf2hubmin">
+        <span style="font-size:13px;flex-shrink:0;">🧠</span>
+        <span class="_pf2hub-min-txt">Fase ${_pfHubNext.phase} · ${(_pfHubNext.desc || '').slice(0, 28)}</span>
+        <span class="_pf2hub-min-cd" id="_pf2hubcd" style="color:${cdColor}">${cdTxt}</span>
+      </div>`;
+    })() : '';
+
+    const dueBanner = _pfDueCount > 0 ? `
+      <div class="_pf2due" id="_pf2duebanner">
+        <div class="_pf2due-dot"></div>
+        <span class="_pf2due-txt">📅 ${_pfDueCount} revisão${_pfDueCount !== 1 ? 'ões' : ''} SM-2 pendente${_pfDueCount !== 1 ? 's' : ''}</span>
+      </div>` : '';
+
+    // Barra de progresso da sessão
+    const progPct = showTotal > 0 ? Math.round((answered / showTotal) * 100) : 0;
+
+    widgetEl.innerHTML = `
+      <div class="_pf2h">
+        <div class="_pf2drag"><span></span><span></span><span></span></div>
+        <div class="_pf2logo">≡</div>
+        <div class="_pf2title">Painel Fiscal<small>${shortCaderno}</small></div>
+        <button class="_pf2hbtn" id="_pf2min" title="Minimizar">−</button>
+        <button class="_pf2hbtn" id="_pf2x" title="Fechar">×</button>
+      </div>
+      <div class="_pf2body">
+        <div class="_pf2stats">
+          <span class="qtotal">${showTotal} questões</span>
+          <span class="qcerto">✓ ${correct}/${answered}</span>
+          ${reforco > 0 ? `<span class="qreforco">↻${reforco}</span>` : ''}
+          <button class="_pf2syncbtn" id="_pf2sync" title="Sincronizar">↺</button>
+        </div>
+
+        <!-- Contexto da matéria (preenchido assíncronamente) -->
+        <div class="_pf2ctx" id="_pf2ctx">
+          <span class="_pf2ctx-icon">📊</span>
+          <span class="_pf2ctx-txt" id="_pf2ctxtxt"></span>
+          <span class="_pf2ctx-rate" id="_pf2ctxrate"></span>
+        </div>
+
+        ${taxaRow}
+        ${miniHist}
+
+        <div class="_pf2timer">
+          <div class="_pf2timerdot" id="_pf2timerDot" style="background:${timerRunning ? '#22c55e' : '#38bdf8'};box-shadow:0 0 8px ${timerRunning ? 'rgba(34,197,94,.5)' : 'rgba(56,189,248,.5)'};"></div>
+          <span class="_pf2timerval" id="_pf2timerVal">${fmtTimer(timerElapsed)}</span>
+          <button class="_pf2timerbtn ${timerRunning ? '' : 'paused'}" id="_pf2timerTog" title="${timerRunning ? 'Pausar' : 'Iniciar'}">${timerRunning ? '⏸' : '▶'}</button>
+          <button class="_pf2timerbtn" id="_pf2timerReset" title="Zerar">⏹</button>
+        </div>
+        <div class="_pf2timerctx" id="_pf2timerctx"></div>
+
+        <!-- Barra de progresso -->
+        <div class="_pf2bar"><div class="_pf2barfill" style="width:${progPct}%"></div></div>
+
+        <div class="_pf2pos">
+          ◆ ${curQ || '?'}/${showTotal || '?'}
+          ${answered > 0 ? `<span class="_pf2pos-pct">${progPct}% concluído</span>` : ''}
+        </div>
+        <div class="_pf2grid">${circlesHtml}</div>
+
+        <!-- Metacognição (aparece após responder) -->
+        <div class="_pf2meta" id="_pf2meta">
+          <div class="_pf2meta-lbl">Como foi?</div>
+          <div class="_pf2meta-btns">
+            <button class="_pf2meta-btn knew" data-conf="knew">🧠 Sabia</button>
+            <button class="_pf2meta-btn guessed" data-conf="guessed">🎲 Chutei</button>
+            <button class="_pf2meta-btn didnt" data-conf="didnt_know">💭 Não sabia</button>
+          </div>
+        </div>
+
+        ${hubMini}
+        ${dueBanner}
+        ${filaBanner}
+        <div class="_pf2nav">
+          <button class="_pf2navbtn" id="_pf2ant">← Ant</button>
+          <button class="_pf2navbtn primary" id="_pf2prox">Prox →</button>
+        </div>
+      </div>`;
+
+    document.getElementById('_pf2min').onclick = ev => { ev.stopPropagation(); S.minimized = true; renderWidget(); };
+    document.getElementById('_pf2x').onclick = ev => {
+      ev.stopPropagation();
+      if (confirm('Remover widget do Painel Fiscal?')) {
+        if (observer) observer.disconnect();
+        widgetEl.remove(); widgetEl = null; window._pfTecAuto2 = false;
+      }
+    };
+    document.getElementById('_pf2sync').onclick = ev => {
+      ev.stopPropagation();
+      toBg('GET_FILA', {});
+      send('ping', null);
+    };
+
+    document.getElementById('_pf2timerTog').onclick = ev => {
+      ev.stopPropagation();
+      timerControl(timerRunning ? 'TIMER_PAUSE' : 'TIMER_START');
+      timerRunning = !timerRunning;
+      renderWidget();
+    };
+    document.getElementById('_pf2timerReset').onclick = ev => {
+      ev.stopPropagation();
+      if (confirm('Zerar cronômetro?')) {
+        timerControl('TIMER_RESET');
+        timerElapsed = 0; timerRunning = false;
+        renderWidget();
+      }
+    };
+
+    const navClick = selector => ev => {
+      ev.stopPropagation();
+      const btn = document.querySelector(selector);
+      if (btn) { btn.click(); return; }
+      const all = document.querySelectorAll('button');
+      const re = selector.includes('ant') ? /ant|anterior|voltar|prev/i : /pr[oó]x|próximo|next|seguinte/i;
+      for (const b of all) { if (re.test(b.textContent || '') && b.offsetParent) { b.click(); return; } }
+    };
+    document.getElementById('_pf2ant').onclick = navClick('[class*="anterior"],[aria-label*="Anterior"]');
+    document.getElementById('_pf2prox').onclick = navClick('[class*="proxim"],[aria-label*="Próxima"]');
+
+    widgetEl.querySelectorAll('._pf2c[data-url]').forEach(c => {
+      if (c.getAttribute('data-url')) {
+        c.addEventListener('click', ev => { ev.stopPropagation(); window.open(c.getAttribute('data-url'), '_self'); });
+      }
+    });
+
+    const filaRow = document.getElementById('_pf2filarow');
+    if (filaRow && S.fila[0]) filaRow.onclick = () => window.open(S.fila[0].link || S.fila[0].url, '_self');
+
+    const hubMinEl = document.getElementById('_pf2hubmin');
+    if (hubMinEl && _pfHubNext) {
+      hubMinEl.onclick = () => { if (_pfHubNext.url) window.open(_pfHubNext.url, '_self'); };
+    }
+
+    const dueEl = document.getElementById('_pf2duebanner');
+    if (dueEl) dueEl.onclick = () => { try { chrome.action.openPopup?.(); } catch(x) {} };
+
+    // ── Metacognição: mostra se a questão atual já foi respondida ──────────
+    const lastQ = S.questions[curQ - 1];
+    const metaEl = document.getElementById('_pf2meta');
+    if (metaEl) {
+      const alreadyAnswered = lastQ && lastQ.result !== null;
+      if (alreadyAnswered) {
+        // Mostra os botões se ainda não foi selecionado
+        const alreadyConf = lastQ.confidence || null;
+        if (!alreadyConf) {
+          metaEl.classList.add('open');
+        } else {
+          // Já tinha confiança — mostra selecionado e fecha
+          metaEl.classList.add('open');
+          metaEl.querySelectorAll('._pf2meta-btn').forEach(b => {
+            b.classList.add('selected');
+            if (b.dataset.conf === alreadyConf) b.classList.add('active-' + alreadyConf);
+          });
+        }
+      }
+    }
+
+    widgetEl.querySelectorAll('._pf2meta-btn').forEach(btn => {
+      btn.addEventListener('click', ev => {
+        ev.stopPropagation();
+        const conf = btn.dataset.conf;
+        const q = S.questions[curQ - 1];
+        if (!q || q.result === null) return;
+        // Marca a confiança localmente
+        q.confidence = conf;
+        // Envia pro background
+        toBg('RECORD_CONFIDENCE', {
+          qid:        q.qid || ('pos_' + (curQ - 1)),
+          confidence: conf,
+          result:     q.result,
+          materia:    q.materia || S.materia || '',
+          assunto:    q.assunto || '',
+        });
+        // UI: destaca o botão selecionado
+        const allBtns = metaEl.querySelectorAll('._pf2meta-btn');
+        allBtns.forEach(b => {
+          b.classList.add('selected');
+          b.classList.remove('active-knew', 'active-guessed', 'active-didnt_know');
+        });
+        btn.classList.add('active-' + conf.replace('_know', ''));
+        // Fecha após 1.2s
+        setTimeout(() => {
+          if (metaEl) metaEl.classList.remove('open');
+        }, 1200);
+      });
+    });
+
+    // ── Contexto da matéria atual ─────────────────────────────────────────
+    // Busca stats da matéria do banco local e mostra no widget
+    const ctxEl   = document.getElementById('_pf2ctx');
+    const ctxTxt  = document.getElementById('_pf2ctxtxt');
+    const ctxRate = document.getElementById('_pf2ctxrate');
+    const ctxTimer = document.getElementById('_pf2timerctx');
+    const currentMateria = (lastQ && lastQ.materia) || S.materia || getInfo()?.materia || '';
+    const currentAssunto = (lastQ && lastQ.assunto) || S.assunto || getInfo()?.assunto || '';
+
+    if (ctxEl && currentMateria) {
+      toBg('GET_SUBJECT_CONTEXT', { materia: currentMateria, assunto: currentAssunto }, res => {
+        if (!res || !res.total || res.total < 3) return; // pouco dado, não mostra
+        const mat = currentAssunto
+          ? currentAssunto.slice(0, 22) + (currentAssunto.length > 22 ? '…' : '')
+          : currentMateria.slice(0, 22) + (currentMateria.length > 22 ? '…' : '');
+        const trend = res.trend > 0 ? ' ↑' : res.trend < 0 ? ' ↓' : '';
+        ctxTxt.textContent  = `${mat} · ${res.total} q.`;
+        ctxRate.textContent = `${res.taxa}%${trend}`;
+        ctxRate.className   = '_pf2ctx-rate ' + (res.taxa >= 70 ? 'ok' : res.taxa >= 50 ? 'warn' : 'bad');
+        ctxEl.classList.add('show');
+        // Tempo médio
+        if (ctxTimer && res.avgTime && res.avgTime > 0) {
+          const m = Math.floor(res.avgTime / 60);
+          const s = res.avgTime % 60;
+          ctxTimer.textContent = `Sua média nesse assunto: ${m > 0 ? m + 'm' : ''}${s}s`;
+          ctxTimer.classList.add('show');
+        }
+      });
+    }
+  }
+
+  // ════════════════════════════════════════════════════════
+  // SCANNING
+  // ════════════════════════════════════════════════════════
+
+  function scanDesempenho() {
+    const tx = document.body.innerText || '';
+    if (!tx.includes('Meu Desempenho')) return;
+    const qi = getInfo();
+    if (!qi.qid) return;
+    const meuIdx = tx.indexOf('Meu Desempenho');
+    const globalTx = meuIdx >= 0 ? tx.slice(0, meuIdx) : tx;
+    const myTx = meuIdx >= 0 ? tx.slice(meuIdx) : '';
+    const errouArr = myTx.match(/\bErrou\b/gi);
+    let myErrors = errouArr ? errouArr.length : 0;
+    const myErrNumM = myTx.match(/(\d+)\s*(?:erros?\b|[x×]\s*errou)/i);
+    if (myErrNumM) { const ne = parseInt(myErrNumM[1]); if (ne > myErrors) myErrors = ne; }
+    const myResM = myTx.match(/Total de resolu[çc][õo]es[:\s]+(\d+)/i);
+    const myTotal = myResM ? parseInt(myResM[1]) : 0;
+    const difM = globalTx.match(/Dificuldade:\s*([^\n\r]+)/i);
+    const dificuldade = difM ? difM[1].trim() : '';
+    qi.myErrors = myErrors; qi.myTotal = myTotal; qi.dificuldade = dificuldade;
+    if (dificuldade && S.stats.dificuldade !== dificuldade) { S.stats.dificuldade = dificuldade; renderWidget(); }
+    send('desempenho_detail', qi);
+  }
+
+  function autoFetchDesempenho(snapQid) {
+    const qi = getInfo();
+    if (snapQid && qi.qid && qi.qid !== snapQid) return;
+    const dKey = (qi.qid || window.location.href) + '_' + S.A + '_' + S.E;
+    if (S.autoFetchKey === dKey) return;
+    const tx = document.body.innerText || '';
+    const meuIdx = tx.indexOf('Meu Desempenho');
+    const myTx = meuIdx >= 0 ? tx.slice(meuIdx) : '';
+    const hasData = meuIdx >= 0 && (myTx.includes('Total de resolu') || myTx.includes('Errou') || myTx.includes('Acertou'));
+    if (hasData) { S.autoFetchKey = dKey; scanDesempenho(); return; }
+    const clickables = document.querySelectorAll('button,[role="button"]');
+    for (const btn of clickables) {
+      const t = (btn.textContent || '').trim();
+      if (/desempenho/i.test(t) && !/fechar|esconder/i.test(t) && t.length < 80) {
+        S.autoFetchKey = dKey; btn.click();
+        setTimeout(() => {
+          scanDesempenho();
+          setTimeout(() => {
+            for (const b of document.querySelectorAll('button')) { if (/fechar/i.test(b.textContent || '')) { b.click(); break; } }
+          }, 350);
+        }, 750);
+        break;
+      }
+    }
+  }
+
+  function scanHistory() {
+    const tx = document.body.innerText || '';
+    if (!window.location.pathname.match(/\/questoes\/(\d{5,9})(?:\/|$)/)) return;
+    let myErrors = 0;
+    const myErrArr = tx.match(/\bErrou\b/gi);
+    myErrors = myErrArr ? myErrArr.length : 0;
+    const myErrNumM = tx.match(/(\d+)\s*(?:erros?\b|[x×]\s*errou)/i) || tx.match(/errou[\s:]+(\d+)/i);
+    if (myErrNumM) { const ne = parseInt(myErrNumM[1]); if (ne > myErrors) myErrors = ne; }
+    if (myErrors <= 0) return;
+    const myResM = tx.match(/Total de resolu[çc][õo]es[:\s]+(\d+)/i);
+    const qi = getInfo();
+    if (!qi.qid) return;
+    qi.myErrors = myErrors; qi.myTotal = myResM ? parseInt(myResM[1]) : 0;
+    send('wrong_import', qi);
+  }
+
+  function checkCadernoEnd() {
+    if (S.endSent) return;
+    const pos = parsePosition();
+    if (!pos || pos.n !== pos.t || pos.t <= 0) return;
+    const counter = parseCounter();
+    const done = counter ? (counter.a + counter.e) : 0;
+    if (done >= pos.t) {
+      S.endSent = true;
+      setTimeout(() => {
+        const stats = { total: pos.t, correct: counter ? counter.a : 0, wrong: counter ? counter.e : 0, elapsed: S.stats.elapsed || 0 };
+        sendRaw({ type: 'TEC_CADERNO_END', stats });
+        toBg('SESSION_END', { stats, questions: S.questions, caderno: S.caderno });
+      }, 2500);
+    }
+  }
+
+  // ════════════════════════════════════════════════════════
+  // LOOP PRINCIPAL
+  // ════════════════════════════════════════════════════════
+
+  function check() {
+    const cu = window.location.href;
+
+    if (cu !== S.lastUrl) {
+      S.lastUrl = cu;
+      S.endSent = false;
+      S.desempenhoOpen = false;
+      S.textDetectKey = '';
+      S.questionStart = Date.now();
+
+      const pos2 = parsePosition();
+      if (pos2) { S.currentQ = pos2.n; ensureQuestions(pos2.t); }
+
+      const title = document.title.replace(/\s*[|·\-]\s*TecConcursos.*$/i, '').trim();
+      if (title && !S.caderno) S.caderno = title;
+
+      setTimeout(scanHistory, 1200);
+      setTimeout(checkCadernoEnd, 1500);
+      renderWidget();
+    }
+
+    const tx0 = document.body.innerText || '';
+    const pos = parsePosition();
+    if (pos && pos.n !== S.currentQ) { S.currentQ = pos.n; ensureQuestions(pos.t); renderWidget(); }
+
+    const desempOpen = tx0.includes('Meu Desempenho') && tx0.includes('Desempenho Geral');
+    if (desempOpen && !S.desempenhoOpen) { S.desempenhoOpen = true; setTimeout(scanDesempenho, 400); }
+    else if (!desempOpen) S.desempenhoOpen = false;
+
+    const counter = parseCounter();
+    const warmup = Date.now() - S.connectTime < 3000;
+
+    if (!counter) {
+      const hasAcertou = /você acertou|acertou!|mandou bem|resposta correta|gabarito correto|alternativa correta/i.test(tx0);
+      const hasErrou   = /você errou|resposta incorreta|gabarito incorreto|alternativa incorreta|errou!/i.test(tx0);
+      if ((hasAcertou || hasErrou) && !warmup) {
+        const qi = getInfo();
+        const key = (qi.qid || cu) + '_' + (hasAcertou ? 'c' : 'e');
+        if (key !== S.textDetectKey) {
+          S.textDetectKey = key;
+          S.desempenhoOpen = false;
+          const snapQid = qi.qid;
+          const curPos = pos ? pos.n : S.currentQ;
+
+          if (hasAcertou) {
+            S.localAce++;
+            S.stats.acertos = Math.max(S.stats.acertos, S.localAce);
+            S.stats.resolved = S.localAce + S.localErr;
+            setQuestionResult(curPos, 'correct', qi);
+            renderWidget();
+            send('correct', null);
+            toBg('QUESTION_CORRECT', makeQuestionPayload(qi, curPos));
+          } else {
+            S.localErr++;
+            S.stats.erros = Math.max(S.stats.erros, S.localErr);
+            S.stats.resolved = S.localAce + S.localErr;
+            setQuestionResult(curPos, 'wrong', qi);
+            renderWidget();
+            send('wrong_fast', qi);
+            toBg('QUESTION_WRONG', makeQuestionPayload(qi, curPos));
+            setTimeout(() => {
+              const qi2 = getInfo();
+              if (snapQid && qi2.qid !== snapQid) { qi2.qid = snapQid; qi2.url = qi.url; qi2.desc = qi.desc; qi2.materia = qi.materia; qi2.assunto = qi.assunto; }
+              send('wrong', qi2);
+            }, 500);
+          }
+
+          setTimeout(() => autoFetchDesempenho(snapQid), 1500);
+          setTimeout(() => autoFetchDesempenho(snapQid), 4000);
+          setTimeout(checkCadernoEnd, 800);
+        }
+      } else if (!hasAcertou && !hasErrou) {
+        S.textDetectKey = '';
+      }
+      return;
+    }
+
+    const da = counter.a - S.A;
+    const de = counter.e - S.E;
+    if (warmup) { if (da > 0) S.A = counter.a; if (de > 0) S.E = counter.e; return; }
+
+    const curPos = pos ? pos.n : S.currentQ;
+
+    if (da > 0) {
+      S.localAce += da;
+      S.stats.acertos = Math.max(S.stats.acertos, S.localAce);
+      S.stats.resolved = S.localAce + S.localErr;
+      const qiC = getInfo();
+      setQuestionResult(curPos, 'correct', qiC);
+      for (let i = 0; i < da; i++) send('correct', null);
+      S.A = counter.a;
+      toBg('QUESTION_CORRECT', makeQuestionPayload(qiC, curPos));
+      renderWidget();
+    }
+
+    if (da > 0 || de > 0) {
+      S.desempenhoOpen = false;
+      const snapQidD = getInfo().qid;
+      S.textDetectKey = (snapQidD || cu) + '_' + (da > 0 ? 'c' : 'e');
+      setTimeout(() => autoFetchDesempenho(snapQidD), 1500);
+      setTimeout(() => autoFetchDesempenho(snapQidD), 4000);
+    }
+    if (da > 0 || de > 0) setTimeout(checkCadernoEnd, 800);
+
+    if (de > 0) {
+      const deCount = de; S.E = counter.e;
+      const qi0 = getInfo();
+      S.localErr += deCount;
+      S.stats.erros = Math.max(S.stats.erros, S.localErr);
+      S.stats.resolved = S.localAce + S.localErr;
+      setQuestionResult(curPos, 'wrong', qi0);
+      renderWidget();
+      send('wrong_fast', qi0);
+      toBg('QUESTION_WRONG', makeQuestionPayload(qi0, curPos));
+      setTimeout(() => {
+        const qi = getInfo();
+        if (qi0.qid && (!qi.qid || qi.qid !== qi0.qid)) { qi.url = qi0.url; qi.qid = qi0.qid; qi.desc = qi0.desc || qi.desc; qi.materia = qi0.materia || qi.materia; qi.assunto = qi0.assunto || qi.assunto; }
+        for (let i = 0; i < deCount; i++) send('wrong', qi);
+        if (!qi.myErrors) {
+          const _u = qi.url, _q = qi.qid;
+          setTimeout(() => { const q2 = getInfo(); q2.url = _u; q2.qid = _q; if (q2.myErrors > 0) send('wrong_update', q2); }, 2500);
+        }
+      }, 500);
+    }
+  }
+
+  // ════════════════════════════════════════════════════════
+  // LISTENERS
+  // ════════════════════════════════════════════════════════
+
+  window.addEventListener('message', ev => {
+    if (!ev.data || !ev.data.type) return;
+
+    if (ev.data.type === 'TEC_STATS_UPDATE') {
+      S.stats = {
+        elapsed: ev.data.elapsed || 0,
+        acertos: Math.max(ev.data.acertos || 0, S.localAce),
+        erros:   Math.max(ev.data.erros   || 0, S.localErr),
+        resolved: Math.max(ev.data.resolved || 0, S.localAce + S.localErr),
+        running: !!ev.data.running, paused: !!ev.data.paused,
+        discName: ev.data.discName || '',
+        dificuldade: ev.data.dificuldade || S.stats.dificuldade || '',
+      };
+      if (ev.data.discName && !S.caderno) S.caderno = ev.data.discName;
+      renderWidget();
+      try { chrome.runtime.sendMessage({ type: 'UPDATE_BADGE', filaCount: S.fila.length, stats: S.stats }); } catch (x) {}
+      return;
+    }
+    if (ev.data.type === 'PF_FILA_READY') {
+      S.fila = ev.data.items || [];
+      renderWidget();
+      try { chrome.runtime.sendMessage({ type: 'UPDATE_BADGE', filaCount: S.fila.length }); } catch (x) {}
+      return;
+    }
+    if (ev.data.type === 'PF_OPEN_QUESTION' && ev.data.url) { window.open(ev.data.url, '_self'); return; }
+    if (ev.data.type === 'PF_NO_FILA') {
+      const nb = document.createElement('div');
+      nb.style.cssText = 'position:fixed;top:14px;left:50%;transform:translateX(-50%);background:#1a1a1a;color:#e2e8f0;padding:10px 18px;border-radius:10px;font-size:13px;z-index:2147483647;border:1px solid rgba(255,255,255,.12);font-family:sans-serif;';
+      nb.textContent = '⏰ Fila vazia — nenhuma revisão pendente';
+      document.body.appendChild(nb);
+      setTimeout(() => nb.remove(), 3000);
+    }
+  });
+
+  chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+    if (!msg) return;
+    if (msg.type === 'PING') {
+      sendResponse({ pong: true, stats: { localAce: S.localAce, localErr: S.localErr, totalQ: S.totalQ, currentQ: S.currentQ, caderno: S.caderno } });
+      return true;
+    }
+    if (msg.type === 'FROM_PANEL') window.dispatchEvent(new MessageEvent('message', { data: msg.payload }));
+    if (msg.type === 'GET_QUESTIONS') {
+      sendResponse({ questions: S.questions, totalQ: S.totalQ, currentQ: S.currentQ, caderno: S.caderno });
+      return true;
+    }
+    if (msg.type === 'HUBERMAN_DUE' && msg.item) showHubermanBanner(msg.item);
+  });
+
+  function showHubermanBanner(item) {
+    const prev = document.getElementById('_pfHubBanner');
+    if (prev) prev.remove();
+
+    const phaseLabel = item.customMins != null
+      ? `Intervalo custom ${item.customMins}min`
+      : `Fase ${item.phase} de 3 · ${[5, 9, 11][item.phase - 1]}min`;
+
+    const phases = [1, 2, 3].map(p => {
+      if (p < item.phase)  return `<span style="width:8px;height:8px;border-radius:50%;background:#22c55e;display:inline-block;"></span>`;
+      if (p === item.phase) return `<span style="width:10px;height:10px;border-radius:50%;background:#38bdf8;display:inline-block;box-shadow:0 0 7px #38bdf8;"></span>`;
+      return `<span style="width:8px;height:8px;border-radius:50%;background:#374151;display:inline-block;"></span>`;
+    }).join('');
+
+    const bn = document.createElement('div');
+    bn.id = '_pfHubBanner';
+    bn.style.cssText = `position:fixed;top:14px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#030c1e,#1a1200);border:1px solid rgba(56,189,248,.4);border-radius:14px;padding:13px 16px;box-shadow:0 8px 32px rgba(3,105,161,.35),0 0 0 1px rgba(56,189,248,.15) inset;font-family:-apple-system,BlinkMacSystemFont,sans-serif;z-index:2147483647;min-width:300px;max-width:380px;animation:_pfSlide2 .3s cubic-bezier(.16,1,.3,1);`;
+    bn.innerHTML = `
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:9px;">
+        <span style="font-size:18px;">🧠</span>
+        <div style="flex:1;">
+          <div style="font-size:11px;font-weight:800;color:#a78bfa;letter-spacing:.6px;">REVISÃO HUBERMAN · ${phaseLabel.toUpperCase()}</div>
+          <div style="display:flex;align-items:center;gap:5px;margin-top:4px;">${phases}</div>
+        </div>
+        <button id="_pfHubClose" style="background:none;border:none;color:#64748b;font-size:16px;cursor:pointer;padding:2px 6px;">✕</button>
+      </div>
+      <div style="font-size:12px;color:#c4b5fd;font-weight:600;margin-bottom:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+        ${item.materia ? `<span style="color:#7c3aed;font-weight:700;">${item.materia}</span> — ` : ''}${(item.desc || 'Questão #' + item.qid).slice(0, 60)}
+      </div>
+      <div style="display:flex;gap:7px;">
+        <button id="_pfHubAbrir" style="flex:2;padding:8px;background:#6d28d9;border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;">📖 Abrir Questão</button>
+        <button id="_pfHubAcertei" style="flex:1;padding:8px;background:rgba(34,197,94,.15);border:1px solid #22c55e55;border-radius:8px;color:#22c55e;font-size:11px;font-weight:700;cursor:pointer;">✓ Acertei</button>
+        <button id="_pfHubErrei" style="flex:1;padding:8px;background:rgba(239,68,68,.12);border:1px solid #ef444455;border-radius:8px;color:#ef4444;font-size:11px;font-weight:700;cursor:pointer;">✕ Errei</button>
+      </div>`;
+
+    document.body.appendChild(bn);
+
+    const autoRemove = setTimeout(() => { if (bn.parentElement) bn.remove(); }, 60000);
+
+    document.getElementById('_pfHubClose').onclick  = () => { clearTimeout(autoRemove); bn.remove(); };
+    document.getElementById('_pfHubAbrir').onclick  = () => { clearTimeout(autoRemove); bn.remove(); if (item.url) window.open(item.url, '_self'); };
+    document.getElementById('_pfHubAcertei').onclick = () => {
+      clearTimeout(autoRemove); bn.remove();
+      toBg('HUBERMAN_CORRECT', { qid: item.qid });
+    };
+    document.getElementById('_pfHubErrei').onclick  = () => {
+      clearTimeout(autoRemove); bn.remove();
+      toBg('HUBERMAN_WRONG', { qid: item.qid });
+    };
+  }
+
+  window.addEventListener('keydown', ev => {
+    if (ev.altKey && (ev.key === 'r' || ev.key === 'R')) {
+      ev.preventDefault();
+      sendRaw({ type: 'PF_REQUEST_NEXT_FILA' });
+    }
+  });
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      S.hiddenSince = Date.now();
+      setTimeout(() => {
+        if (document.hidden && S.hiddenSince && (Date.now() - S.hiddenSince) >= 120000) {
+          sendRaw({ type: 'TEC_TAB_INACTIVE' });
+        }
+      }, 120000);
+    } else {
+      if (S.hiddenSince && (Date.now() - S.hiddenSince) >= 120000) sendRaw({ type: 'TEC_TAB_ACTIVE' });
+      S.hiddenSince = 0;
+    }
+  });
+
+  // ════════════════════════════════════════════════════════
+  // INIT
+  // ════════════════════════════════════════════════════════
+
+  function init() {
+    S.pfw = findPanelWindow();
+    S.connectTime = Date.now();
+
+    const initCounter = parseCounter();
+    if (initCounter) { S.A = initCounter.a; S.E = initCounter.e; }
+
+    const pos0 = parsePosition();
+    if (pos0) { S.currentQ = pos0.n; ensureQuestions(pos0.t); }
+
+    const tx0 = document.body.innerText || '';
+    const matM = tx0.match(/Mat[eé]ria:\s*([^\n\r×]+)/i);
+    if (matM) S.materia = matM[1].replace(/\s*[××].*$/, '').trim();
+
+    const title = document.title.replace(/\s*[|·\-]\s*TecConcursos.*$/i, '').trim();
+    S.caderno = S.caderno || title || S.materia;
+
+    const connected = send('ping', null);
+    if (connected) {
+      const assM = tx0.match(/Assunto:\s*([^\n\r×]+)/i);
+      const assunto = assM ? assM[1].replace(/\s*[××].*$/, '').trim() : '';
+      const sp = new URLSearchParams(window.location.search);
+      send('session_info', { total: S.totalQ, materia: S.materia, assunto, caderno: S.caderno, cadernoBase: sp.get('cadernoBase') || '', idPasta: sp.get('idPasta') || '' });
+      S.lastUrl = window.location.href;
+      setTimeout(scanHistory, 1500);
+    }
+
+    toBg('SESSION_START', { caderno: S.caderno, materia: S.materia, totalQ: S.totalQ, url: window.location.href, timestamp: Date.now() });
+
+    if (!document.getElementById('_pfWidget2')) {
+      injectStyles();
+      widgetEl = document.createElement('div');
+      widgetEl.id = '_pfWidget2';
+      document.body.appendChild(widgetEl);
+      applyDragPos();
+      renderWidget();
+      initDrag();
+    }
+
+    observer = new MutationObserver(check);
+    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+
+    startTimerTick();
+    syncHubStatus();
+    syncDueCount();
+
+    try { chrome.runtime.sendMessage({ type: 'CONTENT_READY', connected, url: window.location.href }); } catch (x) {}
+
+    // ════════════════════════════════════════════════════════
+    // ACTIVITY TRACKER — distingue tempo produtivo de zombie
+    // ════════════════════════════════════════════════════════
+    // Considera o user "ativo" se houve interação real (mouse, scroll, teclado,
+    // resize, click) nos últimos 90s E a aba está visível. A cada 30s, envia
+    // delta acumulado pro background, que persiste em pf_activity.
+    initActivityTracker();
+  }
+
+  function initActivityTracker() {
+    let lastInteraction = Date.now();
+    let productiveSec   = 0;
+    let idleSec         = 0;
+    const IDLE_THRESHOLD_MS = 90 * 1000;   // 90s sem interação → idle
+    const TICK_INTERVAL_MS  = 5  * 1000;   // verifica a cada 5s
+    const FLUSH_INTERVAL_MS = 30 * 1000;   // envia ao bg a cada 30s
+
+    const bump = () => { lastInteraction = Date.now(); };
+    ['mousemove', 'mousedown', 'click', 'keydown', 'scroll', 'touchstart', 'wheel']
+      .forEach(ev => document.addEventListener(ev, bump, { passive: true, capture: true }));
+
+    // Não conta tempo se aba escondida ou janela sem foco
+    let visible = !document.hidden;
+    let focused = document.hasFocus();
+    document.addEventListener('visibilitychange', () => { visible = !document.hidden; });
+    window.addEventListener('focus', () => { focused = true; });
+    window.addEventListener('blur',  () => { focused = false; });
+
+    setInterval(() => {
+      if (!visible || !focused) return;
+      const idleFor = Date.now() - lastInteraction;
+      const inc = TICK_INTERVAL_MS / 1000;
+      if (idleFor < IDLE_THRESHOLD_MS) productiveSec += inc;
+      else                              idleSec       += inc;
+    }, TICK_INTERVAL_MS);
+
+    setInterval(() => {
+      if (productiveSec === 0 && idleSec === 0) return;
+      try {
+        chrome.runtime.sendMessage({
+          type: 'REPORT_ACTIVITY',
+          productive: Math.round(productiveSec),
+          idle:       Math.round(idleSec),
+        });
+      } catch (e) { /* SW pode estar dormindo, sem problema */ }
+      productiveSec = 0; idleSec = 0;
+    }, FLUSH_INTERVAL_MS);
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
+
+  // ── Modo diagnóstico (opt-in): rode _pfDiag() no console do TEC para checar
+  //    se os seletores ainda encontram a questão. Útil se o TEC mudar o HTML. ──
+  window._pfDiag = function () {
+    const r = {
+      url:           location.href,
+      caixaQuestao:  document.querySelectorAll(TEC_SEL.questionBox).length,
+      alternativas:  document.querySelectorAll(TEC_SEL.alternativa).length,
+      radios:        document.querySelectorAll('input[type="radio"]').length,
+      linksQuestao:  document.querySelectorAll(TEC_SEL.questionLink).length,
+      estatisticas:  document.querySelectorAll(TEC_SEL.stats).length,
+    };
+    const ok = (r.caixaQuestao > 0) && (r.alternativas > 0 || r.radios >= 2);
+    console.log('%c[Painel Fiscal] Diagnóstico de detecção', 'font-weight:bold');
+    console.table(r);
+    console.log(ok
+      ? '✅ Detecção parece OK nesta página.'
+      : '⚠️ Não encontrei a questão. Se isto for uma página de questão, o TEC pode ter mudado o HTML — ajuste os seletores em TEC_SEL (content.js).');
+    return r;
+  };
+})();
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// FEATURE: Adicionar Botão de Deletar nas Questões Sugeridas
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Função para adicionar botão de deletar em questões sugeridas
+function addDeleteButtonToSuggestedQuestions() {
+  // Procura por elementos de questão sugerida
+  const suggestions = document.querySelectorAll('[data-qid]');
+  
+  suggestions.forEach(element => {
+    // Se já tem botão de deletar, pula
+    if (element.querySelector('.delete-btn-custom')) return;
+    
+    const qid = element.getAttribute('data-qid');
+    if (!qid) return;
+    
+    // Criar botão de deletar
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'delete-btn-custom';
+    deleteBtn.innerHTML = '🗑️ Deletar';
+    deleteBtn.style.cssText = `
+      padding: 6px 12px;
+      margin-left: 8px;
+      background: #ff6b6b;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: bold;
+      transition: all 0.2s;
+    `;
+    
+    deleteBtn.onmouseover = () => {
+      deleteBtn.style.background = '#ff5252';
+      deleteBtn.style.transform = 'scale(1.05)';
+    };
+    
+    deleteBtn.onmouseout = () => {
+      deleteBtn.style.background = '#ff6b6b';
+      deleteBtn.style.transform = 'scale(1)';
+    };
+    
+    deleteBtn.onclick = async (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      
+      // Pedir confirmação
+      const confirm = window.confirm(
+        `Tem certeza que deseja deletar esta questão?\n\nEsta ação é irreversível!`
+      );
+      
+      if (!confirm) return;
+      
+      deleteBtn.disabled = true;
+      deleteBtn.innerHTML = '⏳ Deletando...';
+      deleteBtn.style.opacity = '0.5';
+      
+      try {
+        // Enviar mensagem para background
+        const response = await new Promise((resolve, reject) => {
+          chrome.runtime.sendMessage(
+            { type: 'DELETE_QUESTION', qid: qid },
+            (response) => {
+              if (chrome.runtime.lastError) {
+                reject(chrome.runtime.lastError);
+              } else {
+                resolve(response);
+              }
+            }
+          );
+        });
+        
+        if (response.success) {
+          deleteBtn.innerHTML = '✅ Deletada!';
+          deleteBtn.style.background = '#51cf66';
+          
+          // Animar remoção
+          element.style.transition = 'opacity 0.5s, height 0.5s';
+          element.style.opacity = '0.5';
+          element.style.textDecoration = 'line-through';
+          
+          setTimeout(() => {
+            element.style.height = '0';
+            element.style.overflow = 'hidden';
+            setTimeout(() => element.remove(), 500);
+          }, 1000);
+          
+          PFLog.log(`Questao ${qid} deletada`);
+        } else {
+          throw new Error(response.error || 'Erro desconhecido');
+        }
+      } catch (error) {
+        PFLog.error('Erro ao deletar:', error);
+        deleteBtn.innerHTML = '❌ Erro!';
+        deleteBtn.style.background = '#ff6b6b';
+        deleteBtn.disabled = false;
+        
+        setTimeout(() => {
+          deleteBtn.innerHTML = '🗑️ Deletar';
+        }, 2000);
+        
+        alert(`Erro ao deletar: ${error.message}`);
+      }
+    };
+    
+    // Adicionar botão depois do último botão existente
+    const lastBtn = element.querySelector('button:last-of-type');
+    if (lastBtn) {
+      lastBtn.parentNode.insertBefore(deleteBtn, lastBtn.nextSibling);
+    } else {
+      element.appendChild(deleteBtn);
+    }
+  });
+}
+
+// Executar quando a página carrega
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', addDeleteButtonToSuggestedQuestions);
+} else {
+  addDeleteButtonToSuggestedQuestions();
+}
+
+// Executar periodicamente para pegar novas questões
+setInterval(addDeleteButtonToSuggestedQuestions, 1000);
+
+// Ouvir quando questões são deletadas em outro tab
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg.type === 'QUESTION_DELETED') {
+    const element = document.querySelector(`[data-qid="${msg.qid}"]`);
+    if (element) {
+      element.style.opacity = '0.3';
+      element.style.pointerEvents = 'none';
+    }
+  }
+});
+

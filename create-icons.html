@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head><title>Gerar ícones</title></head>
+<body>
+<canvas id="c"></canvas>
+<script>
+const sizes = [16, 32, 48, 128];
+sizes.forEach(size => {
+  const c = document.createElement('canvas');
+  c.width = c.height = size;
+  const ctx = c.getContext('2d');
+
+  // Fundo gradiente
+  const g = ctx.createLinearGradient(0, 0, size, size);
+  g.addColorStop(0, '#10b981');
+  g.addColorStop(1, '#0ea5e9');
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.roundRect(0, 0, size, size, size * 0.2);
+  ctx.fill();
+
+  // Símbolo ⚡
+  ctx.fillStyle = '#fff';
+  ctx.font = `bold ${size * 0.6}px sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('⚡', size / 2, size / 2);
+
+  // Download
+  const a = document.createElement('a');
+  a.download = `icon${size}.png`;
+  a.href = c.toDataURL('image/png');
+  a.textContent = `Baixar icon${size}.png`;
+  document.body.appendChild(a);
+  document.body.appendChild(document.createElement('br'));
+});
+</script>
+</body>
+</html>
