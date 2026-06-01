@@ -2026,47 +2026,46 @@ function renderErros(){
 function escapeHtml(s){return (s==null?'':String(s)).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 
 // ===================== IMPORTAR TEC =====================
-let _tecParsed = null; // { headers:[], rows:[[]], colMap:{}, discMap:{} }
+let _tecData = null;
 
-function closeTecModal(){ document.getElementById('tecModal').classList.remove('open'); _tecParsed=null; }
+function closeTecModal(){ document.getElementById('tecModal').classList.remove('open'); _tecData=null; }
 function openTecModal(){ document.getElementById('tecModal').classList.add('open'); }
 
 function importTEC(input){
   const f=input.files[0]; if(!f){ return; }
-  input.value=''; // allow re-select same file
+  input.value='';
   const ext=f.name.split('.').pop().toLowerCase();
   const reader=new FileReader();
 
   if(ext==='csv'||ext==='tsv'||ext==='txt'){
-    reader.onload=e=>{ try{ tecParseCSV(e.target.result, ext==='tsv'?'\t':null); }catch(er){ nfy('Erro ao ler arquivo: '+er.message,'err'); } };
+    reader.onload=e=>{ try{ tecParseCSV(e.target.result, ext==='tsv'?'\t':null); }catch(er){ nfy('Erro ao ler: '+er.message,'err'); } };
     reader.readAsText(f);
   } else if(ext==='xlsx'||ext==='xls'){
     reader.onload=e=>{
       try{
-        if(typeof XLSX==='undefined'){ nfy('Biblioteca XLSX não carregou. Tente CSV.','err'); return; }
+        if(typeof XLSX==='undefined'){ nfy('Biblioteca XLSX não carregou. Tente exportar como CSV.','err'); return; }
         const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
         const ws=wb.Sheets[wb.SheetNames[0]];
-        const csv=XLSX.utils.sheet_to_csv(ws);
-        tecParseCSV(csv, null);
+        const csv=XLSX.utils.sheet_to_csv(ws,{FS:'\t'});
+        tecParseCSV(csv,'\t');
       }catch(er){ nfy('Erro ao ler planilha: '+er.message,'err'); }
     };
     reader.readAsArrayBuffer(f);
-  } else { nfy('Formato não suportado. Use CSV, XLSX ou TSV.','err'); }
+  } else { nfy('Use CSV, XLSX ou TSV.','err'); }
 }
 
 function tecParseCSV(text, forceSep){
-  // detect separator
   const lines=text.split(/\r?\n/).filter(l=>l.trim());
-  if(lines.length<2){ nfy('Arquivo vazio ou com apenas 1 linha','err'); return; }
-  const sep=forceSep||(lines[0].split(';').length>=lines[0].split(',').length?';':',');
+  if(lines.length<2){ nfy('Arquivo vazio','err'); return; }
+  const sep=forceSep||(lines[0].split('\t').length>=lines[0].split(',').length?'\t':(lines[0].split(';').length>=lines[0].split(',').length?';':','));
 
   function splitRow(line){
-    const cells=[]; let cur='', inQ=false;
+    const cells=[]; let cur='',inQ=false;
     for(let i=0;i<line.length;i++){
       const c=line[i];
-      if(c==='"'){ if(inQ&&line[i+1]==='"'){cur+='"';i++;}else{inQ=!inQ;} }
-      else if(c===sep&&!inQ){ cells.push(cur.trim()); cur=''; }
-      else { cur+=c; }
+      if(c==='"'){if(inQ&&line[i+1]==='"'){cur+='"';i++;}else{inQ=!inQ;}}
+      else if(c===sep&&!inQ){cells.push(cur.trim());cur='';}
+      else{cur+=c;}
     }
     cells.push(cur.trim());
     return cells;
@@ -2078,233 +2077,224 @@ function tecParseCSV(text, forceSep){
     const r=splitRow(lines[i]);
     if(r.length>=2 && r.some(c=>c.trim())) rows.push(r);
   }
-  if(!rows.length){ nfy('Nenhum dado encontrado no arquivo','err'); return; }
+  if(!rows.length){ nfy('Nenhum dado encontrado','err'); return; }
 
-  // auto-detect columns
-  const colMap = tecAutoDetect(headers);
-  _tecParsed = { headers, rows, colMap, discMap:{} };
-  tecShowStep1();
+  // Detect TEC format: has "Hierarquia" + "índice" (or "indice") headers
+  const lh=headers.map(h=>h.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''));
+  const iHier=lh.findIndex(h=>/hierarquia/.test(h));
+  const iIdx=lh.findIndex(h=>/indice/.test(h));
+
+  if(iHier>=0 && iIdx>=0){
+    tecParseTECFormat(headers,rows,iHier,iIdx,lh);
+  } else {
+    tecParseGeneric(headers,rows,lh);
+  }
 }
 
-function tecAutoDetect(headers){
-  const map={disc:-1,assunto:-1,tot:-1,cer:-1,err:-1,pct:-1,data:-1,banca:-1};
-  const lh=headers.map(h=>h.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''));
-  lh.forEach((h,i)=>{
-    if(/(materia|disciplina)/.test(h)&&map.disc<0) map.disc=i;
-    else if(/(assunto|topico|sub.?assunto|conteudo)/.test(h)&&map.assunto<0) map.assunto=i;
-    else if(/(resolvida|total(?!.*acert)|n[°º]?\s*(?:de\s*)?quest|qtd|quantidade|resoluc)/.test(h)&&map.tot<0) map.tot=i;
-    else if(/(acerto|correta|certa|gabarit)/.test(h)&&!/(%)/.test(h)&&map.cer<0) map.cer=i;
-    else if(/(erro|errada|incorreta)/.test(h)&&!/(%)/.test(h)&&map.err<0) map.err=i;
-    else if(/(aproveit|%|percent|desempenho|taxa)/.test(h)&&map.pct<0) map.pct=i;
-    else if(/(data|date|dia|periodo)/.test(h)&&map.data<0) map.data=i;
-    else if(/(banca|examinador|orgao|organizad)/.test(h)&&map.banca<0) map.banca=i;
+// ---- TEC-SPECIFIC HIERARCHICAL FORMAT ----
+function tecParseTECFormat(headers,rows,iHier,iIdx,lh){
+  // Find numeric columns
+  const iRes=lh.findIndex(h=>/quest.*resolv|resolv.*quest/.test(h));
+  const iAcQty=lh.findIndex(h=>/quantidade.*acert|qtd.*acert/.test(h));
+  const iErQty=lh.findIndex(h=>/quantidade.*err|qtd.*err/.test(h));
+  const iAcPct=lh.findIndex(h=>/acert.*%|%.*acert/.test(h));
+
+  // Parse tree: matéria rows have empty Hierarquia, sublevels have "01", "01.01", etc.
+  const materias=[];
+  let curMat=null;
+
+  rows.forEach(r=>{
+    const hier=(r[iHier]||'').trim();
+    const nome=(r[iIdx]||'').trim();
+    const pN=v=>{const s=String(v||'').replace(/[%\s]/g,'').replace(',','.');return Math.round(parseFloat(s))||0;};
+    const tot=iRes>=0?pN(r[iRes]):0;
+    const cer=iAcQty>=0?pN(r[iAcQty]):0;
+    const err=iErQty>=0?pN(r[iErQty]):0;
+
+    if(!hier){
+      // Top-level matéria
+      curMat={name:nome,tot,cer,err,children:[]};
+      materias.push(curMat);
+    } else if(curMat){
+      const depth=hier.split('.').length;
+      curMat.children.push({hier,name:nome,tot,cer,err,depth});
+    }
   });
 
-  // Se não encontrou "Resolvidas" mas tem "Acertos" e "Erros", deduzir total
-  // Se tem só % e total, deduzir acertos
-  return map;
+  if(!materias.length){ nfy('Nenhuma matéria encontrada no arquivo','err'); return; }
+
+  // For each matéria, find leaf nodes (children without sub-children)
+  materias.forEach(m=>{
+    if(!m.children.length){ m.leaves=[{name:'(geral)',tot:m.tot,cer:m.cer,err:m.err}]; return; }
+    const leafRows=m.children.filter(c=>{
+      return !m.children.some(other=>other.hier!==c.hier && other.hier.startsWith(c.hier+'.'));
+    });
+    m.leaves=leafRows.map(l=>({name:l.name,tot:l.tot,cer:l.cer,err:l.err}));
+  });
+
+  _tecData={materias,mode:'tec'};
+  tecShowMapping();
 }
 
-function tecShowStep1(){
+// ---- GENERIC CSV (non-TEC) ----
+function tecParseGeneric(headers,rows,lh){
+  const map={disc:-1,assunto:-1,tot:-1,cer:-1,err:-1,pct:-1};
+  lh.forEach((h,i)=>{
+    if(/(materia|disciplina)/.test(h)&&map.disc<0) map.disc=i;
+    else if(/(assunto|topico|conteudo)/.test(h)&&map.assunto<0) map.assunto=i;
+    else if(/(resolv|total(?!.*acert)|quest[oõ]es$|qtd|quantidade)/.test(h)&&!/(acert|err)/.test(h)&&map.tot<0) map.tot=i;
+    else if(/(quantidade.*acert|acert(?!.*%)|correta|certa)/.test(h)&&!/%/.test(h)&&map.cer<0) map.cer=i;
+    else if(/(quantidade.*err|err(?!.*%)|errada|incorreta)/.test(h)&&!/%/.test(h)&&map.err<0) map.err=i;
+    else if(/(aproveit|%|percent|desempenho|taxa)/.test(h)&&map.pct<0) map.pct=i;
+  });
+
+  if(map.disc<0){ nfy('Coluna de disciplina não encontrada. Esperado: "Matéria" ou "Disciplina"','err'); return; }
+
+  const materias=new Map();
+  rows.forEach(r=>{
+    const nome=(r[map.disc]||'').trim();
+    if(!nome) return;
+    const pN=v=>{const s=String(v||'').replace(/[%\s]/g,'').replace(',','.');return Math.round(parseFloat(s))||0;};
+    let tot=map.tot>=0?pN(r[map.tot]):0;
+    let cer=map.cer>=0?pN(r[map.cer]):0;
+    let err=map.err>=0?pN(r[map.err]):0;
+    const pct=map.pct>=0?parseFloat(String(r[map.pct]||'').replace(/[%,]/g,'.').replace(/\s/g,''))||0:NaN;
+    if(!tot&&cer&&err) tot=cer+err;
+    if(tot&&!cer&&!isNaN(pct)) cer=Math.round(tot*pct/100);
+    if(tot&&!cer&&err) cer=tot-err;
+    const ass=map.assunto>=0?(r[map.assunto]||'').trim():'';
+
+    if(!materias.has(nome)) materias.set(nome,{name:nome,tot:0,cer:0,err:0,leaves:[]});
+    const m=materias.get(nome);
+    m.tot+=tot; m.cer+=cer; m.err+=err;
+    if(ass) m.leaves.push({name:ass,tot,cer,err});
+  });
+
+  _tecData={materias:[...materias.values()],mode:'generic'};
+  tecShowMapping();
+}
+
+// ---- STEP: DISCIPLINE MAPPING ----
+function tecShowMapping(){
   openTecModal();
-  const {headers,rows,colMap}=_tecParsed;
+  const {materias}=_tecData;
+  const myDiscs=discs();
 
-  // Build column mapping UI
-  const fields=[
-    {key:'disc',label:'Disciplina / Matéria',req:true},
-    {key:'assunto',label:'Assunto'},
-    {key:'tot',label:'Resolvidas (total)',req:true},
-    {key:'cer',label:'Acertos (corretas)'},
-    {key:'err',label:'Erros (erradas)'},
-    {key:'pct',label:'% Aproveitamento'},
-    {key:'data',label:'Data'},
-    {key:'banca',label:'Banca'}
-  ];
+  // Auto-match by fuzzy name
+  const norm=s=>s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'');
+  const autoMap={};
+  materias.forEach(m=>{
+    const mn=norm(m.name);
+    let best=myDiscs.find(d=>norm(d.name)===mn);
+    if(!best) best=myDiscs.find(d=>mn.includes(norm(d.name))||norm(d.name).includes(mn));
+    autoMap[m.name]=best?best.id:'__new__';
+  });
 
-  const optH='<option value="-1">— ignorar —</option>'+headers.map((h,i)=>'<option value="'+i+'">'+escapeHtml(h)+'</option>').join('');
+  _tecData.autoMap=autoMap;
 
-  let mapHTML='<div style="font-size:12px;font-weight:600;color:var(--t2);margin-bottom:8px">Mapeamento de colunas</div>';
-  mapHTML+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">';
-  fields.forEach(f=>{
-    mapHTML+='<div style="display:flex;align-items:center;gap:6px">';
-    mapHTML+='<label style="font-size:11px;color:var(--t3);min-width:120px">'+f.label+(f.req?' <span style="color:var(--red)">*</span>':'')+'</label>';
-    mapHTML+='<select class="tec-map select" id="tecCol_'+f.key+'" style="flex:1;font-size:11px;padding:4px 8px;background:var(--s3);color:var(--t2);border:1px solid var(--border2);border-radius:var(--r1)">'+optH+'</select>';
-    mapHTML+='</div>';
+  const opts='<option value="__new__">➕ Criar nova</option><option value="__skip__">⊘ Ignorar</option>'+myDiscs.map(d=>'<option value="'+d.id+'">'+escapeHtml(d.name)+'</option>').join('');
+
+  // Preview
+  let prevHTML='<div style="font-size:12px;font-weight:600;color:var(--t2);margin-bottom:6px">Dados encontrados ('+materias.length+' matérias)</div>';
+  prevHTML+='<div class="tec-preview"><table><thead><tr><th>Matéria (TEC)</th><th>Resolvidas</th><th>Acertos</th><th>Erros</th><th>%</th></tr></thead><tbody>';
+  materias.forEach(m=>{
+    const pct=m.tot?Math.round(m.cer/m.tot*100):0;
+    const cls=pct>=70?'color:var(--green)':pct>=50?'color:var(--amber)':'color:var(--red)';
+    prevHTML+='<tr><td style="color:var(--t1);font-weight:500">'+escapeHtml(m.name)+'</td><td>'+m.tot+'</td><td>'+m.cer+'</td><td>'+m.err+'</td><td style="'+cls+'">'+pct+'%</td></tr>';
+  });
+  prevHTML+='</tbody></table></div>';
+
+  // Granularity choice
+  const hasLeaves=materias.some(m=>m.leaves&&m.leaves.length>0);
+  let granHTML='';
+  if(hasLeaves){
+    granHTML+='<div style="margin:12px 0"><div style="font-size:11px;color:var(--t3);margin-bottom:6px">Nível de detalhe:</div>';
+    granHTML+='<label style="font-size:12px;color:var(--t2);display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:4px"><input type="radio" name="tecGran" value="materia" checked/> <b>Por matéria</b> — 1 registro por disciplina (totais)</label>';
+    granHTML+='<label style="font-size:12px;color:var(--t2);display:flex;align-items:center;gap:6px;cursor:pointer"><input type="radio" name="tecGran" value="assunto"/> <b>Por assunto</b> — 1 registro por assunto (mais granular)</label>';
+    granHTML+='</div>';
+  }
+
+  // Mapping
+  let mapHTML='<div style="font-size:12px;font-weight:600;color:var(--t2);margin:12px 0 8px">Mapeamento de disciplinas</div>';
+  mapHTML+='<div style="display:grid;grid-template-columns:1fr 24px 1fr;gap:6px 10px;align-items:center">';
+  mapHTML+='<div class="tec-map-hdr">Matéria (TEC)</div><div></div><div class="tec-map-hdr">Disciplina (Painel)</div>';
+  materias.forEach((m,i)=>{
+    mapHTML+='<div style="font-size:12px;color:var(--t2)">'+escapeHtml(m.name)+' <span style="color:var(--t4);font-size:10px">('+m.tot+'q)</span></div>';
+    mapHTML+='<div class="tec-arrow">→</div>';
+    mapHTML+='<select class="tec-map" id="tecDisc_'+i+'" style="font-size:11px;padding:4px 8px;background:var(--s3);color:var(--t2);border:1px solid var(--border2);border-radius:var(--r1)">'+opts+'</select>';
   });
   mapHTML+='</div>';
 
-  // Preview table (first 5 rows)
-  let prev='<div style="font-size:12px;font-weight:600;color:var(--t2);margin-bottom:6px">Preview ('+rows.length+' linhas)</div>';
-  prev+='<div class="tec-preview"><table><thead><tr>'+headers.map(h=>'<th>'+escapeHtml(h)+'</th>').join('')+'</tr></thead><tbody>';
-  rows.slice(0,5).forEach(r=>{
-    prev+='<tr>'+r.map(c=>'<td>'+escapeHtml(c)+'</td>').join('')+'</tr>';
-  });
-  if(rows.length>5) prev+='<tr><td colspan="'+headers.length+'" style="text-align:center;color:var(--t4);font-style:italic">… mais '+(rows.length-5)+' linhas</td></tr>';
-  prev+='</tbody></table></div>';
+  let dateHTML='<div style="margin:12px 0"><div style="font-size:11px;color:var(--t3);margin-bottom:4px">Data do registro:</div>';
+  dateHTML+='<input type="date" class="fi" id="tecDefDate" value="'+td()+'" style="width:auto;font-size:12px;padding:4px 8px"/></div>';
 
-  let html='<div class="tec-step">Arquivo carregado com <b style="color:var(--t1)">'+rows.length+'</b> linhas e <b style="color:var(--t1)">'+headers.length+'</b> colunas. Confirme o mapeamento de colunas e clique em Avançar.</div>';
-  html+=prev;
-  html+=mapHTML;
-  html+='<div class="mfoot"><button class="btn bg2 sm" onclick="closeTecModal()">Cancelar</button><button class="btn bp sm" onclick="tecStep2()">Avançar →</button></div>';
+  let html='<div class="tec-step">Arquivo do TEC carregado com <b style="color:var(--t1)">'+materias.reduce((a,m)=>a+m.tot,0)+'</b> questões em <b style="color:var(--t1)">'+materias.length+'</b> matérias. Confirme o mapeamento e importe.</div>';
+  html+=prevHTML+granHTML+mapHTML+dateHTML;
+  html+='<div class="mfoot"><button class="btn bg2 sm" onclick="closeTecModal()">Cancelar</button><button class="btn bp sm" onclick="tecDoImport()">✔ Importar</button></div>';
 
   document.getElementById('tecBody').innerHTML=html;
 
   // Set auto-detected values
-  fields.forEach(f=>{
-    const el=document.getElementById('tecCol_'+f.key);
-    if(el && colMap[f.key]>=0) el.value=colMap[f.key];
-  });
-}
-
-function tecStep2(){
-  // Read column mapping from selects
-  const map={};
-  ['disc','assunto','tot','cer','err','pct','data','banca'].forEach(k=>{
-    map[k]=parseInt(document.getElementById('tecCol_'+k).value);
-  });
-
-  if(map.disc<0){ nfy('Selecione a coluna de Disciplina/Matéria','err'); return; }
-  if(map.tot<0 && map.cer<0 && map.err<0 && map.pct<0){ nfy('Selecione ao menos uma coluna numérica (Resolvidas, Acertos ou Erros)','err'); return; }
-
-  _tecParsed.colMap=map;
-
-  // Extract unique discipline names from file
-  const {rows}=_tecParsed;
-  const tecDiscs=new Set();
-  rows.forEach(r=>{
-    const v=(r[map.disc]||'').trim();
-    if(v) tecDiscs.add(v);
-  });
-
-  const tecDiscArr=[...tecDiscs].sort((a,b)=>a.localeCompare(b,'pt'));
-  const myDiscs=discs();
-
-  // Auto-match by fuzzy name
-  const autoMap={};
-  tecDiscArr.forEach(td=>{
-    const norm=s=>s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'');
-    const tn=norm(td);
-    // Try exact, then includes, then starts
-    let best=myDiscs.find(d=>norm(d.name)===tn);
-    if(!best) best=myDiscs.find(d=>tn.includes(norm(d.name))||norm(d.name).includes(tn));
-    autoMap[td]=best?best.id:'__new__';
-  });
-
-  _tecParsed.discMap=autoMap;
-  _tecParsed.tecDiscArr=tecDiscArr;
-
-  // Build mapping UI
-  const opts='<option value="__new__">➕ Criar nova</option><option value="__skip__">⊘ Ignorar</option>'+myDiscs.map(d=>'<option value="'+d.id+'">'+escapeHtml(d.name)+'</option>').join('');
-
-  let html='<div class="tec-step">Mapeie cada matéria do TEC para uma disciplina do Painel. Selecione "Criar nova" para adicionar automaticamente.</div>';
-  html+='<div style="display:grid;grid-template-columns:1fr 24px 1fr;gap:6px 10px;align-items:center;margin:12px 0">';
-  html+='<div class="tec-map-hdr">Matéria (TEC)</div><div></div><div class="tec-map-hdr">Disciplina (Painel)</div>';
-  tecDiscArr.forEach((td,i)=>{
-    // Count rows for this disc
-    const cnt=rows.filter(r=>(r[map.disc]||'').trim()===td).length;
-    html+='<div style="font-size:12px;color:var(--t2)">'+escapeHtml(td)+' <span style="color:var(--t4);font-size:10px">('+cnt+')</span></div>';
-    html+='<div class="tec-arrow">→</div>';
-    html+='<select class="tec-map select" id="tecDisc_'+i+'" style="font-size:11px;padding:4px 8px;background:var(--s3);color:var(--t2);border:1px solid var(--border2);border-radius:var(--r1)">'+opts+'</select>';
-  });
-  html+='</div>';
-  html+='<div style="font-size:11px;color:var(--t4);margin:4px 0 8px">Data para registros sem coluna de data:</div>';
-  html+='<input type="date" class="fi" id="tecDefDate" value="'+td()+'" style="width:auto;font-size:12px;padding:4px 8px"/>';
-  html+='<div class="mfoot"><button class="btn bg2 sm" onclick="tecShowStep1()">← Voltar</button><button class="btn bp sm" onclick="tecConfirmImport()">✔ Importar</button></div>';
-
-  document.getElementById('tecBody').innerHTML=html;
-
-  // Set auto-detected disc mappings
-  tecDiscArr.forEach((td,i)=>{
+  materias.forEach((m,i)=>{
     const el=document.getElementById('tecDisc_'+i);
-    if(el && autoMap[td]) el.value=autoMap[td];
+    if(el && autoMap[m.name]) el.value=autoMap[m.name];
   });
 }
 
-function tecConfirmImport(){
-  const {rows,colMap,tecDiscArr}=_tecParsed;
-  const map=colMap;
+function tecDoImport(){
+  const {materias}=_tecData;
   const defDate=document.getElementById('tecDefDate')?.value||td();
+  const gran=document.querySelector('input[name="tecGran"]:checked')?.value||'materia';
 
   // Read disc mappings
   const discMapping={};
   const newDiscs=[];
-  tecDiscArr.forEach((td,i)=>{
+  materias.forEach((m,i)=>{
     const val=document.getElementById('tecDisc_'+i).value;
-    if(val==='__skip__'){ discMapping[td]=null; return; }
+    if(val==='__skip__'){ discMapping[m.name]=null; return; }
     if(val==='__new__'){
-      // Create new discipline
       const newId=uid();
-      const color=COLS[discs().length%COLS.length];
-      newDiscs.push({id:newId,name:td,color,meta:0});
-      discMapping[td]=newId;
+      const color=COLS[(discs().length+newDiscs.length)%COLS.length];
+      newDiscs.push({id:newId,name:m.name,color,meta:0});
+      discMapping[m.name]=newId;
     } else {
-      discMapping[td]=val;
+      discMapping[m.name]=val;
     }
   });
 
-  // Add new disciplines
   if(newDiscs.length){
     if(!ST.discs) ST.discs=[];
     newDiscs.forEach(d=>ST.discs.push(d));
   }
 
-  // Process rows into question records
   if(!ST.qs) ST.qs=[];
-  let imported=0, skipped=0;
+  let imported=0,skipped=0;
 
-  rows.forEach(r=>{
-    const discName=(r[map.disc]||'').trim();
-    const discId=discMapping[discName];
-    if(!discId){ skipped++; return; }
+  materias.forEach(m=>{
+    const discId=discMapping[m.name];
+    if(!discId){ skipped+=m.tot; return; }
 
-    const assunto=map.assunto>=0?(r[map.assunto]||'').trim():'';
-    const banca=map.banca>=0?(r[map.banca]||'').trim():'';
-
-    // Parse numbers (handle both , and . as decimal, also handle % symbol)
-    const pNum=v=>{
-      if(v==null) return NaN;
-      const s=String(v).replace(/[%\s]/g,'').replace(',','.');
-      return parseFloat(s)||0;
-    };
-
-    let tot=map.tot>=0?Math.round(pNum(r[map.tot])):0;
-    let cer=map.cer>=0?Math.round(pNum(r[map.cer])):0;
-    let err=map.err>=0?Math.round(pNum(r[map.err])):0;
-    const pct=map.pct>=0?pNum(r[map.pct]):NaN;
-
-    // Deduce missing values
-    if(tot<=0 && cer>0 && err>0) tot=cer+err;
-    if(tot>0 && cer<=0 && err>0) cer=tot-err;
-    if(tot>0 && cer<=0 && !isNaN(pct)) cer=Math.round(tot*pct/100);
-    if(tot<=0 && cer>0 && err<=0 && !isNaN(pct) && pct>0) tot=Math.round(cer/(pct/100));
-    if(tot>0 && cer>0 && err<=0) err=tot-cer;
-    if(tot<=0 && cer<=0) { skipped++; return; } // can't import without numbers
-    if(cer>tot) cer=tot;
-
-    // Parse date
-    let date=defDate;
-    if(map.data>=0){
-      const raw=(r[map.data]||'').trim();
-      // Try dd/mm/yyyy, yyyy-mm-dd, dd-mm-yyyy
-      let m;
-      if((m=raw.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/))){
-        date=m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0');
-      } else if((m=raw.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/))){
-        date=m[1]+'-'+m[2].padStart(2,'0')+'-'+m[3].padStart(2,'0');
-      }
+    if(gran==='assunto' && m.leaves && m.leaves.length>0){
+      // One record per leaf assunto
+      m.leaves.forEach(leaf=>{
+        if(leaf.tot<=0) return;
+        const cer=Math.min(leaf.cer,leaf.tot);
+        ST.qs.unshift({id:uid(),discId,tot:leaf.tot,cer,ass:leaf.name,date:defDate,fonte:'TEC',ts:Date.now()});
+        imported++;
+      });
+    } else {
+      // One record per matéria
+      if(m.tot<=0) return;
+      const cer=Math.min(m.cer,m.tot);
+      ST.qs.unshift({id:uid(),discId,tot:m.tot,cer,ass:'',date:defDate,fonte:'TEC',ts:Date.now()});
+      imported++;
     }
-
-    ST.qs.unshift({
-      id:uid(), discId, tot, cer, ass:assunto,
-      date, fonte:'TEC'+(banca?' ('+banca+')':''), ts:Date.now()
-    });
-    imported++;
   });
 
   sSt();
   closeTecModal();
   renderQ(); renderD(); popSel();
-  nfy('Importado: '+imported+' registros'+(skipped?' · '+skipped+' ignorados':''),'ok');
+  nfy('✔ '+imported+' registros importados do TEC'+(skipped?' · '+skipped+' questões ignoradas':''),'ok');
 }
 // INIT
 document.addEventListener('DOMContentLoaded',()=>{
