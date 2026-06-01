@@ -2046,6 +2046,13 @@ function importTEC(input){
         if(typeof XLSX==='undefined'){ nfy('Biblioteca XLSX não carregou. Tente exportar como CSV.','err'); return; }
         const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
         const ws=wb.Sheets[wb.SheetNames[0]];
+        // Fix: TEC exports have wrong !ref range — recalculate from actual cells
+        const cellKeys=Object.keys(ws).filter(k=>!k.startsWith('!'));
+        if(cellKeys.length){
+          const range=XLSX.utils.decode_range(ws['!ref']||'A1');
+          cellKeys.forEach(k=>{const c=XLSX.utils.decode_cell(k);if(c.r>range.e.r)range.e.r=c.r;if(c.c>range.e.c)range.e.c=c.c;});
+          ws['!ref']=XLSX.utils.encode_range(range);
+        }
         const csv=XLSX.utils.sheet_to_csv(ws,{FS:'\t'});
         tecParseCSV(csv,'\t');
       }catch(er){ nfy('Erro ao ler planilha: '+er.message,'err'); }
