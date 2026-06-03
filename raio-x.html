@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+<meta name="theme-color" content="#070a12">
+<title>Raio-X dos Assuntos — Painel Fiscal</title>
+<style>
+/* ═══ RESET & BASE ═══════════════════════════════════ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#070a12;--bg2:#0c1220;--surf:#111827;--surf2:#1a2236;--surf3:#222d42;
+  --border:#1e293b;--border2:#2d3a52;
+  --text:#e2e8f0;--muted:#94a3b8;--muted2:#64748b;
+  --accent:#8b5cf6;--accent2:#a78bfa;--accent-dim:rgba(139,92,246,.12);
+  --red:#ef4444;--red-dim:rgba(239,68,68,.12);--red-border:rgba(239,68,68,.25);
+  --orange:#f97316;--orange-dim:rgba(249,115,22,.12);--orange-border:rgba(249,115,22,.25);
+  --green:#10b981;--green-dim:rgba(16,185,129,.12);--green-border:rgba(16,185,129,.25);
+  --blue:#3b82f6;--blue-dim:rgba(59,130,246,.12);--blue-border:rgba(59,130,246,.25);
+  --cyan:#06b6d4;
+  --r:10px;--r2:14px;
+  --font:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  --mono:'SF Mono','Fira Code','Cascadia Code',monospace;
+}
+html{font-family:var(--font);background:var(--bg);color:var(--text);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+body{min-height:100dvh;padding:0}
+a{color:var(--accent2);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* ═══ LAYOUT ═════════════════════════════════════════ */
+.shell{max-width:1200px;margin:0 auto;padding:1.25rem 1rem 3rem}
+.topbar{display:flex;align-items:center;gap:.75rem;margin-bottom:1.5rem;flex-wrap:wrap}
+.topbar h1{font-size:1.35rem;font-weight:700;letter-spacing:-.02em}
+.topbar .tag{font-size:.65rem;background:var(--accent-dim);color:var(--accent2);padding:.15rem .55rem;border-radius:99px;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.topbar .back{font-size:.8rem;color:var(--muted);padding:.3rem .6rem;border:1px solid var(--border);border-radius:var(--r);background:var(--surf);cursor:pointer;transition:.2s}
+.topbar .back:hover{border-color:var(--accent);color:var(--accent2)}
+.topbar-right{margin-left:auto;display:flex;gap:.5rem;align-items:center}
+
+/* ═══ EMPTY STATE ════════════════════════════════════ */
+.empty-state{text-align:center;padding:4rem 2rem;color:var(--muted)}
+.empty-state .icon{font-size:3rem;margin-bottom:1rem;opacity:.5}
+.empty-state h2{font-size:1.1rem;color:var(--text);margin-bottom:.5rem}
+.empty-state p{font-size:.82rem;max-width:400px;margin:0 auto;line-height:1.6}
+
+/* ═══ KPI ROW ════════════════════════════════════════ */
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:.65rem;margin-bottom:1.5rem}
+.kpi{background:var(--surf);border:1px solid var(--border);border-radius:var(--r2);padding:1rem 1.1rem;position:relative;overflow:hidden}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.kpi.crit::before{background:var(--red)}.kpi.warn::before{background:var(--orange)}
+.kpi.good::before{background:var(--blue)}.kpi.great::before{background:var(--green)}
+.kpi.total::before{background:var(--accent)}
+.kpi .num{font-size:1.65rem;font-weight:800;letter-spacing:-.03em;line-height:1}
+.kpi .label{font-size:.68rem;color:var(--muted);margin-top:.3rem;text-transform:uppercase;letter-spacing:.03em;font-weight:600}
+.kpi.crit .num{color:var(--red)}.kpi.warn .num{color:var(--orange)}
+.kpi.good .num{color:var(--blue)}.kpi.great .num{color:var(--green)}
+.kpi.total .num{color:var(--accent2)}
+
+/* ═══ CONTROLS ROW ═══════════════════════════════════ */
+.controls{display:flex;gap:.5rem;margin-bottom:1rem;flex-wrap:wrap;align-items:center}
+.search-box{flex:1;min-width:180px;max-width:340px;padding:.5rem .75rem;background:var(--surf);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-size:.82rem;outline:none;transition:.2s}
+.search-box:focus{border-color:var(--accent)}
+.search-box::placeholder{color:var(--muted2)}
+.pill-group{display:flex;gap:3px;background:var(--surf);border:1px solid var(--border);border-radius:var(--r);padding:2px;overflow-x:auto}
+.pill{padding:.35rem .7rem;font-size:.72rem;border-radius:7px;cursor:pointer;white-space:nowrap;color:var(--muted);font-weight:600;transition:.15s;border:none;background:none}
+.pill:hover{color:var(--text)}
+.pill.active{background:var(--accent-dim);color:var(--accent2)}
+.pill.crit.active{background:var(--red-dim);color:var(--red)}
+.pill.warn.active{background:var(--orange-dim);color:var(--orange)}
+.pill.good.active{background:var(--blue-dim);color:var(--blue)}
+.pill.great.active{background:var(--green-dim);color:var(--green)}
+select.ctrl-select{padding:.4rem .6rem;background:var(--surf);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-size:.78rem;outline:none;cursor:pointer}
+select.ctrl-select:focus{border-color:var(--accent)}
+
+/* ═══ TABLE ══════════════════════════════════════════ */
+.tbl-wrap{border:1px solid var(--border);border-radius:var(--r2);overflow:hidden;background:var(--surf)}
+table{width:100%;border-collapse:collapse;font-size:.8rem}
+thead{position:sticky;top:0;z-index:2}
+th{background:var(--surf2);color:var(--muted);font-weight:700;text-align:left;padding:.7rem .75rem;font-size:.68rem;text-transform:uppercase;letter-spacing:.04em;cursor:pointer;user-select:none;white-space:nowrap;border-bottom:1px solid var(--border)}
+th:hover{color:var(--text)}
+th .arrow{opacity:.3;margin-left:.25rem;font-size:.6rem}
+th.sorted .arrow{opacity:1;color:var(--accent2)}
+td{padding:.6rem .75rem;border-bottom:1px solid var(--border);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--surf2)}
+
+/* discipline grouping */
+.disc-row td{background:var(--bg2);font-weight:700;font-size:.78rem;padding:.55rem .75rem;color:var(--accent2);letter-spacing:-.01em}
+.disc-row .disc-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:.5rem;vertical-align:middle}
+
+/* status badge */
+.badge{display:inline-flex;align-items:center;gap:.3rem;font-size:.65rem;font-weight:700;padding:.2rem .55rem;border-radius:99px;letter-spacing:.02em;text-transform:uppercase}
+.badge.crit{background:var(--red-dim);color:var(--red);border:1px solid var(--red-border)}
+.badge.warn{background:var(--orange-dim);color:var(--orange);border:1px solid var(--orange-border)}
+.badge.good{background:var(--blue-dim);color:var(--blue);border:1px solid var(--blue-border)}
+.badge.great{background:var(--green-dim);color:var(--green);border:1px solid var(--green-border)}
+.badge .dot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.badge.crit .dot{background:var(--red)}.badge.warn .dot{background:var(--orange)}
+.badge.good .dot{background:var(--blue)}.badge.great .dot{background:var(--green)}
+
+/* bar */
+.bar-cell{width:100px}
+.bar-track{height:6px;background:var(--surf3);border-radius:3px;overflow:hidden;position:relative}
+.bar-fill{height:100%;border-radius:3px;transition:.3s}
+.bar-fill.crit{background:var(--red)}.bar-fill.warn{background:var(--orange)}
+.bar-fill.good{background:var(--blue)}.bar-fill.great{background:var(--green)}
+
+/* ═══ HEATMAP ════════════════════════════════════════ */
+.section-title{font-size:1rem;font-weight:700;margin:2rem 0 .75rem;display:flex;align-items:center;gap:.5rem}
+.section-title .ico{font-size:1.1rem}
+.heatmap-grid{display:grid;grid-template-columns:160px repeat(var(--cols,5),1fr);gap:2px;font-size:.68rem;margin-bottom:1.5rem}
+.hm-header{background:var(--surf2);color:var(--muted);padding:.35rem .5rem;font-weight:700;text-align:center;border-radius:4px;font-size:.6rem;letter-spacing:.02em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hm-label{background:var(--surf);padding:.35rem .5rem;color:var(--text);display:flex;align-items:center;border-radius:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hm-cell{border-radius:4px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.65rem;min-height:28px;transition:.2s;cursor:default;position:relative}
+.hm-cell:hover{transform:scale(1.08);z-index:1}
+.hm-cell[title]{cursor:help}
+.hm-empty{background:var(--surf);color:var(--muted2)}
+
+/* ═══ RECOMMENDATIONS ════════════════════════════════ */
+.recs{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:.75rem;margin-bottom:2rem}
+.rec-card{background:var(--surf);border:1px solid var(--border);border-radius:var(--r2);padding:1rem 1.1rem;position:relative;overflow:hidden}
+.rec-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px}
+.rec-card.crit::before{background:var(--red)}.rec-card.warn::before{background:var(--orange)}
+.rec-card .rec-title{font-size:.82rem;font-weight:700;margin-bottom:.35rem;display:flex;align-items:center;gap:.4rem}
+.rec-card .rec-body{font-size:.75rem;color:var(--muted);line-height:1.55}
+.rec-card .rec-body strong{color:var(--text);font-weight:600}
+.rec-card .rec-tag{display:inline-block;font-size:.6rem;background:var(--surf2);color:var(--muted);padding:.1rem .4rem;border-radius:4px;margin-top:.5rem;font-weight:600}
+
+/* ═══ TOOLTIP ════════════════════════════════════════ */
+.tip{position:fixed;z-index:9999;background:var(--surf2);border:1px solid var(--border2);border-radius:var(--r);padding:.5rem .7rem;font-size:.72rem;color:var(--text);pointer-events:none;max-width:260px;box-shadow:0 8px 24px rgba(0,0,0,.4);line-height:1.5;display:none}
+.tip b{color:var(--accent2)}
+
+/* ═══ RESPONSIVE ═════════════════════════════════════ */
+@media(max-width:768px){
+  .shell{padding:.75rem .6rem 2rem}
+  .kpi-row{grid-template-columns:repeat(2,1fr)}
+  .heatmap-grid{overflow-x:auto}
+  table{font-size:.73rem}
+  th,td{padding:.45rem .5rem}
+  .bar-cell{width:70px}
+  .topbar h1{font-size:1.1rem}
+}
+@media(max-width:480px){
+  .kpi-row{grid-template-columns:1fr 1fr}
+  .controls{flex-direction:column;align-items:stretch}
+  .search-box{max-width:none}
+}
+</style>
+</head>
+<body>
+
+<div class="shell" id="app">
+  <div class="topbar">
+    <button class="back" onclick="window.location.href='./'">◀ Painel</button>
+    <h1>🔬 Raio-X dos Assuntos</h1>
+    <span class="tag">diagnóstico</span>
+    <div class="topbar-right">
+      <select class="ctrl-select" id="period-select" onchange="recompute()">
+        <option value="all">Todo o período</option>
+        <option value="30">Últimos 30 dias</option>
+        <option value="60">Últimos 60 dias</option>
+        <option value="90">Últimos 90 dias</option>
+        <option value="7">Últimos 7 dias</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- KPI ROW -->
+  <div class="kpi-row" id="kpi-row"></div>
+
+  <!-- RECOMMENDATIONS -->
+  <div class="section-title"><span class="ico">🎯</span> Recomendações de Reforço</div>
+  <div class="recs" id="recs"></div>
+
+  <!-- CONTROLS -->
+  <div class="controls">
+    <input class="search-box" id="search" placeholder="Buscar disciplina ou assunto…" oninput="renderTable()">
+    <div class="pill-group" id="status-filter">
+      <button class="pill active" data-f="all" onclick="setFilter(this)">Todos</button>
+      <button class="pill crit" data-f="crit" onclick="setFilter(this)">Crítico</button>
+      <button class="pill warn" data-f="warn" onclick="setFilter(this)">Atenção</button>
+      <button class="pill good" data-f="good" onclick="setFilter(this)">Bom</button>
+      <button class="pill great" data-f="great" onclick="setFilter(this)">Excelente</button>
+    </div>
+    <select class="ctrl-select" id="sort-select" onchange="renderTable()">
+      <option value="status-asc">Mais crítico primeiro</option>
+      <option value="status-desc">Melhor primeiro</option>
+      <option value="acc-asc">Menor acerto</option>
+      <option value="acc-desc">Maior acerto</option>
+      <option value="vol-desc">Mais questões</option>
+      <option value="vol-asc">Menos questões</option>
+      <option value="date-asc">Mais antigo</option>
+      <option value="date-desc">Mais recente</option>
+    </select>
+  </div>
+
+  <!-- TABLE -->
+  <div class="tbl-wrap" id="tbl-wrap"></div>
+
+  <!-- HEATMAP -->
+  <div class="section-title"><span class="ico">🗺</span> Mapa de Calor — Acerto por Assunto</div>
+  <div id="heatmap-container"></div>
+</div>
+
+<!-- TOOLTIP -->
+<div class="tip" id="tip"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// RAIO-X DOS ASSUNTOS — ENGINE
+// ═══════════════════════════════════════════════════════
+
+const PF_KEY = 'pf4';
+let state = null;
+let computed = []; // flat array of {disc, discColor, subject, total, correct, acc, lastDate, status, statusOrder}
+let activeFilter = 'all';
+
+// ─── LOAD STATE ────────────────────────────────────────
+function loadState() {
+  try {
+    const raw = localStorage.getItem(PF_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch(e) { return null; }
+}
+
+// ─── STATUS CLASSIFICATION ─────────────────────────────
+// Returns: { status: 'crit'|'warn'|'good'|'great', statusOrder: 0-3, reason: string }
+function classify(acc, total, daysSinceLast) {
+  // CRÍTICO: < 50% accuracy, OR very low volume with low acc, OR stale > 60 days with mediocre
+  if (acc < 50 && total >= 3)
+    return { status: 'crit', statusOrder: 0, reason: `Acerto muito baixo (${acc.toFixed(0)}%)` };
+  if (acc < 60 && total >= 10)
+    return { status: 'crit', statusOrder: 0, reason: `Acerto baixo em volume alto (${total}q, ${acc.toFixed(0)}%)` };
+  if (total < 5 && acc < 60)
+    return { status: 'crit', statusOrder: 0, reason: `Pouquíssimas questões (${total}) e acerto baixo` };
+  if (daysSinceLast > 60 && acc < 65)
+    return { status: 'crit', statusOrder: 0, reason: `Sem praticar há ${daysSinceLast}d e acerto fraco` };
+
+  // ATENÇÃO: 50-70% OR low volume OR stale
+  if (acc < 70)
+    return { status: 'warn', statusOrder: 1, reason: `Acerto abaixo da meta de 70% (${acc.toFixed(0)}%)` };
+  if (total < 10)
+    return { status: 'warn', statusOrder: 1, reason: `Pouca prática (${total} questões), precisar resolver mais` };
+  if (daysSinceLast > 45)
+    return { status: 'warn', statusOrder: 1, reason: `Sem praticar há ${daysSinceLast} dias — risco de esquecimento` };
+
+  // BOM: 70-85% with decent volume
+  if (acc < 85)
+    return { status: 'good', statusOrder: 2, reason: `Bom desempenho (${acc.toFixed(0)}%) — consolidar` };
+
+  // EXCELENTE: 85%+ with volume
+  if (total >= 10)
+    return { status: 'great', statusOrder: 3, reason: `Excelente domínio (${acc.toFixed(0)}%, ${total}q)` };
+  return { status: 'good', statusOrder: 2, reason: `Bom acerto mas volume baixo` };
+}
+
+// ─── COMPUTE ───────────────────────────────────────────
+function recompute() {
+  state = loadState();
+  if (!state) { renderEmpty(); return; }
+
+  const periodDays = parseInt(document.getElementById('period-select').value) || 0;
+  const now = new Date();
+  const cutoff = periodDays > 0 ? new Date(now.getTime() - periodDays * 86400000) : null;
+
+  const disciplines = state.disciplines || [];
+  const discMap = {};
+  disciplines.forEach(d => { discMap[d.id] = d; });
+
+  // Aggregate questionSessions by discipline → subject
+  const qs = state.questionSessions || [];
+  const agg = {}; // key: "discId||subject"
+
+  qs.forEach(q => {
+    if (!q.subjectId && !q.subject) return;
+
+    // Date filter
+    let qDate = q.date ? new Date(q.date) : null;
+    if (!qDate && q.dateStr) {
+      // dateStr can be "DD/MM/YYYY" or "YYYY-MM-DD"
+      const parts = q.dateStr.split('/');
+      if (parts.length === 3) qDate = new Date(parts[2], parts[1]-1, parts[0]);
+      else qDate = new Date(q.dateStr);
+    }
+    if (cutoff && qDate && qDate < cutoff) return;
+
+    const discId = q.subjectId || 'unknown';
+    const subject = (q.subject || '').trim() || '(sem assunto)';
+    const key = `${discId}||${subject}`;
+
+    if (!agg[key]) {
+      const disc = discMap[discId];
+      agg[key] = {
+        discId,
+        disc: disc ? disc.name : discId,
+        discColor: disc ? disc.color : '#64748b',
+        subject,
+        total: 0,
+        correct: 0,
+        dates: []
+      };
+    }
+    agg[key].total += (q.total || 0);
+    agg[key].correct += (q.correct || 0);
+    if (qDate) agg[key].dates.push(qDate);
+  });
+
+  // Also include disciplines from edital that have NO question data (ghost assuntos)
+  const edital = state.edital || {};
+  // edital might have weights keyed by discipline id
+  // We already have all disciplines even if 0 questions — skip ghost creation for now since we need real data
+
+  // Build computed array
+  computed = Object.values(agg).map(a => {
+    const acc = a.total > 0 ? (a.correct / a.total) * 100 : 0;
+    const lastDate = a.dates.length > 0 ? new Date(Math.max(...a.dates.map(d => d.getTime()))) : null;
+    const daysSince = lastDate ? Math.floor((now - lastDate) / 86400000) : 999;
+    const { status, statusOrder, reason } = classify(acc, a.total, daysSince);
+
+    return {
+      discId: a.discId,
+      disc: a.disc,
+      discColor: a.discColor,
+      subject: a.subject,
+      total: a.total,
+      correct: a.correct,
+      acc,
+      lastDate,
+      daysSince,
+      status,
+      statusOrder,
+      reason
+    };
+  });
+
+  renderKPIs();
+  renderRecs();
+  renderTable();
+  renderHeatmap();
+}
+
+// ─── RENDER EMPTY STATE ─────────────────────────────
+function renderEmpty() {
+  document.getElementById('kpi-row').innerHTML = '';
+  document.getElementById('recs').innerHTML = '';
+  document.getElementById('tbl-wrap').innerHTML = `
+    <div class="empty-state">
+      <div class="icon">📊</div>
+      <h2>Nenhum dado encontrado</h2>
+      <p>Registre questões no Painel Fiscal (aba Questões) ou importe do TEC Concursos para ver o diagnóstico completo dos seus assuntos aqui.</p>
+    </div>`;
+  document.getElementById('heatmap-container').innerHTML = '';
+}
+
+// ─── RENDER KPIs ────────────────────────────────────
+function renderKPIs() {
+  const counts = { crit:0, warn:0, good:0, great:0 };
+  computed.forEach(c => counts[c.status]++);
+  const total = computed.length;
+  const avgAcc = total > 0 ? computed.reduce((s,c) => s + c.acc, 0) / total : 0;
+  const totalQ = computed.reduce((s,c) => s + c.total, 0);
+
+  document.getElementById('kpi-row').innerHTML = `
+    <div class="kpi total"><div class="num">${total}</div><div class="label">Assuntos mapeados</div></div>
+    <div class="kpi crit"><div class="num">${counts.crit}</div><div class="label">🚨 Críticos</div></div>
+    <div class="kpi warn"><div class="num">${counts.warn}</div><div class="label">⚠️ Atenção</div></div>
+    <div class="kpi good"><div class="num">${counts.good}</div><div class="label">✅ Bom</div></div>
+    <div class="kpi great"><div class="num">${counts.great}</div><div class="label">🏆 Excelente</div></div>
+    <div class="kpi total"><div class="num">${avgAcc.toFixed(0)}%</div><div class="label">Acerto médio geral</div></div>
+    <div class="kpi total"><div class="num">${totalQ.toLocaleString('pt-BR')}</div><div class="label">Questões totais</div></div>
+  `;
+}
+
+// ─── RENDER RECOMMENDATIONS ─────────────────────────
+function renderRecs() {
+  // Top critical + warning items
+  const crits = computed.filter(c => c.status === 'crit').sort((a,b) => a.acc - b.acc).slice(0, 4);
+  const warns = computed.filter(c => c.status === 'warn').sort((a,b) => a.acc - b.acc).slice(0, 3);
+  const items = [...crits.map(c => ({...c, cardClass: 'crit'})), ...warns.map(c => ({...c, cardClass: 'warn'}))];
+
+  if (items.length === 0) {
+    document.getElementById('recs').innerHTML = `
+      <div class="rec-card" style="border-color:var(--green-border)">
+        <div class="rec-title">🎉 Nenhum assunto crítico!</div>
+        <div class="rec-body">Todos os seus assuntos estão com desempenho aceitável. Continue praticando para manter a consistência.</div>
+      </div>`;
+    return;
+  }
+
+  document.getElementById('recs').innerHTML = items.map(c => `
+    <div class="rec-card ${c.cardClass}">
+      <div class="rec-title">
+        ${c.status === 'crit' ? '🚨' : '⚠️'}
+        ${c.subject}
+      </div>
+      <div class="rec-body">
+        <strong>${c.disc}</strong> — ${c.reason}.<br>
+        ${c.total} questões resolvidas, ${c.acc.toFixed(0)}% de acerto.
+        ${c.daysSince < 999 ? `<br>Última prática: ${c.daysSince === 0 ? 'hoje' : c.daysSince === 1 ? 'ontem' : `há ${c.daysSince} dias`}.` : ''}
+      </div>
+      <span class="rec-tag">${c.total < 10 ? '📝 Resolver mais questões' : c.acc < 60 ? '📖 Revisar teoria' : '🔄 Praticar recentemente'}</span>
+    </div>
+  `).join('');
+}
+
+// ─── RENDER TABLE ────────────────────────────────────
+function renderTable() {
+  const search = (document.getElementById('search').value || '').toLowerCase();
+  const sortVal = document.getElementById('sort-select').value;
+
+  let filtered = computed.filter(c => {
+    if (activeFilter !== 'all' && c.status !== activeFilter) return false;
+    if (search && !c.disc.toLowerCase().includes(search) && !c.subject.toLowerCase().includes(search)) return false;
+    return true;
+  });
+
+  // Sort
+  const [sortKey, sortDir] = sortVal.split('-');
+  const dir = sortDir === 'asc' ? 1 : -1;
+  filtered.sort((a,b) => {
+    switch(sortKey) {
+      case 'status': return (a.statusOrder - b.statusOrder) * dir;
+      case 'acc': return (a.acc - b.acc) * dir;
+      case 'vol': return (a.total - b.total) * dir;
+      case 'date': return ((a.lastDate||new Date(0)) - (b.lastDate||new Date(0))) * dir;
+      default: return 0;
+    }
+  });
+
+  if (filtered.length === 0) {
+    document.getElementById('tbl-wrap').innerHTML = `
+      <div class="empty-state" style="padding:2rem">
+        <div class="icon">🔍</div>
+        <h2>Nenhum resultado</h2>
+        <p>Tente ajustar o filtro ou a busca.</p>
+      </div>`;
+    return;
+  }
+
+  // Group by discipline for display
+  const groups = {};
+  filtered.forEach(c => {
+    if (!groups[c.discId]) groups[c.discId] = { disc: c.disc, color: c.discColor, items: [] };
+    groups[c.discId].items.push(c);
+  });
+
+  let html = `<table><thead><tr>
+    <th style="width:24px"></th>
+    <th>Assunto</th>
+    <th>Questões</th>
+    <th>Acerto</th>
+    <th class="bar-cell">Barra</th>
+    <th>Última Prática</th>
+    <th>Status</th>
+    <th>Diagnóstico</th>
+  </tr></thead><tbody>`;
+
+  Object.values(groups).forEach(g => {
+    const groupTotal = g.items.reduce((s,c) => s + c.total, 0);
+    const groupCorr = g.items.reduce((s,c) => s + c.correct, 0);
+    const groupAcc = groupTotal > 0 ? (groupCorr / groupTotal * 100).toFixed(0) : '—';
+    html += `<tr class="disc-row"><td colspan="8"><span class="disc-dot" style="background:${g.color}"></span>${g.disc} <span style="color:var(--muted);font-weight:400;font-size:.7rem;margin-left:.5rem">${g.items.length} assuntos · ${groupTotal}q · ${groupAcc}%</span></td></tr>`;
+
+    g.items.forEach(c => {
+      const accStr = c.total > 0 ? c.acc.toFixed(0) + '%' : '—';
+      const dateStr = c.lastDate ? formatDate(c.lastDate) : '—';
+      const badgeLabel = { crit: 'Crítico', warn: 'Atenção', good: 'Bom', great: 'Excelente' }[c.status];
+
+      html += `<tr>
+        <td><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${g.color}"></span></td>
+        <td style="font-weight:500">${esc(c.subject)}</td>
+        <td><span style="font-family:var(--mono);font-size:.75rem">${c.total}</span> <span style="color:var(--muted);font-size:.65rem">(${c.correct}✓)</span></td>
+        <td style="font-family:var(--mono);font-weight:700;color:var(--${c.status === 'crit' ? 'red' : c.status === 'warn' ? 'orange' : c.status === 'good' ? 'blue' : 'green'})">${accStr}</td>
+        <td class="bar-cell"><div class="bar-track"><div class="bar-fill ${c.status}" style="width:${Math.min(c.acc,100)}%"></div></div></td>
+        <td style="font-size:.72rem;color:var(--muted)">${dateStr}</td>
+        <td><span class="badge ${c.status}"><span class="dot"></span>${badgeLabel}</span></td>
+        <td style="font-size:.7rem;color:var(--muted);max-width:200px">${esc(c.reason)}</td>
+      </tr>`;
+    });
+  });
+
+  html += '</tbody></table>';
+  document.getElementById('tbl-wrap').innerHTML = html;
+}
+
+// ─── RENDER HEATMAP ──────────────────────────────────
+function renderHeatmap() {
+  // Group by discipline, show top subjects as columns, disciplines as rows
+  const disciplines = state.disciplines || [];
+  if (computed.length === 0 || disciplines.length === 0) {
+    document.getElementById('heatmap-container').innerHTML = '';
+    return;
+  }
+
+  // For each discipline, get its top subjects (up to 6)
+  const discGroups = {};
+  computed.forEach(c => {
+    if (!discGroups[c.discId]) discGroups[c.discId] = [];
+    discGroups[c.discId].push(c);
+  });
+
+  // Collect all unique subjects across all disciplines for a unified grid
+  // Use the subjects with most questions across the board
+  const allSubjects = [...new Set(computed.map(c => c.subject))].sort();
+
+  // If too many subjects, limit and show the most relevant ones
+  const maxCols = Math.min(allSubjects.length, 8);
+  const topSubjects = computed
+    .sort((a,b) => (a.statusOrder - b.statusOrder) || (a.acc - b.acc))
+    .slice(0, 40)
+    .map(c => c.subject);
+  const uniqueTop = [...new Set(topSubjects)].slice(0, maxCols);
+
+  if (uniqueTop.length === 0) {
+    document.getElementById('heatmap-container').innerHTML = '';
+    return;
+  }
+
+  const cols = uniqueTop.length;
+  const container = document.getElementById('heatmap-container');
+
+  let html = `<div class="heatmap-grid" style="--cols:${cols}">`;
+  // Header row
+  html += `<div class="hm-header" style="text-align:left">Disciplina</div>`;
+  uniqueTop.forEach(s => {
+    const short = s.length > 18 ? s.slice(0, 16) + '…' : s;
+    html += `<div class="hm-header" title="${esc(s)}">${esc(short)}</div>`;
+  });
+
+  // Data rows: one per discipline
+  Object.keys(discGroups).forEach(discId => {
+    const items = discGroups[discId];
+    const disc = items[0].disc;
+    const color = items[0].discColor;
+    html += `<div class="hm-label"><span class="disc-dot" style="background:${color};margin-right:.4rem;flex-shrink:0"></span>${esc(disc)}</div>`;
+
+    uniqueTop.forEach(subj => {
+      const match = items.find(c => c.subject === subj);
+      if (match) {
+        const bg = {
+          crit: 'var(--red-dim)', warn: 'var(--orange-dim)',
+          good: 'var(--blue-dim)', great: 'var(--green-dim)'
+        }[match.status];
+        const fg = {
+          crit: 'var(--red)', warn: 'var(--orange)',
+          good: 'var(--blue)', great: 'var(--green)'
+        }[match.status];
+        const border = {
+          crit: 'var(--red-border)', warn: 'var(--orange-border)',
+          good: 'var(--blue-border)', great: 'var(--green-border)'
+        }[match.status];
+        html += `<div class="hm-cell" style="background:${bg};color:${fg};border:1px solid ${border}" title="${esc(match.subject)}: ${match.acc.toFixed(0)}% (${match.total}q) — ${match.reason}">${match.acc.toFixed(0)}%</div>`;
+      } else {
+        html += `<div class="hm-cell hm-empty">—</div>`;
+      }
+    });
+  });
+
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+// ─── FILTER ──────────────────────────────────────────
+function setFilter(el) {
+  document.querySelectorAll('#status-filter .pill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  activeFilter = el.dataset.f;
+  renderTable();
+}
+
+// ─── HELPERS ─────────────────────────────────────────
+function formatDate(d) {
+  if (!d) return '—';
+  const dd = String(d.getDate()).padStart(2,'0');
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  return `${dd}/${mm}/${d.getFullYear()}`;
+}
+function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ─── TOOLTIP (hover on heatmap) ─────────────────────
+document.addEventListener('mousemove', e => {
+  const tip = document.getElementById('tip');
+  const target = e.target.closest('.hm-cell[title]');
+  if (target) {
+    tip.innerHTML = target.title.replace(/—/g,'<br>—');
+    tip.style.display = 'block';
+    const rect = target.getBoundingClientRect();
+    tip.style.left = Math.min(rect.left, window.innerWidth - 270) + 'px';
+    tip.style.top = (rect.bottom + 8) + 'px';
+  } else {
+    tip.style.display = 'none';
+  }
+});
+
+// ─── INIT ────────────────────────────────────────────
+recompute();
+</script>
+</body>
+</html>
