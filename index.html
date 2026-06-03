@@ -2498,6 +2498,411 @@ if('serviceWorker' in navigator){
 
   pipBtn.addEventListener('click', e => { e.stopPropagation(); openPip(); });
 })();
+// ═══════════════════════════════════════════════════════════════════
+// 🔬 RAIO-X DOS ASSUNTOS — MÓDULO AUTOCONTIDO
+// ═══════════════════════════════════════════════════════════════════
+// Cole este bloco INTEIRO antes do último </script> do index.html
+// Ele cria tudo sozinho: CSS, aba, menu lateral, menu mobile, lógica
+// ═══════════════════════════════════════════════════════════════════
+(function rxBootstrap(){
+'use strict';
+
+/* ─── 1. CSS ───────────────────────────────────────────── */
+const rxCSS = document.createElement('style');
+rxCSS.textContent = `
+/* RAIO-X TAB STYLES */
+#page-raiox .rx-kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:.55rem;margin-bottom:1.25rem}
+#page-raiox .rx-kpi{background:var(--s2,var(--surf,#111827));border:1px solid var(--border,#1e293b);border-radius:10px;padding:.8rem .9rem;position:relative;overflow:hidden}
+#page-raiox .rx-kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+#page-raiox .rx-kpi.crit::before{background:#ef4444}
+#page-raiox .rx-kpi.warn::before{background:#f97316}
+#page-raiox .rx-kpi.good::before{background:#3b82f6}
+#page-raiox .rx-kpi.great::before{background:#10b981}
+#page-raiox .rx-kpi.total::before{background:var(--accent,#8b5cf6)}
+#page-raiox .rx-num{font-size:1.5rem;font-weight:800;letter-spacing:-.03em;line-height:1}
+#page-raiox .rx-lbl{font-size:.62rem;color:var(--t3,var(--muted,#94a3b8));margin-top:.25rem;text-transform:uppercase;letter-spacing:.03em;font-weight:700}
+#page-raiox .rx-kpi.crit .rx-num{color:#ef4444}
+#page-raiox .rx-kpi.warn .rx-num{color:#f97316}
+#page-raiox .rx-kpi.good .rx-num{color:#3b82f6}
+#page-raiox .rx-kpi.great .rx-num{color:#10b981}
+#page-raiox .rx-kpi.total .rx-num{color:var(--accent,#8b5cf6)}
+
+#page-raiox .rx-controls{display:flex;gap:.45rem;margin-bottom:.75rem;flex-wrap:wrap;align-items:center}
+#page-raiox .rx-search{flex:1;min-width:140px;max-width:280px;padding:.45rem .65rem;background:var(--s2,var(--surf,#111827));border:1px solid var(--border,#1e293b);border-radius:8px;color:var(--text,#e2e8f0);font-size:.78rem;outline:none;transition:.2s}
+#page-raiox .rx-search:focus{border-color:var(--accent,#8b5cf6)}
+#page-raiox .rx-search::placeholder{color:var(--t3,#64748b)}
+#page-raiox .rx-pills{display:flex;gap:2px;background:var(--s2,var(--surf,#111827));border:1px solid var(--border,#1e293b);border-radius:8px;padding:2px}
+#page-raiox .rx-pill{padding:.3rem .6rem;font-size:.68rem;border-radius:6px;cursor:pointer;white-space:nowrap;color:var(--t3,#94a3b8);font-weight:700;transition:.15s;border:none;background:none}
+#page-raiox .rx-pill:hover{color:var(--text,#e2e8f0)}
+#page-raiox .rx-pill.on{background:rgba(139,92,246,.12);color:var(--accent,#8b5cf6)}
+#page-raiox .rx-pill.on[data-f="crit"]{background:rgba(239,68,68,.12);color:#ef4444}
+#page-raiox .rx-pill.on[data-f="warn"]{background:rgba(249,115,22,.12);color:#f97316}
+#page-raiox .rx-pill.on[data-f="good"]{background:rgba(59,130,246,.12);color:#3b82f6}
+#page-raiox .rx-pill.on[data-f="great"]{background:rgba(16,185,129,.12);color:#10b981}
+#page-raiox select.rx-sel{padding:.35rem .5rem;background:var(--s2,var(--surf,#111827));border:1px solid var(--border,#1e293b);border-radius:8px;color:var(--text,#e2e8f0);font-size:.74rem;outline:none;cursor:pointer}
+
+#page-raiox .rx-recs{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:.55rem;margin-bottom:1.25rem}
+#page-raiox .rx-rec{background:var(--s2,var(--surf,#111827));border:1px solid var(--border,#1e293b);border-radius:10px;padding:.85rem .95rem;position:relative;overflow:hidden}
+#page-raiox .rx-rec::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px}
+#page-raiox .rx-rec.crit::before{background:#ef4444}
+#page-raiox .rx-rec.warn::before{background:#f97316}
+#page-raiox .rx-rec .rx-rec-title{font-size:.8rem;font-weight:700;margin-bottom:.3rem}
+#page-raiox .rx-rec .rx-rec-body{font-size:.72rem;color:var(--t3,#94a3b8);line-height:1.5}
+#page-raiox .rx-rec .rx-rec-body strong{color:var(--text,#e2e8f0);font-weight:600}
+#page-raiox .rx-rec .rx-rec-tag{display:inline-block;font-size:.58rem;background:var(--s3,#1a2236);color:var(--t3,#94a3b8);padding:.1rem .4rem;border-radius:4px;margin-top:.4rem;font-weight:700}
+
+#page-raiox .rx-tbl{border:1px solid var(--border,#1e293b);border-radius:10px;overflow:hidden;background:var(--s2,var(--surf,#111827))}
+#page-raiox .rx-tbl table{width:100%;border-collapse:collapse;font-size:.76rem}
+#page-raiox .rx-tbl th{background:var(--s3,#1a2236);color:var(--t3,#94a3b8);font-weight:700;text-align:left;padding:.55rem .65rem;font-size:.64rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid var(--border,#1e293b);white-space:nowrap}
+#page-raiox .rx-tbl td{padding:.5rem .65rem;border-bottom:1px solid var(--border,#1e293b);vertical-align:middle}
+#page-raiox .rx-tbl tr:last-child td{border-bottom:none}
+#page-raiox .rx-tbl tr:hover td{background:var(--s3,#1a2236)}
+#page-raiox .rx-disc-row td{background:var(--s1,#0c1220);font-weight:700;font-size:.74rem;padding:.45rem .65rem;color:var(--accent,#8b5cf6);letter-spacing:-.01em}
+#page-raiox .rx-dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:.4rem;vertical-align:middle}
+#page-raiox .rx-badge{display:inline-flex;align-items:center;gap:.25rem;font-size:.6rem;font-weight:700;padding:.15rem .5rem;border-radius:99px;letter-spacing:.02em;text-transform:uppercase}
+#page-raiox .rx-badge.crit{background:rgba(239,68,68,.1);color:#ef4444;border:1px solid rgba(239,68,68,.22)}
+#page-raiox .rx-badge.warn{background:rgba(249,115,22,.1);color:#f97316;border:1px solid rgba(249,115,22,.22)}
+#page-raiox .rx-badge.good{background:rgba(59,130,246,.1);color:#3b82f6;border:1px solid rgba(59,130,246,.22)}
+#page-raiox .rx-badge.great{background:rgba(16,185,129,.1);color:#10b981;border:1px solid rgba(16,185,129,.22)}
+#page-raiox .rx-badge .bdot{width:4px;height:4px;border-radius:50%;flex-shrink:0}
+#page-raiox .rx-badge.crit .bdot{background:#ef4444}.rx-badge.warn .bdot{background:#f97316}
+#page-raiox .rx-badge.good .bdot{background:#3b82f6}.rx-badge.great .bdot{background:#10b981}
+#page-raiox .rx-bar{height:5px;background:var(--s3,#222d42);border-radius:3px;overflow:hidden;width:80px}
+#page-raiox .rx-bar-fill{height:100%;border-radius:3px;transition:.3s}
+#page-raiox .rx-bar-fill.crit{background:#ef4444}.rx-bar-fill.warn{background:#f97316}
+#page-raiox .rx-bar-fill.good{background:#3b82f6}.rx-bar-fill.great{background:#10b981}
+#page-raiox .rx-sec{font-size:.9rem;font-weight:700;margin:1.4rem 0 .6rem;display:flex;align-items:center;gap:.4rem}
+#page-raiox .rx-empty{text-align:center;padding:2.5rem 1.5rem;color:var(--t3,#94a3b8)}
+#page-raiox .rx-empty .eico{font-size:2.5rem;margin-bottom:.6rem;opacity:.5}
+#page-raiox .rx-period{padding:.35rem .5rem;background:var(--s2,var(--surf,#111827));border:1px solid var(--border,#1e293b);border-radius:8px;color:var(--text,#e2e8f0);font-size:.74rem;outline:none;cursor:pointer;margin-left:auto}
+@media(max-width:600px){
+  #page-raiox .rx-kpi-row{grid-template-columns:repeat(2,1fr)}
+  #page-raiox .rx-recs{grid-template-columns:1fr}
+  #page-raiox .rx-controls{flex-direction:column;align-items:stretch}
+  #page-raiox .rx-search{max-width:none}
+  #page-raiox .rx-tbl{overflow-x:auto}
+}
+`;
+document.head.appendChild(rxCSS);
+
+/* ─── 2. PAGE HTML ─────────────────────────────────────── */
+const rxPage = document.createElement('div');
+rxPage.id = 'page-raiox';
+rxPage.className = 'page';
+rxPage.innerHTML = `
+  <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:1rem;flex-wrap:wrap">
+    <span style="font-size:.72rem;font-weight:700;color:var(--accent,#8b5cf6);text-transform:uppercase;letter-spacing:.06em;background:rgba(139,92,246,.1);padding:.15rem .5rem;border-radius:99px">Diagnóstico</span>
+    <select class="rx-period" id="rx-period" onchange="rxRecompute()">
+      <option value="all">Todo o período</option>
+      <option value="7">Últimos 7 dias</option>
+      <option value="30">Últimos 30 dias</option>
+      <option value="60">Últimos 60 dias</option>
+      <option value="90">Últimos 90 dias</option>
+    </select>
+  </div>
+  <div class="rx-kpi-row" id="rx-kpis"></div>
+  <div class="rx-sec">🎯 Recomendações de Reforço</div>
+  <div class="rx-recs" id="rx-recs"></div>
+  <div class="rx-sec">📋 Todos os Assuntos</div>
+  <div class="rx-controls">
+    <input class="rx-search" id="rx-search" placeholder="Buscar disciplina ou assunto…" oninput="rxRenderTable()">
+    <div class="rx-pills" id="rx-pills">
+      <button class="rx-pill on" data-f="all" onclick="rxSetFilter(this)">Todos</button>
+      <button class="rx-pill" data-f="crit" onclick="rxSetFilter(this)">Crítico</button>
+      <button class="rx-pill" data-f="warn" onclick="rxSetFilter(this)">Atenção</button>
+      <button class="rx-pill" data-f="good" onclick="rxSetFilter(this)">Bom</button>
+      <button class="rx-pill" data-f="great" onclick="rxSetFilter(this)">Excelente</button>
+    </div>
+    <select class="rx-sel" id="rx-sort" onchange="rxRenderTable()">
+      <option value="status-asc">Mais crítico</option>
+      <option value="status-desc">Melhor primeiro</option>
+      <option value="acc-asc">Menor acerto</option>
+      <option value="acc-desc">Maior acerto</option>
+      <option value="vol-desc">Mais questões</option>
+      <option value="vol-asc">Menos questões</option>
+      <option value="date-asc">Mais antigo</option>
+      <option value="date-desc">Mais recente</option>
+    </select>
+  </div>
+  <div class="rx-tbl" id="rx-tbl"></div>
+`;
+
+// Append to page container (find the last .page sibling or main/content)
+const lastPage = document.querySelector('.page:last-of-type');
+if (lastPage && lastPage.parentNode) {
+  lastPage.parentNode.insertBefore(rxPage, lastPage.nextSibling);
+} else {
+  const main = document.querySelector('main, .main, .content');
+  if (main) main.appendChild(rxPage);
+  else document.body.appendChild(rxPage);
+}
+
+/* ─── 3. SIDEBAR NAV ITEM ──────────────────────────────── */
+// Find the config nav-item (last system item) and insert before it
+const navItems = document.querySelectorAll('.nav-item');
+let configItem = null;
+navItems.forEach(ni => {
+  if (ni.textContent.includes('Config') || ni.textContent.includes('config') || ni.textContent.includes('⚙')) {
+    configItem = ni;
+  }
+});
+const rxNavItem = document.createElement('div');
+rxNavItem.className = 'nav-item';
+rxNavItem.innerHTML = '<span class="nav-icon">🔬</span>Raio-X';
+rxNavItem.onclick = function(){ goPage('raiox', rxNavItem); };
+if (configItem && configItem.parentNode) {
+  // Insert a section header if there's a pattern of sections
+  const existingSections = document.querySelectorAll('.nav-section, .nav-sec');
+  if (existingSections.length > 0) {
+    // Check if there's already an "Análise" section
+    let hasAnalise = false;
+    existingSections.forEach(s => { if (s.textContent.includes('Análise') || s.textContent.includes('Diagnóstico')) hasAnalise = true; });
+    if (!hasAnalise) {
+      const sec = document.createElement('div');
+      sec.className = existingSections[0].className; // match existing class
+      sec.textContent = 'Análise';
+      configItem.parentNode.insertBefore(sec, configItem);
+    }
+  }
+  configItem.parentNode.insertBefore(rxNavItem, configItem);
+} else if (navItems.length > 0) {
+  const lastNav = navItems[navItems.length - 1];
+  lastNav.parentNode.insertBefore(rxNavItem, lastNav.nextSibling);
+}
+
+/* ─── 4. MOBILE BOTTOM NAV ─────────────────────────────── */
+// Check if mobnav exists and add an item
+const mobnav = document.querySelector('.mobnav');
+if (mobnav) {
+  const mni = document.createElement('div');
+  mni.className = 'mni';
+  mni.setAttribute('data-tab', 'rx');
+  mni.innerHTML = `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke-width="1.8" fill="none"/><path d="M12 8v4M9 15h6" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg><span>Raio-X</span>`;
+  mni.onclick = function(){
+    mobnav.querySelectorAll('.mni').forEach(m => m.classList.remove('on'));
+    mni.classList.add('on');
+    goPage('raiox', rxNavItem);
+  };
+  // Insert before the last item (Config)
+  const mnis = mobnav.querySelectorAll('.mni');
+  if (mnis.length > 0) {
+    const lastMni = mnis[mnis.length - 1];
+    mobnav.insertBefore(mni, lastMni);
+  } else {
+    mobnav.appendChild(mni);
+  }
+}
+
+/* ─── 5. PAGE_META ─────────────────────────────────────── */
+if (typeof PAGE_META !== 'undefined') {
+  PAGE_META.raiox = { icon: '🔬', title: 'Raio-X dos Assuntos' };
+}
+
+/* ─── 6. HOOK goPage for init ──────────────────────────── */
+const _rxOrigGoPage = goPage;
+goPage = function(name, el) {
+  _rxOrigGoPage(name, el);
+  if (name === 'raiox') rxRecompute();
+};
+
+/* ─── 7. COMPUTATION ENGINE ────────────────────────────── */
+let rxData = [];
+let rxFilter = 'all';
+
+function rxClassify(acc, total, daysSince) {
+  if (acc < 50 && total >= 3)      return { s:'crit', o:0, r:'Acerto muito baixo ('+acc.toFixed(0)+'%)' };
+  if (acc < 60 && total >= 10)     return { s:'crit', o:0, r:'Acerto baixo em volume alto ('+total+'q, '+acc.toFixed(0)+'%)' };
+  if (total < 5 && acc < 60)       return { s:'crit', o:0, r:'Pouquíssimas questões ('+total+') e acerto baixo' };
+  if (daysSince > 60 && acc < 65)  return { s:'crit', o:0, r:'Sem praticar há '+daysSince+'d e acerto fraco' };
+  if (acc < 70)                    return { s:'warn', o:1, r:'Acerto abaixo de 70% ('+acc.toFixed(0)+'%)' };
+  if (total < 10)                  return { s:'warn', o:1, r:'Pouca prática ('+total+' questões)' };
+  if (daysSince > 45)              return { s:'warn', o:1, r:'Sem praticar há '+daysSince+' dias' };
+  if (acc < 85)                    return { s:'good', o:2, r:'Bom desempenho ('+acc.toFixed(0)+'%)' };
+  if (total >= 10)                 return { s:'great',o:3, r:'Excelente ('+acc.toFixed(0)+'%, '+total+'q)' };
+  return { s:'good', o:2, r:'Bom acerto mas pouco volume' };
+}
+
+window.rxRecompute = function() {
+  const periodDays = parseInt((document.getElementById('rx-period')||{}).value) || 0;
+  const now = new Date();
+  const cutoff = periodDays > 0 ? new Date(now.getTime() - periodDays * 86400000) : null;
+
+  const disciplines = state.disciplines || [];
+  const discMap = {};
+  disciplines.forEach(d => { discMap[d.id] = d; });
+
+  const qs = state.questionSessions || [];
+  const agg = {};
+
+  qs.forEach(q => {
+    if (!q.subjectId && !q.subject) return;
+    let qDate = q.date ? new Date(q.date) : null;
+    if (!qDate && q.dateStr) {
+      const p = q.dateStr.split('/');
+      if (p.length === 3 && p[0].length <= 2) qDate = new Date(p[2], p[1]-1, p[0]);
+      else qDate = new Date(q.dateStr);
+    }
+    if (cutoff && qDate && qDate < cutoff) return;
+
+    const discId = q.subjectId || 'unknown';
+    const subject = (q.subject || '').trim() || '(sem assunto)';
+    const key = discId + '||' + subject;
+
+    if (!agg[key]) {
+      const disc = discMap[discId];
+      agg[key] = {
+        discId: discId,
+        disc: disc ? disc.name : discId,
+        discColor: disc ? disc.color : '#64748b',
+        subject: subject,
+        total: 0, correct: 0, dates: []
+      };
+    }
+    agg[key].total += (q.total || 0);
+    agg[key].correct += (q.correct || 0);
+    if (qDate && !isNaN(qDate)) agg[key].dates.push(qDate);
+  });
+
+  rxData = Object.values(agg).map(a => {
+    const acc = a.total > 0 ? (a.correct / a.total) * 100 : 0;
+    const lastDate = a.dates.length ? new Date(Math.max(...a.dates.map(d => d.getTime()))) : null;
+    const daysSince = lastDate ? Math.floor((now - lastDate) / 86400000) : 999;
+    const c = rxClassify(acc, a.total, daysSince);
+    return {
+      discId:a.discId, disc:a.disc, discColor:a.discColor, subject:a.subject,
+      total:a.total, correct:a.correct, acc:acc,
+      lastDate:lastDate, daysSince:daysSince,
+      status:c.s, statusOrder:c.o, reason:c.r
+    };
+  });
+
+  rxRenderKPIs();
+  rxRenderRecs();
+  rxRenderTable();
+};
+
+function rxRenderKPIs() {
+  const c = { crit:0, warn:0, good:0, great:0 };
+  rxData.forEach(d => c[d.status]++);
+  const total = rxData.length;
+  const avgAcc = total > 0 ? rxData.reduce((s,d) => s + d.acc, 0) / total : 0;
+  const totalQ = rxData.reduce((s,d) => s + d.total, 0);
+  const el = document.getElementById('rx-kpis');
+  if (!el) return;
+  el.innerHTML =
+    '<div class="rx-kpi total"><div class="rx-num">'+total+'</div><div class="rx-lbl">Assuntos</div></div>'+
+    '<div class="rx-kpi crit"><div class="rx-num">'+c.crit+'</div><div class="rx-lbl">🚨 Críticos</div></div>'+
+    '<div class="rx-kpi warn"><div class="rx-num">'+c.warn+'</div><div class="rx-lbl">⚠️ Atenção</div></div>'+
+    '<div class="rx-kpi good"><div class="rx-num">'+c.good+'</div><div class="rx-lbl">✅ Bom</div></div>'+
+    '<div class="rx-kpi great"><div class="rx-num">'+c.great+'</div><div class="rx-lbl">🏆 Excelente</div></div>'+
+    '<div class="rx-kpi total"><div class="rx-num">'+avgAcc.toFixed(0)+'%</div><div class="rx-lbl">Acerto médio</div></div>'+
+    '<div class="rx-kpi total"><div class="rx-num">'+totalQ.toLocaleString('pt-BR')+'</div><div class="rx-lbl">Questões totais</div></div>';
+}
+
+function rxRenderRecs() {
+  const el = document.getElementById('rx-recs');
+  if (!el) return;
+  const crits = rxData.filter(d=>d.status==='crit').sort((a,b)=>a.acc-b.acc).slice(0,4);
+  const warns = rxData.filter(d=>d.status==='warn').sort((a,b)=>a.acc-b.acc).slice(0,3);
+  const items = [...crits.map(d=>({...d,cc:'crit'})),...warns.map(d=>({...d,cc:'warn'}))];
+
+  if (!items.length) {
+    el.innerHTML = '<div class="rx-rec" style="border-color:rgba(16,185,129,.3)"><div class="rx-rec-title">🎉 Nenhum assunto crítico!</div><div class="rx-rec-body">Todos os assuntos estão com desempenho aceitável.</div></div>';
+    return;
+  }
+
+  el.innerHTML = items.map(d => {
+    const ico = d.cc==='crit' ? '🚨' : '⚠️';
+    const tag = d.total < 10 ? '📝 Resolver mais questões' : d.acc < 60 ? '📖 Revisar teoria' : '🔄 Praticar recentemente';
+    const ago = d.daysSince < 999 ? (d.daysSince===0?'hoje':d.daysSince===1?'ontem':'há '+d.daysSince+' dias') : '';
+    return '<div class="rx-rec '+d.cc+'">'+
+      '<div class="rx-rec-title">'+ico+' '+rxEsc(d.subject)+'</div>'+
+      '<div class="rx-rec-body"><strong>'+rxEsc(d.disc)+'</strong> — '+rxEsc(d.reason)+'.'+
+      (ago ? '<br>Última prática: '+ago+'.' : '')+
+      '</div><span class="rx-rec-tag">'+tag+'</span></div>';
+  }).join('');
+}
+
+window.rxRenderTable = function() {
+  const el = document.getElementById('rx-tbl');
+  if (!el) return;
+  const search = ((document.getElementById('rx-search')||{}).value||'').toLowerCase();
+  const sortVal = ((document.getElementById('rx-sort')||{}).value||'status-asc');
+
+  let filtered = rxData.filter(d => {
+    if (rxFilter !== 'all' && d.status !== rxFilter) return false;
+    if (search && d.disc.toLowerCase().indexOf(search) < 0 && d.subject.toLowerCase().indexOf(search) < 0) return false;
+    return true;
+  });
+
+  const [sk, sd] = sortVal.split('-');
+  const dir = sd === 'asc' ? 1 : -1;
+  filtered.sort((a,b) => {
+    if (sk==='status') return (a.statusOrder - b.statusOrder)*dir;
+    if (sk==='acc')    return (a.acc - b.acc)*dir;
+    if (sk==='vol')    return (a.total - b.total)*dir;
+    if (sk==='date')   return ((a.lastDate||new Date(0))-(b.lastDate||new Date(0)))*dir;
+    return 0;
+  });
+
+  if (!filtered.length) {
+    el.innerHTML = '<div class="rx-empty"><div class="eico">🔍</div><div style="font-weight:700;margin-bottom:.3rem">Nenhum resultado</div><div style="font-size:.72rem">Ajuste o filtro ou a busca.</div></div>';
+    return;
+  }
+
+  const groups = {};
+  filtered.forEach(d => {
+    if (!groups[d.discId]) groups[d.discId] = { disc:d.disc, color:d.discColor, items:[] };
+    groups[d.discId].items.push(d);
+  });
+
+  const labels = { crit:'Crítico', warn:'Atenção', good:'Bom', great:'Excelente' };
+  const colors = { crit:'#ef4444', warn:'#f97316', good:'#3b82f6', great:'#10b981' };
+  let h = '<table><thead><tr><th style="width:20px"></th><th>Assunto</th><th>Qtd</th><th>Acerto</th><th>Barra</th><th>Última</th><th>Status</th><th>Diagnóstico</th></tr></thead><tbody>';
+
+  Object.values(groups).forEach(g => {
+    const gT = g.items.reduce((s,d)=>s+d.total,0);
+    const gC = g.items.reduce((s,d)=>s+d.correct,0);
+    const gA = gT > 0 ? (gC/gT*100).toFixed(0) : '—';
+    h += '<tr class="rx-disc-row"><td colspan="8"><span class="rx-dot" style="background:'+g.color+'"></span>'+rxEsc(g.disc)+' <span style="color:var(--t3,#94a3b8);font-weight:400;font-size:.66rem;margin-left:.4rem">'+g.items.length+' assuntos · '+gT+'q · '+gA+'%</span></td></tr>';
+
+    g.items.forEach(d => {
+      const accStr = d.total > 0 ? d.acc.toFixed(0)+'%' : '—';
+      const dateStr = d.lastDate ? rxFmtDate(d.lastDate) : '—';
+      h += '<tr>'+
+        '<td><span class="rx-dot" style="background:'+g.color+';width:5px;height:5px"></span></td>'+
+        '<td style="font-weight:500">'+rxEsc(d.subject)+'</td>'+
+        '<td><span style="font-family:var(--mono,monospace);font-size:.72rem">'+d.total+'</span> <span style="color:var(--t3,#94a3b8);font-size:.62rem">('+d.correct+'✓)</span></td>'+
+        '<td style="font-family:var(--mono,monospace);font-weight:700;color:'+colors[d.status]+'">'+accStr+'</td>'+
+        '<td><div class="rx-bar"><div class="rx-bar-fill '+d.status+'" style="width:'+Math.min(d.acc,100)+'%"></div></div></td>'+
+        '<td style="font-size:.68rem;color:var(--t3,#94a3b8)">'+dateStr+'</td>'+
+        '<td><span class="rx-badge '+d.status+'"><span class="bdot"></span>'+labels[d.status]+'</span></td>'+
+        '<td style="font-size:.66rem;color:var(--t3,#94a3b8);max-width:180px">'+rxEsc(d.reason)+'</td>'+
+        '</tr>';
+    });
+  });
+
+  h += '</tbody></table>';
+  el.innerHTML = h;
+};
+
+window.rxSetFilter = function(btn) {
+  document.querySelectorAll('#rx-pills .rx-pill').forEach(p => p.classList.remove('on'));
+  btn.classList.add('on');
+  rxFilter = btn.getAttribute('data-f');
+  rxRenderTable();
+};
+
+function rxFmtDate(d) {
+  if (!d) return '—';
+  return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();
+}
+function rxEsc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// If page is already raiox, init now
+if (document.getElementById('page-raiox')?.classList.contains('active')) rxRecompute();
+
+})();
 </script>
 
 <!-- BARRA DE NAVEGAÇÃO INFERIOR (MOBILE) -->
