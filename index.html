@@ -2497,20 +2497,6 @@ if('serviceWorker' in navigator){
   }
 
   pipBtn.addEventListener('click', e => { e.stopPropagation(); openPip(); });
-})();
-// ═══════════════════════════════════════════════════════════════════
-// 🔬 RAIO-X DOS ASSUNTOS — MÓDULO AUTOCONTIDO
-// ═══════════════════════════════════════════════════════════════════
-// Cole este bloco INTEIRO antes do último </script> do index.html
-// Ele cria tudo sozinho: CSS, aba, menu lateral, menu mobile, lógica
-// ═══════════════════════════════════════════════════════════════════
-(function rxBootstrap(){
-'use strict';
-
-/* ─── 1. CSS ───────────────────────────────────────────── */
-const rxCSS = document.createElement('style');
-rxCSS.textContent = `
-/* RAIO-X TAB STYLES */
 #page-raiox .rx-kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:.55rem;margin-bottom:1.25rem}
 #page-raiox .rx-kpi{background:var(--s2,var(--surf,#111827));border:1px solid var(--border,#1e293b);border-radius:10px;padding:.8rem .9rem;position:relative;overflow:hidden}
 #page-raiox .rx-kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
