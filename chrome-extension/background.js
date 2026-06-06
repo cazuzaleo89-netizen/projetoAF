@@ -1381,7 +1381,12 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 // APÓS INSTALAR: injeta content.js em abas TEC abertas
 // ════════════════════════════════════════════════════════
 
+// Abre o painel lateral ao clicar no ícone da extensão (substitui o popup clássico)
+chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {});
+
 chrome.runtime.onInstalled.addListener(async () => {
+  chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {});
+
   const tabs = await chrome.tabs.query({});
   for (const tab of tabs) {
     if (tab.url && tab.url.includes('tecconcursos.com.br') && tab.id) {

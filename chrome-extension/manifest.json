@@ -10,7 +10,8 @@
     "tabs",
     "activeTab",
     "scripting",
-    "alarms"
+    "alarms",
+    "sidePanel"
   ],
   "host_permissions": [
     "*://www.tecconcursos.com.br/*",
@@ -39,9 +40,11 @@
   "background": {
     "service_worker": "background.js"
   },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
   "action": {
-    "default_popup": "popup.html",
-    "default_title": "Painel Fiscal",
+    "default_title": "Painel Fiscal — abrir painel lateral",
     "default_icon": {
       "16": "icons/icon16.png",
       "32": "icons/icon32.png",

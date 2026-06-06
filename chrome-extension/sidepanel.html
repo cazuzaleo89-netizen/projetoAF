@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Painel Fiscal</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+
+html,body{height:100%;}
+body{
+  width:100%;min-height:100vh;
+  background:#0e1521;color:#cdd6e8;
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+  font-size:13px;overflow-x:hidden;
+  display:flex;flex-direction:column;
+}
+
+/* ── HEADER ── */
+.hd{
+  display:flex;align-items:center;gap:10px;
+  padding:13px 18px;
+  background:linear-gradient(135deg,#0b1929,#0f2038);
+  border-bottom:1px solid rgba(64,168,255,.12);
+  flex-shrink:0;
+}
+.hd-logo{
+  width:32px;height:32px;
+  background:linear-gradient(135deg,#0ea5e9,#38bdf8);
+  border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:16px;font-weight:900;flex-shrink:0;color:#001824;
+  box-shadow:0 2px 12px rgba(14,165,233,.35);
+}
+.hd-info{flex:1;}
+.hd-title{font-size:15px;font-weight:800;color:#e4eeff;letter-spacing:.2px;}
+.hd-sub{font-size:10px;color:#2a4a6a;margin-top:1px;}
+.hd-streak{
+  display:flex;align-items:center;gap:4px;
+  background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.25);
+  border-radius:20px;padding:4px 10px;font-size:11px;font-weight:700;color:#f59e0b;
+}
+
+/* ── STATUS BAR ── */
+.status-bar{
+  display:flex;align-items:center;gap:8px;
+  padding:8px 18px;background:#0b1929;
+  border-bottom:1px solid rgba(255,255,255,.04);
+  flex-shrink:0;
+}
+.s-dot{width:7px;height:7px;border-radius:50%;background:#1a2a3a;flex-shrink:0;transition:background .3s,box-shadow .3s;}
+.s-dot.on{background:#22d3ee;box-shadow:0 0 6px #22d3ee;}
+.s-dot.warn{background:#f59e0b;box-shadow:0 0 6px #f59e0b;}
+.s-txt{flex:1;font-size:11.5px;color:#2a4a6a;}
+.s-txt strong{color:#4a7a9a;}
+.s-actions{display:flex;gap:6px;}
+.s-btn{
+  padding:5px 11px;border:1px solid rgba(255,255,255,.07);
+  background:rgba(255,255,255,.04);color:#4a7a9a;border-radius:7px;
+  font-size:11px;font-weight:700;cursor:pointer;
+  transition:all .15s;white-space:nowrap;
+}
+.s-btn:hover{background:rgba(255,255,255,.09);color:#cdd6e8;transform:translateY(-1px);}
+.s-btn:active{transform:translateY(0);}
+.s-btn.green{background:rgba(34,211,238,.08);border-color:rgba(34,211,238,.25);color:#22d3ee;}
+.s-btn.green:hover{background:rgba(34,211,238,.16);}
+
+/* ── ABAS ── */
+.tabs{
+  display:flex;border-bottom:1px solid rgba(255,255,255,.05);
+  background:#0b1929;flex-shrink:0;
+}
+.tab{
+  flex:1;padding:11px 4px;font-size:10.5px;font-weight:700;
+  color:#1e3a4a;cursor:pointer;text-align:center;letter-spacing:.4px;
+  border-bottom:2px solid transparent;transition:color .15s,border-color .15s;
+  position:relative;
+}
+.tab:hover{color:#4a7a9a;}
+.tab.active{color:#38bdf8;border-bottom-color:#38bdf8;}
+
+/* ── ÁREA DE CONTEÚDO ── */
+.content{flex:1;overflow-y:auto;display:flex;justify-content:center;}
+.content-inner{width:100%;max-width:560px;padding:16px 20px 24px;}
+
+/* ── PAINEIS ── */
+.panel{display:none;}
+.panel.active{display:block;animation:panelIn .25s cubic-bezier(.16,1,.3,1);}
+@keyframes panelIn{
+  from{opacity:0;transform:translateY(6px);}
+  to{opacity:1;transform:translateY(0);}
+}
+
+/* ── RÓTULO DE SEÇÃO ── */
+.section-lbl{
+  font-size:10px;font-weight:800;color:#1e3a4a;letter-spacing:1.4px;
+  margin:18px 0 9px;text-transform:uppercase;
+}
+.section-lbl:first-child{margin-top:0;}
+.section-lbl .dim{color:#16303f;font-weight:600;letter-spacing:.4px;text-transform:none;}
+
+/* ── CARTÃO BASE (com micro-interação de hover) ── */
+.card{
+  background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.06);
+  border-radius:12px;
+  transition:transform .18s cubic-bezier(.16,1,.3,1),box-shadow .18s,border-color .18s;
+}
+.card:hover{
+  transform:translateY(-1px);
+  border-color:rgba(56,189,248,.18);
+  box-shadow:0 6px 20px -8px rgba(0,0,0,.4);
+}
+
+/* ── SESSÃO ATUAL (timer hero) ── */
+.session-card{
+  background:linear-gradient(135deg,rgba(14,165,233,.08),rgba(8,15,24,.5));
+  border:1px solid rgba(14,165,233,.16);
+  border-radius:14px;padding:16px 18px;margin-bottom:8px;
+  transition:box-shadow .25s;
+}
+.session-card.running{box-shadow:0 0 0 1px rgba(34,211,238,.18),0 8px 28px -10px rgba(34,211,238,.25);}
+.session-row{display:flex;align-items:center;gap:12px;}
+.session-dot{width:9px;height:9px;border-radius:50%;background:#1a2a3a;flex-shrink:0;transition:all .3s;}
+.session-dot.on{background:#22d3ee;box-shadow:0 0 10px #22d3ee;animation:dotPulse 2s ease infinite;}
+@keyframes dotPulse{0%,100%{box-shadow:0 0 6px #22d3ee}50%{box-shadow:0 0 14px #22d3ee}}
+.session-time{
+  flex:1;font-family:'SF Mono','Courier New',monospace;
+  font-size:32px;font-weight:800;color:#e4eeff;letter-spacing:2px;line-height:1;
+  font-variant-numeric:tabular-nums;
+}
+.session-lbl-sm{font-size:10px;color:#2a4a6a;letter-spacing:1px;font-weight:700;margin-bottom:4px;}
+.icon-btn{
+  width:36px;height:36px;border-radius:9px;
+  border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);
+  color:#7dd3fc;font-size:14px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:all .15s;flex-shrink:0;
+}
+.icon-btn:hover{background:rgba(56,189,248,.14);border-color:rgba(56,189,248,.3);transform:translateY(-1px);}
+.icon-btn:active{transform:translateY(0) scale(.95);}
+
+/* ── SEÇÃO: Hoje ── */
+.goal-row{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:8px;
+}
+.goal-label{font-size:11.5px;color:#2a4a6a;font-weight:600;}
+.goal-val{font-size:12px;font-weight:800;color:#38bdf8;}
+.goal-bar{height:6px;background:rgba(255,255,255,.04);border-radius:3px;margin-bottom:4px;overflow:hidden;}
+.goal-bar-fill{height:100%;background:linear-gradient(90deg,#0ea5e9,#38bdf8,#7dd3fc);border-radius:3px;transition:width .6s cubic-bezier(.16,1,.3,1);}
+
+.stats-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;margin:14px 0 4px;}
+.sc{
+  padding:14px 8px;text-align:center;cursor:default;
+}
+.sc-val{font-size:24px;font-weight:800;line-height:1;margin-bottom:4px;transition:color .3s;}
+.sc-lbl{font-size:9px;color:#1e3a4a;letter-spacing:1px;font-weight:700;}
+.sc.green .sc-val{color:#34d399;}
+.sc.red .sc-val{color:#fb7185;}
+.sc.blue .sc-val{color:#38bdf8;}
+.sc.cyan .sc-val{color:#22d3ee;}
+
+/* Taxa circular + sparkline */
+.acc-row{display:flex;gap:9px;margin:14px 0 4px;}
+.acc-ring{
+  display:flex;align-items:center;gap:11px;flex:1.3;
+  background:rgba(52,211,153,.04);border-radius:12px;padding:13px 15px;
+  border:1px solid rgba(52,211,153,.1);
+}
+.ring-svg{flex-shrink:0;}
+.ring-info{flex:1;min-width:0;}
+.ring-pct{font-size:24px;font-weight:800;color:#34d399;line-height:1;}
+.ring-lbl{font-size:10px;color:#2a4a6a;margin-top:2px;}
+.ring-sub{font-size:10px;color:#1a3a4a;margin-top:6px;line-height:1.5;}
+
+.spark-card{
+  flex:1;background:rgba(56,189,248,.04);border-radius:12px;padding:13px 14px;
+  border:1px solid rgba(56,189,248,.1);
+  display:flex;flex-direction:column;justify-content:space-between;
+}
+.spark-lbl{font-size:9px;color:#2a4a6a;letter-spacing:1px;font-weight:700;margin-bottom:6px;}
+.spark-trend{font-size:11px;font-weight:800;margin-top:6px;}
+.spark-trend.up{color:#34d399;}
+.spark-trend.down{color:#fb7185;}
+.spark-trend.flat{color:#4a7a9a;}
+
+/* Matérias */
+.subj-title{font-size:10px;font-weight:700;color:#1e3a4a;letter-spacing:1px;margin-bottom:8px;}
+.subj-row{display:flex;align-items:center;gap:9px;margin-bottom:7px;padding:2px 0;}
+.subj-name{flex:1;font-size:11.5px;color:#4a7a9a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.subj-bar{flex:2;height:5px;background:rgba(255,255,255,.04);border-radius:3px;overflow:hidden;}
+.subj-bar-fill{height:100%;background:#38bdf8;border-radius:3px;transition:width .5s cubic-bezier(.16,1,.3,1);}
+.subj-pct{font-size:10.5px;color:#38bdf8;font-weight:700;width:32px;text-align:right;flex-shrink:0;}
+
+/* ── SEÇÃO: Revisão / HUBERMAN ── */
+.hub-section{
+  background:linear-gradient(135deg,rgba(14,165,233,.07),rgba(8,15,24,.6));
+  border:1px solid rgba(14,165,233,.15);
+  border-radius:13px;padding:13px;margin-bottom:13px;
+}
+.hub-title{
+  display:flex;align-items:center;gap:6px;
+  font-size:10px;font-weight:800;color:#38bdf8;letter-spacing:.8px;margin-bottom:10px;
+}
+.hub-card{
+  background:rgba(14,165,233,.05);border:1px solid rgba(14,165,233,.12);
+  border-radius:10px;padding:11px;margin-bottom:8px;
+  transition:transform .15s,border-color .15s;
+}
+.hub-card:hover{transform:translateY(-1px);border-color:rgba(56,189,248,.25);}
+.hub-card:last-child{margin-bottom:0;}
+.hub-card.due-now{
+  border-color:rgba(245,158,11,.4);background:rgba(245,158,11,.06);
+  animation:hubPulse 2s ease infinite;
+}
+@keyframes hubPulse{0%,100%{box-shadow:0 0 0 0 rgba(245,158,11,.0)}50%{box-shadow:0 0 0 4px rgba(245,158,11,.12)}}
+.hub-phases{display:flex;align-items:center;gap:5px;margin-bottom:8px;}
+.hub-dot{
+  width:8px;height:8px;border-radius:50%;background:#1a2a3a;
+  flex-shrink:0;transition:all .2s;
+}
+.hub-dot.done{background:#34d399;}
+.hub-dot.active{width:10px;height:10px;background:#f59e0b;box-shadow:0 0 6px #f59e0b;}
+.hub-dot.custom{width:10px;height:10px;background:#38bdf8;box-shadow:0 0 6px #38bdf8;}
+.hub-phase-lbl{font-size:9px;color:#2a4a6a;font-weight:700;margin-left:3px;}
+.hub-desc{font-size:11.5px;color:#bae6fd;font-weight:600;margin-bottom:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.hub-mat{font-size:9px;color:#0ea5e9;font-weight:700;letter-spacing:.3px;margin-bottom:5px;}
+.hub-countdown{
+  display:inline-flex;align-items:center;gap:4px;
+  font-size:10px;font-weight:700;letter-spacing:.3px;
+  padding:3px 9px;border-radius:20px;margin-bottom:9px;
+}
+.hub-countdown.waiting{background:rgba(14,165,233,.1);color:#7dd3fc;}
+.hub-countdown.ready{background:rgba(245,158,11,.15);color:#f59e0b;}
+.hub-btns{display:flex;gap:6px;}
+.hub-btn{
+  flex:1;padding:7px 4px;border-radius:8px;font-size:10.5px;font-weight:700;
+  cursor:pointer;border:1px solid transparent;transition:all .15s;text-align:center;
+}
+.hub-btn:hover{transform:translateY(-1px);}
+.hub-btn:active{transform:translateY(0);}
+.hub-btn.open{background:#0284c7;color:#fff;border-color:#0ea5e9;}
+.hub-btn.open:hover{background:#0369a1;}
+.hub-btn.ok{background:rgba(52,211,153,.12);color:#34d399;border-color:#34d39944;}
+.hub-btn.ok:hover{background:rgba(52,211,153,.22);}
+.hub-btn.fail{background:rgba(251,113,133,.1);color:#fb7185;border-color:#fb718533;}
+.hub-btn.fail:hover{background:rgba(251,113,133,.2);}
+.hub-btn.dis{background:rgba(255,255,255,.04);color:#1e3a4a;border-color:rgba(255,255,255,.07);}
+.hub-btn.dis:hover{color:#2a4a6a;transform:none;}
+.hub-custom{
+  display:flex;gap:6px;align-items:center;margin-top:9px;padding-top:9px;
+  border-top:1px solid rgba(255,255,255,.06);
+}
+.hub-custom-lbl{font-size:10px;color:#2a4a6a;white-space:nowrap;}
+.hub-custom-inp{
+  flex:1;background:#0b1929;border:1px solid rgba(255,255,255,.09);
+  border-radius:7px;padding:5px 9px;color:#cdd6e8;font-size:12px;outline:none;
+  width:60px;transition:border-color .15s;
+}
+.hub-custom-inp:focus{border-color:#38bdf8;}
+.hub-custom-btn{
+  padding:5px 11px;background:#0284c7;border:none;border-radius:7px;
+  color:#fff;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;
+  transition:background .15s,transform .15s;
+}
+.hub-custom-btn:hover{background:#0369a1;transform:translateY(-1px);}
+
+/* ── REVISÃO ── */
+.rev-header{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:12px;
+}
+.rev-count{font-size:11.5px;color:#2a4a6a;}
+.rev-count strong{color:#fb7185;}
+.rev-filter{
+  padding:5px 11px;border:1px solid rgba(255,255,255,.07);
+  background:#0b1929;color:#4a7a9a;border-radius:7px;
+  font-size:10px;cursor:pointer;transition:all .15s;
+}
+.rev-filter:hover{color:#cdd6e8;border-color:rgba(56,189,248,.25);}
+
+.rev-empty{
+  text-align:center;padding:44px 24px;color:#1e3a4a;
+}
+.rev-empty .icon{font-size:38px;margin-bottom:10px;}
+.rev-empty p{font-size:12.5px;line-height:1.7;}
+
+.qcard{
+  background:#0b1929;border:1px solid rgba(255,255,255,.07);
+  border-radius:11px;padding:12px 14px;margin-bottom:9px;
+  transition:transform .15s,border-color .15s,box-shadow .15s;
+}
+.qcard:hover{transform:translateY(-1px);border-color:rgba(56,189,248,.18);box-shadow:0 6px 18px -10px rgba(0,0,0,.5);}
+.qcard.due{border-color:rgba(251,113,133,.25);background:rgba(251,113,133,.04);}
+.qcard-top{display:flex;align-items:flex-start;gap:9px;margin-bottom:8px;}
+.qcard-icon{
+  width:30px;height:30px;border-radius:8px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;font-size:13px;
+}
+.qcard-icon.wrong{background:rgba(251,113,133,.15);color:#fb7185;}
+.qcard-meta{flex:1;min-width:0;}
+.qcard-mat{font-size:10px;color:#38bdf8;font-weight:700;letter-spacing:.3px;margin-bottom:2px;}
+.qcard-desc{font-size:12px;color:#bae6fd;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.qcard-badges{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:9px;}
+.badge{
+  display:inline-flex;align-items:center;gap:3px;
+  font-size:9px;font-weight:700;letter-spacing:.4px;
+  padding:3px 8px;border-radius:20px;
+}
+.badge.err{background:rgba(251,113,133,.15);color:#fda4af;}
+.badge.due-now{background:rgba(245,158,11,.15);color:#fcd34d;}
+.badge.future{background:rgba(14,165,233,.1);color:#7dd3fc;}
+.badge.dif{background:rgba(14,165,233,.08);color:#38bdf8;}
+.qcard-btns{display:flex;gap:7px;}
+.qbtn{
+  flex:1;padding:8px 4px;border:1px solid rgba(255,255,255,.09);
+  border-radius:8px;font-size:11.5px;font-weight:700;cursor:pointer;
+  transition:all .15s;text-align:center;
+}
+.qbtn:hover{transform:translateY(-1px);}
+.qbtn:active{transform:translateY(0);}
+.qbtn.review{background:#0b1929;color:#4a7a9a;}
+.qbtn.review:hover{background:#152030;color:#cdd6e8;}
+.qbtn.acertei{background:rgba(52,211,153,.12);border-color:#34d39944;color:#34d399;}
+.qbtn.acertei:hover{background:rgba(52,211,153,.22);}
+.qbtn.errei{background:rgba(251,113,133,.12);border-color:#fb718544;color:#fb7185;}
+.qbtn.errei:hover{background:rgba(251,113,133,.22);}
+
+/* ── SEÇÃO: Análise ── */
+.cov-bar-wrap{display:flex;align-items:center;gap:8px;margin-bottom:7px;}
+.cov-bar-ref{font-size:10.5px;color:#4a7a9a;width:84px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cov-bar-bg{flex:1;height:8px;background:#0a1520;border-radius:4px;overflow:hidden;}
+.cov-bar-fill{height:100%;border-radius:4px;transition:width .5s cubic-bezier(.16,1,.3,1);}
+.cov-bar-pct{font-size:10.5px;font-weight:700;width:34px;text-align:right;flex-shrink:0;}
+.cov-mat-hdr{font-size:10px;color:#38bdf8;font-weight:800;letter-spacing:.7px;margin:12px 0 6px;}
+.conf-item{background:#0b1929;border:1px solid rgba(251,113,133,.2);border-radius:9px;padding:10px 12px;margin-bottom:7px;transition:transform .15s;}
+.conf-item:hover{transform:translateY(-1px);}
+.conf-pair{font-size:11.5px;color:#fda4af;font-weight:700;margin-bottom:2px;}
+.conf-meta{font-size:10px;color:#2a4a6a;}
+.cluster-hdr{font-size:10px;font-weight:800;color:#7dd3fc;letter-spacing:.6px;margin:12px 0 7px;padding:6px 10px;background:rgba(14,165,233,.06);border-radius:7px;border-left:3px solid #38bdf8;}
+
+/* ── SEÇÃO: Histórico ── */
+.hist-empty{text-align:center;padding:44px;color:#1e3a4a;}
+.scard{
+  background:#0b1929;border:1px solid rgba(255,255,255,.07);
+  border-radius:11px;padding:13px 15px;margin-bottom:9px;
+  transition:transform .15s,border-color .15s;
+}
+.scard:hover{transform:translateY(-1px);border-color:rgba(56,189,248,.16);}
+.scard-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.scard-date{font-size:10px;color:#2a4a6a;font-weight:700;}
+.scard-acc{font-size:11.5px;font-weight:800;}
+.scard-name{font-size:12.5px;font-weight:700;color:#bae6fd;margin-bottom:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.scard-stats{display:flex;gap:12px;}
+.sstat{font-size:10.5px;color:#2a4a6a;}
+.sstat span{font-weight:700;}
+.sstat.g span{color:#34d399;}
+.sstat.r span{color:#fb7185;}
+.sstat.p span{color:#38bdf8;}
+
+/* ── SEÇÃO: Config ── */
+.cfg-group{margin-bottom:18px;}
+.cfg-label{font-size:10px;color:#2a4a6a;letter-spacing:.8px;font-weight:700;margin-bottom:8px;display:block;}
+.cfg-input{
+  width:100%;padding:10px 12px;background:#0b1929;
+  border:1px solid rgba(255,255,255,.09);border-radius:9px;
+  color:#cdd6e8;font-size:13px;outline:none;
+  transition:border-color .15s,box-shadow .15s;
+}
+.cfg-input:focus{border-color:#38bdf8;box-shadow:0 0 0 3px rgba(56,189,248,.1);}
+.cfg-toggle{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:11px 14px;background:#0b1929;border:1px solid rgba(255,255,255,.07);
+  border-radius:10px;margin-bottom:8px;cursor:pointer;transition:border-color .15s;
+}
+.cfg-toggle:hover{border-color:rgba(56,189,248,.2);}
+.cfg-toggle-label{font-size:12.5px;color:#4a7a9a;}
+.toggle-sw{
+  width:38px;height:21px;background:#1a2a3a;border-radius:11px;
+  position:relative;transition:background .25s;cursor:pointer;flex-shrink:0;
+}
+.toggle-sw.on{background:#0ea5e9;}
+.toggle-sw::after{
+  content:'';position:absolute;top:3px;left:3px;
+  width:15px;height:15px;border-radius:50%;background:#fff;
+  transition:transform .25s cubic-bezier(.34,1.56,.64,1);
+}
+.toggle-sw.on::after{transform:translateX(17px);}
+
+.cfg-btn{
+  width:100%;padding:11px;border:none;border-radius:10px;
+  font-size:13px;font-weight:700;cursor:pointer;transition:all .15s;margin-bottom:8px;
+}
+.cfg-btn:hover{transform:translateY(-1px);}
+.cfg-btn:active{transform:translateY(0);}
+.cfg-btn.primary{background:linear-gradient(135deg,#0284c7,#0ea5e9);color:#fff;box-shadow:0 4px 16px -6px rgba(14,165,233,.4);}
+.cfg-btn.primary:hover{opacity:.92;}
+.cfg-btn.danger{background:rgba(251,113,133,.12);color:#fb7185;border:1px solid rgba(251,113,133,.25);}
+.cfg-btn.danger:hover{background:rgba(251,113,133,.2);}
+.cfg-btn.export{background:#0b1929;color:#4a7a9a;border:1px solid rgba(255,255,255,.09);}
+.cfg-btn.export:hover{color:#cdd6e8;border-color:rgba(56,189,248,.2);}
+
+/* ── FOOTER ── */
+.footer{
+  padding:9px 18px;border-top:1px solid rgba(255,255,255,.04);
+  font-size:9px;color:#0d2030;text-align:center;background:#0b1929;
+  flex-shrink:0;
+}
+
+/* ── GRÁFICO SEMANAL ── */
+#week-chart{margin-top:6px;}
+.wc-wrap{display:flex;flex-direction:column;gap:4px;}
+.wc-title{font-size:10px;font-weight:700;color:#1e3a4a;letter-spacing:1px;margin-bottom:8px;}
+
+/* ── POMODORO ── */
+.pom-section{
+  background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.05);
+  border-radius:11px;padding:11px 14px;margin-top:12px;
+}
+.pom-header{
+  display:flex;align-items:center;justify-content:space-between;
+  cursor:pointer;
+}
+.pom-header-lbl{font-size:10px;font-weight:800;color:#38bdf8;letter-spacing:.8px;}
+.pom-header-arrow{font-size:11px;color:#1e3a4a;transition:transform .25s;}
+.pom-header-arrow.open{transform:rotate(180deg);}
+.pom-body{display:none;}
+.pom-body.open{display:block;animation:panelIn .2s ease;}
+#pom-display{
+  text-align:center;padding:10px 0;margin-bottom:9px;
+}
+.pom-state{font-size:10px;font-weight:700;color:#38bdf8;letter-spacing:1.2px;margin-bottom:4px;}
+.pom-time{font-family:'SF Mono','Courier New',monospace;font-size:30px;font-weight:800;color:#e4eeff;letter-spacing:1px;line-height:1;font-variant-numeric:tabular-nums;}
+.pom-btns{display:flex;gap:7px;margin-bottom:9px;}
+.pom-btn{
+  flex:1;padding:8px 4px;border-radius:9px;font-size:11.5px;font-weight:700;
+  cursor:pointer;border:1px solid transparent;transition:all .15s;text-align:center;
+}
+.pom-btn:hover{transform:translateY(-1px);}
+.pom-btn:active{transform:translateY(0);}
+.pom-btn.start{background:#0284c7;color:#fff;border-color:#0ea5e9;}
+.pom-btn.start:hover{background:#0369a1;}
+.pom-btn.stop{background:rgba(251,113,133,.12);color:#fb7185;border-color:#fb718533;}
+.pom-btn.stop:hover{background:rgba(251,113,133,.2);}
+.pom-btn.skip{background:#0b1929;color:#4a7a9a;border-color:rgba(255,255,255,.09);}
+.pom-btn.skip:hover{background:#152030;color:#cdd6e8;}
+.pom-count-row{font-size:10px;color:#1e3a4a;text-align:center;}
+.pom-count-row span{font-weight:700;color:#7dd3fc;}
+
+/* ── PRIORIDADE DE MATÉRIAS ── */
+#priority-list{margin-top:14px;}
+.pri-title{font-size:10px;font-weight:700;color:#1e3a4a;letter-spacing:1px;margin-bottom:8px;}
+.pri-row{
+  display:flex;align-items:center;gap:9px;
+  background:#0b1929;border-radius:9px;padding:9px 12px;
+  margin-bottom:6px;border:1px solid rgba(255,255,255,.05);
+  transition:transform .15s,border-color .15s;
+}
+.pri-row:hover{transform:translateY(-1px);border-color:rgba(56,189,248,.14);}
+.pri-badge{
+  font-size:9px;font-weight:700;padding:3px 8px;border-radius:20px;
+  flex-shrink:0;white-space:nowrap;
+}
+.pri-badge.atencao{background:rgba(251,113,133,.15);color:#fda4af;}
+.pri-badge.dominando{background:rgba(52,211,153,.1);color:#6ee7b7;}
+.pri-name{flex:1;font-size:11.5px;color:#4a7a9a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pri-pct{font-size:10.5px;font-weight:700;width:32px;text-align:right;flex-shrink:0;}
+
+/* ── APROVAÇÃO BAR ── */
+#aprovacao-bar{
+  background:#0b1929;border:1px solid rgba(255,255,255,.06);
+  border-radius:12px;padding:13px 16px;margin:14px 0 4px;
+  transition:transform .18s,border-color .18s;
+}
+#aprovacao-bar:hover{transform:translateY(-1px);}
+.aprov-label{font-size:10.5px;color:#2a4a6a;margin-bottom:7px;display:flex;justify-content:space-between;}
+.aprov-label span{font-weight:700;color:#4a7a9a;}
+.aprov-track{height:9px;background:rgba(255,255,255,.04);border-radius:5px;overflow:visible;position:relative;margin-bottom:8px;}
+.aprov-fill{height:100%;border-radius:5px;transition:width .6s cubic-bezier(.16,1,.3,1);}
+.aprov-target-line{
+  position:absolute;top:-4px;height:17px;width:2px;
+  background:#f59e0b;border-radius:1px;
+}
+.aprov-target-lbl{position:absolute;top:-19px;font-size:8px;color:#f59e0b;font-weight:700;transform:translateX(-50%);}
+.aprov-status{font-size:11.5px;font-weight:700;text-align:center;}
+
+/* ── SKELETON LOADERS ── */
+.skel{
+  background:linear-gradient(90deg,rgba(255,255,255,.03) 25%,rgba(255,255,255,.07) 50%,rgba(255,255,255,.03) 75%);
+  background-size:200% 100%;
+  animation:skelShine 1.4s ease infinite;
+  border-radius:8px;
+}
+@keyframes skelShine{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+/* ── UTILITÁRIOS ── */
+.hidden{display:none!important;}
+.loading{opacity:.5;pointer-events:none;}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="hd">
+  <div class="hd-logo">≡</div>
+  <div class="hd-info">
+    <div class="hd-title">Painel Fiscal</div>
+    <div class="hd-sub">TEC Automator Pro v2.0</div>
+  </div>
+  <div class="hd-streak" id="streak-badge">🔥 0d</div>
+</div>
+
+<!-- STATUS BAR -->
+<div class="status-bar">
+  <div class="s-dot" id="s-dot"></div>
+  <div class="s-txt" id="s-txt">Verificando...</div>
+  <div class="s-actions">
+    <button class="s-btn" id="btn-tec">📝 TEC</button>
+    <button class="s-btn green" id="btn-panel">🖥 Painel</button>
+  </div>
+</div>
+
+<!-- ABAS -->
+<div class="tabs">
+  <div class="tab active" data-tab="hoje">HOJE</div>
+  <div class="tab" data-tab="revisao">REVISÃO</div>
+  <div class="tab" data-tab="analise">ANÁLISE</div>
+  <div class="tab" data-tab="historico">HISTÓRICO</div>
+  <div class="tab" data-tab="config">CONFIG</div>
+</div>
+
+<div class="content"><div class="content-inner">
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- PAINEL: HOJE                                   -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="panel active" id="panel-hoje">
+
+  <!-- Sessão atual: cronômetro + pomodoro agrupados -->
+  <div class="section-lbl">Sessão atual</div>
+  <div class="session-card" id="session-card">
+    <div class="session-row">
+      <div class="session-dot" id="pop-timer-dot"></div>
+      <span class="session-time" id="pop-timer-val">00:00</span>
+      <button class="icon-btn" id="pop-timer-tog" title="Iniciar/Pausar">▶</button>
+      <button class="icon-btn" id="pop-timer-reset" title="Zerar">⏹</button>
+    </div>
+
+    <!-- Modo Pomodoro (embutido na sessão) -->
+    <div class="pom-section">
+      <div class="pom-header" id="pom-toggle-section">
+        <span class="pom-header-lbl">🍅 MODO POMODORO</span>
+        <span class="pom-header-arrow" id="pom-arrow">▼</span>
+      </div>
+      <div class="pom-body" id="pom-body">
+        <div id="pom-display">
+          <div class="pom-state" id="pom-state-lbl">TRABALHO</div>
+          <div class="pom-time" id="pom-time-val">25:00</div>
+        </div>
+        <div class="pom-btns">
+          <button class="pom-btn start" id="pom-tog">▶ Iniciar</button>
+          <button class="pom-btn skip" id="pom-skip">⏭ Pular</button>
+          <button class="pom-btn stop" id="pom-reset">⏹ Parar</button>
+        </div>
+        <div class="pom-count-row"><span id="pom-count">0</span>/4 pomodoros</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Progresso de hoje -->
+  <div class="section-lbl">Progresso de hoje <span class="dim" id="goal-progress-dim"></span></div>
+  <div class="goal-row">
+    <span class="goal-label">Meta diária</span>
+    <span class="goal-val" id="goal-progress">0 / 30</span>
+  </div>
+  <div class="goal-bar"><div class="goal-bar-fill" id="goal-fill" style="width:0%"></div></div>
+
+  <!-- Grid de stats -->
+  <div class="stats-grid">
+    <div class="sc card blue">
+      <div class="sc-val" id="d-resolved">0</div>
+      <div class="sc-lbl">FEITAS</div>
+    </div>
+    <div class="sc card green">
+      <div class="sc-val" id="d-acertos">0</div>
+      <div class="sc-lbl">ACERTOS</div>
+    </div>
+    <div class="sc card red">
+      <div class="sc-val" id="d-erros">0</div>
+      <div class="sc-lbl">ERROS</div>
+    </div>
+  </div>
+
+  <!-- Desempenho: taxa + tendência -->
+  <div class="section-lbl">Desempenho</div>
+  <div class="acc-row">
+    <div class="acc-ring card">
+      <svg class="ring-svg" width="56" height="56" viewBox="0 0 56 56">
+        <circle cx="28" cy="28" r="22" fill="none" stroke="rgba(52,211,153,.08)" stroke-width="5"/>
+        <circle id="ring-arc" cx="28" cy="28" r="22" fill="none" stroke="#34d399" stroke-width="5"
+          stroke-linecap="round" stroke-dasharray="138.2" stroke-dashoffset="138.2"
+          transform="rotate(-90 28 28)" style="transition:stroke-dashoffset .6s cubic-bezier(.16,1,.3,1)"/>
+      </svg>
+      <div class="ring-info">
+        <div class="ring-pct" id="ring-pct">—</div>
+        <div class="ring-lbl">Taxa de acerto hoje</div>
+        <div class="ring-sub" id="ring-sub">Resolva questões no TEC para<br>começar a rastrear.</div>
+      </div>
+    </div>
+    <div class="spark-card card">
+      <div class="spark-lbl">TENDÊNCIA · 7 DIAS</div>
+      <div id="acc-sparkline"></div>
+      <div class="spark-trend flat" id="spark-trend">—</div>
+    </div>
+  </div>
+
+  <!-- Predição de aprovação -->
+  <div id="aprovacao-bar"></div>
+
+  <!-- Matérias -->
+  <div class="section-lbl" id="subj-section-title">Matérias — all time</div>
+  <div id="subj-list">
+    <div style="font-size:11px;color:#1a3a5a;text-align:center;padding:14px 0;">Nenhuma matéria registrada ainda.</div>
+  </div>
+
+  <!-- Ranking por prioridade -->
+  <div id="priority-list"></div>
+
+  <!-- Gráfico semanal -->
+  <div id="week-chart"></div>
+
+</div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- PAINEL: REVISÃO                               -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="panel" id="panel-revisao">
+  <button id="btn-simulado" class="cfg-btn primary" style="margin-bottom:12px;">🎯 Simulado com Erros (10 questões)</button>
+  <div id="rev-prealert" style="display:none;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.3);border-radius:9px;padding:10px 12px;margin-bottom:10px;font-size:11px;color:#fbbf24;"></div>
+  <div class="rev-header">
+    <div class="rev-count"><strong id="due-count">0</strong> questões para revisar</div>
+  </div>
+  <div id="rev-list">
+    <div class="rev-empty">
+      <div class="icon">🎉</div>
+      <p>Nenhuma revisão pendente!<br>Continue resolvendo questões.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- PAINEL: ANÁLISE                               -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="panel" id="panel-analise">
+  <!-- Pré-alerta de sessão -->
+  <div id="pre-alert-pop" style="display:none;background:rgba(251,113,133,.12);border:1px solid rgba(251,113,133,.3);border-radius:10px;padding:11px 13px;margin-bottom:11px;">
+    <div style="font-size:10px;font-weight:700;color:#fb7185;margin-bottom:4px;">⚠️ ALERTA PRÉ-SESSÃO</div>
+    <div id="pre-alert-pop-text" style="font-size:11px;color:#fda4af;line-height:1.5;"></div>
+  </div>
+
+  <!-- Padrões de confusão -->
+  <div class="section-lbl">🔀 Padrões de confusão</div>
+  <div id="confusion-list">
+    <div style="font-size:11px;color:#1e3a4a;padding:8px 0;">Ainda sem dados suficientes.<br>Resolva mais questões para detectar padrões.</div>
+  </div>
+
+  <!-- Score de cobertura por artigo -->
+  <div class="section-lbl">📊 Cobertura por artigo</div>
+  <div id="article-coverage-list">
+    <div style="font-size:11px;color:#1e3a4a;padding:8px 0;">Nenhuma questão com referência legal registrada ainda.</div>
+  </div>
+
+  <!-- Conceitos semânticos (Claude API) -->
+  <div class="section-lbl">🤖 Análise semântica (Claude)</div>
+  <div id="semantic-status" style="font-size:11px;color:#1e3a4a;padding:8px 0;">Configure a chave da API Claude em CONFIG para ativar análise semântica.</div>
+</div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- PAINEL: HISTÓRICO                             -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="panel" id="panel-historico">
+  <div id="hist-list">
+    <div class="hist-empty">
+      <div style="font-size:30px;margin-bottom:9px;">📋</div>
+      <div style="font-size:12.5px;color:#1e3a4a;">Nenhuma sessão registrada ainda.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- PAINEL: CONFIG                                -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="panel" id="panel-config">
+  <div class="cfg-group">
+    <label class="cfg-label">META DIÁRIA (questões)</label>
+    <input class="cfg-input" type="number" id="cfg-goal" min="5" max="500" value="30">
+  </div>
+
+  <div class="cfg-group">
+    <label class="cfg-label">CHAVE API CLAUDE (opcional)</label>
+    <input class="cfg-input" type="password" id="cfg-claude-key" placeholder="sk-ant-..." autocomplete="off">
+    <div style="font-size:10px;color:#1e3a4a;margin-top:5px;">Habilita análise semântica de questões na aba ANÁLISE.</div>
+  </div>
+
+  <div class="cfg-group">
+    <label class="cfg-label">PREFERÊNCIAS</label>
+    <div class="cfg-toggle" id="cfg-notifications">
+      <span class="cfg-toggle-label">🔔 Notificações desktop</span>
+      <div class="toggle-sw" id="tog-notifications"></div>
+    </div>
+    <div class="cfg-toggle" id="cfg-autoReveal">
+      <span class="cfg-toggle-label">🔍 Auto-abrir desempenho</span>
+      <div class="toggle-sw on" id="tog-autoReveal"></div>
+    </div>
+  </div>
+
+  <div class="cfg-group">
+    <label class="cfg-label">REPOSITÓRIO DE QUESTÕES</label>
+    <div id="qbank-stats" style="display:flex;gap:8px;margin-bottom:9px;flex-wrap:wrap;">
+      <span style="font-size:10px;color:#2a4a6a;">Carregando...</span>
+    </div>
+    <button class="cfg-btn primary" id="cfg-export-qbank">📦 Exportar Repositório (JSON)</button>
+    <button class="cfg-btn export" id="cfg-copy-qbank">📋 Copiar para importar no Painel</button>
+  </div>
+
+  <div class="cfg-group">
+    <label class="cfg-label">AÇÕES</label>
+    <button class="cfg-btn primary" id="cfg-save">💾 Salvar configurações</button>
+    <button class="cfg-btn export" id="cfg-export-json">⬇ Exportar questões erradas (JSON)</button>
+    <button class="cfg-btn export" id="cfg-export-csv">⬇ Exportar como CSV</button>
+    <button class="cfg-btn danger" id="cfg-reset">🗑 Resetar estatísticas</button>
+  </div>
+
+  <div class="card" style="padding:12px 14px;">
+    <div style="font-size:10px;color:#2a4a6a;font-weight:700;letter-spacing:.8px;margin-bottom:6px;">💡 MELHORIAS PLANEJADAS</div>
+    <div style="font-size:10px;color:#1e3a4a;line-height:1.8;">
+      • Gráfico de desempenho semanal<br>
+      • Modo pomodoro integrado<br>
+      • Ranking de matérias por prioridade<br>
+      • Integração com Google Sheets<br>
+      • Predição de aprovação por banca<br>
+      • Simulado automático com erros
+    </div>
+  </div>
+</div>
+
+</div></div>
+
+<div class="footer">Painel Fiscal — TEC Automator Pro v2.0 · Painel Lateral</div>
+
+<script src="sidepanel.js"></script>
+</body>
+</html>
