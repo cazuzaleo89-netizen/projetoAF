@@ -85,6 +85,13 @@ input,select,textarea{font-family:inherit;outline:none}
 /* THEME TOGGLE */
 .theme-btn{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:var(--s3);border:1px solid var(--border);color:var(--t2);font-size:15px;cursor:pointer;transition:.15s}
 .theme-btn:hover{background:var(--s4);color:var(--t1)}
+.sync-pill{display:flex;align-items:center;gap:7px;padding:6px 10px;border:1px solid var(--border);border-radius:999px;background:var(--s3);color:var(--t3);font-size:11px;font-weight:700;cursor:pointer}
+.sync-pill::before{content:"";width:7px;height:7px;border-radius:50%;background:#64748b}
+.sync-pill.ok{color:var(--green);border-color:rgba(29,185,106,.35)}
+.sync-pill.ok::before{background:var(--green);box-shadow:0 0 8px rgba(29,185,106,.7)}
+.sync-pill.busy::before{background:var(--amber)}
+.sync-pill.err{color:var(--red);border-color:rgba(232,69,69,.35)}
+.sync-pill.err::before{background:var(--red)}
 /* CONTENT */
 .content{flex:1;overflow-y:auto;padding:22px 24px}
 .tab{display:none;animation:up .22s var(--ease)}
@@ -883,6 +890,7 @@ option{background:var(--s3)}
         <span id="rtime" style="font-family:var(--fh);font-weight:700">00:00</span>
       </div>
       <div class="pill cd" id="cdpill">📅 <span id="cdv">—</span></div>
+      <button class="sync-pill" id="pf-sync-pill" type="button" onclick="pfRequestSync()" title="Sincronizar com a extensao">Extensao...</button>
       <button class="theme-btn" onclick="toggleTheme()" id="thbtn" title="Alternar tema">🌙</button>
     </div>
   </header>
@@ -1240,7 +1248,10 @@ let pendingSess=null;
 let planDone=new Set();
 
 function lSt(){try{return JSON.parse(localStorage.getItem('pf4')||'{}')}catch{return{}}}
-function sSt(){localStorage.setItem('pf4',JSON.stringify(ST))}
+function sSt(){
+  localStorage.setItem('pf4',JSON.stringify(ST));
+  if(typeof pfPublishPanelState==='function') pfPublishPanelState();
+}
 function cfg(){return ST.cfg||{dh:4,dq:20}}
 function discs(){return ST.discs||[]}
 function sess(){return ST.sess||[]}
@@ -1255,6 +1266,145 @@ function p2(n){return String(n).padStart(2,'0')}
 function fS(s){return p2(Math.floor(s/3600))+':'+p2(Math.floor(s%3600/60))+':'+p2(s%60)}
 function fH(s){const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h>0?h+'h'+(m>0?m+'m':''):m+'m'}
 function nfy(msg,t='ok'){const n=document.getElementById('noti');n.className='notif '+t;n.textContent=msg;n.classList.add('show');setTimeout(()=>n.classList.remove('show'),3200)}
+
+// EXTENSION SYNC
+const PF_SYNC_ORIGIN='https://cazuzaleo89-netizen.github.io';
+let pfPublishTimer=null;
+function pfNorm(v){return String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase()}
+function pfSyncMeta(){
+  if(!ST.extSync) ST.extSync={events:{},questions:{},lastSync:0};
+  if(!ST.extSync.events) ST.extSync.events={};
+  if(!ST.extSync.questions) ST.extSync.questions={};
+  return ST.extSync;
+}
+function pfSetSyncStatus(kind,text){
+  const el=document.getElementById('pf-sync-pill');if(!el)return;
+  el.className='sync-pill '+(kind||'');
+  el.textContent=text||'Extensao';
+}
+function pfEnsureDisc(name){
+  const clean=String(name||'Sem disciplina').trim()||'Sem disciplina';
+  let disc=discs().find(d=>pfNorm(d.name)===pfNorm(clean));
+  if(disc)return disc.id;
+  if(!ST.discs)ST.discs=[];
+  disc={id:uid(),name:clean,color:COLS[ST.discs.length%COLS.length],meta:0,src:'extension'};
+  ST.discs.push(disc);
+  return disc.id;
+}
+function pfAddQuestion(result,payload,eventId,timestamp){
+  const meta=pfSyncMeta();
+  if(!eventId||meta.events[eventId])return false;
+  const discId=pfEnsureDisc(payload.materia);
+  const ts=timestamp||Date.now();
+  ST.qs=ST.qs||[];
+  ST.qs.unshift({
+    id:'ext:'+eventId,discId,tot:1,cer:result==='correct'?1:0,
+    ass:payload.assunto||'',date:new Date(ts).toISOString().slice(0,10),
+    fonte:'Extensao TEC',ts,src:'extension',qid:String(payload.qid||'')
+  });
+  if(result==='wrong'&&payload.qid){
+    ST.erros=ST.erros||[];
+    let er=ST.erros.find(e=>String(e.code)===String(payload.qid));
+    if(er){
+      er.count=(er.count||1)+1;er.done=false;er.assunto=payload.assunto||er.assunto;er.discId=discId;
+    }else{
+      ST.erros.unshift({
+        id:'ext-error:'+payload.qid,code:String(payload.qid),discId,
+        assunto:payload.assunto||'',banca:'',date:new Date(ts).toISOString().slice(0,10),
+        ts,count:1,done:false,src:'extension'
+      });
+    }
+  }
+  meta.events[eventId]=ts;
+  meta.lastSync=Date.now();
+  return true;
+}
+function pfApplySnapshot(snapshot){
+  if(!snapshot||!snapshot.ok)return;
+  const meta=pfSyncMeta();
+  let changed=false;
+  Object.values(snapshot.questionBank||{}).forEach(q=>{
+    const key=String(q.qid||'');
+    if(!key||key.startsWith('panel:'))return;
+    const prev=meta.questions[key]||{a:0,e:0};
+    const ac=Math.max(0,Number(q.acertos)||0);
+    const er=Math.max(0,Number(q.erros)||0);
+    const ts=Date.parse(q.lastSeen||'')||snapshot.generatedAt;
+    for(let i=prev.a;i<ac;i++)changed=pfAddQuestion('correct',q,'snapshot:'+key+':a:'+i,ts)||changed;
+    for(let i=prev.e;i<er;i++)changed=pfAddQuestion('wrong',q,'snapshot:'+key+':e:'+i,ts)||changed;
+    meta.questions[key]={a:ac,e:er};
+  });
+  meta.lastSync=Date.now();
+  if(snapshot.ranking)localStorage.setItem('_pf_tec_ranking',JSON.stringify(snapshot.ranking));
+  if(changed){
+    localStorage.setItem('pf4',JSON.stringify(ST));
+    pfRenderAfterSync();
+  }
+  pfSetSyncStatus('ok','Extensao conectada');
+  pfPublishPanelState();
+}
+function pfApplyEvent(event){
+  if(!event||!event.payload)return;
+  if(pfAddQuestion(event.result,event.payload,event.id,event.timestamp)){
+    const key=String(event.payload.qid||'');
+    if(key){
+      const meta=pfSyncMeta();
+      const counts=meta.questions[key]||{a:0,e:0};
+      if(event.result==='correct')counts.a++;
+      if(event.result==='wrong')counts.e++;
+      meta.questions[key]=counts;
+    }
+    localStorage.setItem('pf4',JSON.stringify(ST));
+    pfRenderAfterSync();
+    nfy('Questao do TEC sincronizada','ok');
+  }
+  pfSetSyncStatus('ok','Extensao conectada');
+}
+function pfRenderAfterSync(){
+  popSel();renderD();
+  if(curTab==='q')renderQ();
+  if(curTab==='r')renderRev();
+  if(curTab==='c')renderCfg();
+}
+function pfPanelPayload(){
+  return {
+    questions:qs().filter(q=>q.src!=='extension').map(q=>({
+      id:q.id,total:q.tot,correct:q.cer,
+      subject:discs().find(d=>d.id===q.discId)?.name||'',
+      topic:q.ass||'',date:q.date,source:q.src||'panel'
+    })),
+    sessions:sess().filter(s=>s.src!=='extension').map(s=>({
+      id:s.id,seconds:s.sec,
+      subject:discs().find(d=>d.id===s.discId)?.name||'',
+      topic:s.ass||'',date:s.date,timestamp:s.ts,source:s.src||'panel'
+    }))
+  };
+}
+function pfPublishPanelState(){
+  clearTimeout(pfPublishTimer);
+  pfPublishTimer=setTimeout(()=>{
+    window.postMessage({source:'PF_PANEL',type:'PF_PANEL_STATE',payload:pfPanelPayload()},PF_SYNC_ORIGIN);
+  },300);
+}
+function pfRequestSync(){
+  pfSetSyncStatus('busy','Sincronizando...');
+  window.postMessage({source:'PF_PANEL',type:'PF_REQUEST_SYNC'},PF_SYNC_ORIGIN);
+  setTimeout(()=>{
+    const beat=Number(localStorage.getItem('_pf_ext_heartbeat')||0);
+    if(Date.now()-beat>20000)pfSetSyncStatus('err','Extensao ausente');
+  },1800);
+}
+window.addEventListener('message',event=>{
+  if(event.source!==window||event.origin!==PF_SYNC_ORIGIN)return;
+  const msg=event.data;
+  if(!msg||msg.source!=='PF_EXTENSION')return;
+  if(msg.type==='PF_SYNC_SNAPSHOT')pfApplySnapshot(msg.payload);
+  if(msg.type==='PF_SYNC_EVENT')pfApplyEvent(msg.payload);
+  if(msg.type==='PF_SYNC_STATUS'&&msg.payload?.connected)pfSetSyncStatus('ok','Extensao conectada');
+  if(msg.type==='PF_SYNC_STATUS'&&msg.payload?.connected===false)pfSetSyncStatus('err','Falha na extensao');
+  if(msg.type==='PF_REQUEST_PANEL_STATE')pfPublishPanelState();
+  if(msg.type==='PF_PANEL_IMPORT_RESULT'&&msg.payload?.ok)pfSetSyncStatus('ok','Extensao conectada');
+});
 
 // THEME
 function toggleTheme(){
@@ -2311,6 +2461,9 @@ document.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('qdate').value=t;
   renderSW();applyMeta();popSel();renderD();renderTSess();
   if(ST.plan&&ST.plan.date===t) renderPlan();
+  window.postMessage({source:'PF_PANEL',type:'PF_PANEL_READY'},PF_SYNC_ORIGIN);
+  pfPublishPanelState();
+  setTimeout(pfRequestSync,400);
 });
 
 /* ===== MELHORIAS — navegação mobile, segurança de import, PWA ===== */
