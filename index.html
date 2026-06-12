@@ -161,6 +161,39 @@ input,select,textarea{font-family:inherit;outline:none}
 .hour-main{font-family:var(--fh);font-size:16px;font-weight:800;color:var(--t1)}
 .hour-sub{font-size:10.5px;color:var(--t3);margin-top:4px}
 .empty-mini{font-size:12px;color:var(--t3);line-height:1.45}
+/* PLANO DE ATAQUE */
+.atk-hero{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:15px}
+.atk-kicker{font-size:10px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:#67e8f9}
+.atk-title{font-family:var(--fh);font-size:23px;font-weight:800;line-height:1.1;letter-spacing:-.025em;margin-top:5px}
+.atk-note{font-size:12px;color:var(--t2);margin-top:6px}.atk-date{font-size:11px;color:var(--t3);white-space:nowrap}
+.atk-kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:11px;margin-bottom:14px}
+.atk-kpi{position:relative;overflow:hidden;background:var(--s2);border:1px solid var(--border);border-radius:var(--r2);padding:14px 15px;min-height:92px}
+.atk-kpi::before{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--atk-color,var(--accent))}
+.atk-kl{font-size:9.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--t3)}
+.atk-kv{font-family:var(--fh);font-size:25px;font-weight:800;line-height:1;margin-top:9px}.atk-ks{font-size:10.5px;color:var(--t3);margin-top:6px}
+.atk-main-grid{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(280px,.8fr);gap:14px;margin-bottom:14px}
+.atk-bottom-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(330px,.85fr);gap:14px}
+.atk-chart{height:210px;position:relative}.atk-chart svg{width:100%;height:100%;overflow:visible}
+.atk-ring{width:158px;height:158px;border-radius:50%;display:grid;place-items:center;position:relative;margin:5px auto 12px;background:conic-gradient(#22d3ee var(--atk-pct,0%),var(--s4) 0)}
+.atk-ring::after{content:"";position:absolute;width:112px;height:112px;border-radius:50%;background:var(--s2);border:1px solid var(--border)}
+.atk-ring-in{position:relative;z-index:1;text-align:center}.atk-ring-in b{display:block;font-family:var(--fh);font-size:30px;line-height:1}.atk-ring-in span{display:block;font-size:9px;color:var(--t3);margin-top:5px}
+.atk-callout{background:linear-gradient(135deg,rgba(34,211,238,.09),rgba(29,185,106,.06));border:1px solid rgba(34,211,238,.24);border-radius:var(--r);padding:12px 13px}
+.atk-callout b{font-size:12px}.atk-callout p{font-size:10.5px;color:var(--t2);line-height:1.45;margin-top:4px}
+.atk-bars{display:flex;flex-direction:column;gap:12px}.atk-bar-head{display:flex;justify-content:space-between;gap:8px;font-size:10.5px;color:var(--t2);margin-bottom:5px}
+.atk-track{height:14px;background:#080d15;border-radius:5px;position:relative;overflow:hidden}.atk-target{position:absolute;inset:0 auto 0 0;background:rgba(34,211,238,.12);border-radius:5px}
+.atk-done{position:absolute;inset:0 auto 0 0;border-radius:5px;background:linear-gradient(90deg,var(--disc),color-mix(in srgb,var(--disc) 58%,white))}.atk-marker{position:absolute;top:-2px;bottom:-2px;width:2px;background:#fff;opacity:.85}
+.atk-decision{width:100%;border-collapse:collapse}.atk-decision th{font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.07em;text-align:left;padding:7px;border-bottom:1px solid var(--border)}
+.atk-decision td{font-size:10.5px;color:var(--t2);padding:8px 7px;border-bottom:1px solid var(--border)}
+.atk-status{display:inline-flex;border-radius:99px;padding:3px 7px;font-size:9px;font-weight:800}.atk-status.good{background:var(--grbg);color:var(--green)}.atk-status.warn{background:var(--gbg);color:var(--gold)}.atk-status.bad{background:var(--rbg);color:var(--red)}
+.atk-priority{height:220px;position:relative;border-left:1px solid var(--border2);border-bottom:1px solid var(--border2);margin:8px 8px 25px 24px;background:linear-gradient(rgba(29,185,106,.025) 50%,rgba(232,69,69,.02) 50%),linear-gradient(90deg,rgba(232,69,69,.02) 50%,rgba(29,185,106,.025) 50%)}
+.atk-bubble{position:absolute;width:var(--size);height:var(--size);border-radius:50%;display:grid;place-items:center;padding:4px;text-align:center;font-size:8px;font-weight:800;color:#fff;background:var(--bubble);border:1px solid rgba(255,255,255,.28);box-shadow:0 0 20px color-mix(in srgb,var(--bubble) 32%,transparent);transform:translate(-50%,-50%)}
+.atk-axis{position:absolute;color:var(--t3);font-size:8px}.atk-block{display:grid;grid-template-columns:25px 1fr auto;gap:9px;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)}.atk-block:last-child{border-bottom:0}
+.atk-rank{width:25px;height:25px;border-radius:8px;background:var(--s3);display:grid;place-items:center;font-size:10px;font-weight:800;color:var(--accent2)}.atk-block-name{font-size:11.5px;font-weight:700}.atk-block-sub{font-size:9.5px;color:var(--t3);margin-top:2px}
+.atk-settings{display:grid;grid-template-columns:1.5fr .8fr .8fr .8fr 36px;gap:8px;align-items:end;padding:9px 0;border-bottom:1px solid var(--border)}.atk-settings .fi{padding:7px 8px;font-size:11px}.atk-settings .fl{font-size:9px}
+.atk-add{display:grid;grid-template-columns:1.3fr .8fr .8fr auto;gap:8px;align-items:end;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)}.atk-legend{display:flex;gap:11px;font-size:9px;color:var(--t3);flex-wrap:wrap}.atk-legend i{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:4px}
+@media(max-width:1050px){.atk-kpis{grid-template-columns:repeat(3,1fr)}.atk-main-grid,.atk-bottom-grid{grid-template-columns:1fr}}
+@media(max-width:800px){.atk-kpis{grid-template-columns:1fr 1fr}.atk-hero{flex-direction:column}.atk-settings{grid-template-columns:1fr 1fr}.atk-settings>div:first-child{grid-column:1/-1}.atk-add{grid-template-columns:1fr 1fr}.atk-add>div:first-child{grid-column:1/-1}}
+@media(max-width:430px){.atk-kpis{grid-template-columns:1fr}.atk-add,.atk-settings{grid-template-columns:1fr}.atk-settings>div:first-child,.atk-add>div:first-child{grid-column:auto}}
 /* CARDS */
 .card{background:var(--s2);border:1px solid var(--border);border-radius:var(--r2);padding:18px 20px}
 .ch{display:flex;align-items:center;justify-content:space-between;margin-bottom:15px}
@@ -900,6 +933,10 @@ option{background:var(--s3)}
       <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
       <span>Metas Semanais</span>
     </div>
+    <div class="ni" id="ni-a" onclick="go('a',this)">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/><path d="M16 8l5-5M17 3h4v4"/></svg>
+      <span>Plano de Ataque</span>
+    </div>
     <div class="ni" id="ni-r" onclick="go('r',this)">
       <svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 3 5-6"/><circle cx="18" cy="8" r="1.4" fill="currentColor" stroke="none"/></svg>
       <span>Edital &amp; Revisão</span>
@@ -1274,6 +1311,73 @@ option{background:var(--s3)}
       </div>
     </div>
 
+    <!-- PLANO DE ATAQUE -->
+    <div class="tab" id="tab-a">
+      <div class="atk-hero">
+        <div>
+          <div class="atk-kicker">Executivo hibrido · projecao e prioridade</div>
+          <div class="atk-title">Visao completa da ultrapassagem</div>
+          <div class="atk-note">Volume, precisao, horario projetado e proximos blocos em uma unica leitura.</div>
+        </div>
+        <div class="atk-date" id="atk-date"></div>
+      </div>
+      <div class="atk-kpis">
+        <div class="atk-kpi" style="--atk-color:#8da4be"><div class="atk-kl">Meta concorrente</div><div class="atk-kv" id="atk-ref">0</div><div class="atk-ks">questoes de referencia</div></div>
+        <div class="atk-kpi" style="--atk-color:#22d3ee"><div class="atk-kl">Meta de ataque</div><div class="atk-kv" id="atk-target">0</div><div class="atk-ks" id="atk-margin-label">margem estrategica</div></div>
+        <div class="atk-kpi" style="--atk-color:#4f72ff"><div class="atk-kl">Realizadas hoje</div><div class="atk-kv" id="atk-done">0</div><div class="atk-ks" id="atk-progress-label">0% concluido</div></div>
+        <div class="atk-kpi" style="--atk-color:#e8a020"><div class="atk-kl">Faltam</div><div class="atk-kv" id="atk-gap" style="color:var(--gold)">0</div><div class="atk-ks" id="atk-time-label">estimativa pendente</div></div>
+        <div class="atk-kpi" style="--atk-color:#1db96a"><div class="atk-kl">Precisao atual</div><div class="atk-kv" id="atk-acc">—</div><div class="atk-ks" id="atk-acc-label">sem questoes hoje</div></div>
+      </div>
+      <div class="atk-main-grid">
+        <div class="card">
+          <div class="ch"><div class="ct">Projecao de ultrapassagem</div><div class="atk-legend"><span><i style="background:#67e8f9"></i>ritmo projetado</span><span><i style="background:#fbbf24"></i>meta de ataque</span></div></div>
+          <div class="atk-chart" id="atk-projection"></div>
+        </div>
+        <div class="card">
+          <div class="ch"><div class="ct">Indice de execucao</div><span style="font-size:9px;color:var(--t3)">60% volume · 40% precisao</span></div>
+          <div class="atk-ring" id="atk-ring"><div class="atk-ring-in"><b id="atk-index">0</b><span id="atk-index-label">de 100</span></div></div>
+          <div class="atk-callout"><b id="atk-call-title">Configure sua meta</b><p id="atk-call-text">Vincule as disciplinas abaixo para ativar a recomendacao automatica.</p></div>
+        </div>
+      </div>
+      <div class="atk-bottom-grid">
+        <div class="card">
+          <div class="ch"><div class="ct">Confronto por disciplina</div><div class="atk-legend"><span><i style="background:#fff"></i>concorrente</span><span><i style="background:#22d3ee"></i>meta</span></div></div>
+          <div class="atk-bars" id="atk-bars"></div>
+        </div>
+        <div class="card">
+          <div class="ch"><div class="ct">Painel de decisao</div><span style="font-size:9px;color:var(--t3)">acao mais valiosa agora</span></div>
+          <div style="overflow-x:auto"><table class="atk-decision"><thead><tr><th>Disciplina</th><th>Gap</th><th>Precisao</th><th>Situacao</th></tr></thead><tbody id="atk-table"></tbody></table></div>
+        </div>
+      </div>
+      <div class="atk-main-grid" style="margin-top:14px">
+        <div class="card">
+          <div class="ch"><div class="ct">Matriz de prioridade</div><span style="font-size:9px;color:var(--t3)">tamanho = questoes faltantes</span></div>
+          <div class="atk-priority" id="atk-priority"><span class="atk-axis" style="left:-21px;top:-14px">impacto</span><span class="atk-axis" style="right:0;bottom:-19px">maior urgencia →</span></div>
+        </div>
+        <div class="card">
+          <div class="ch"><div class="ct">Proximos blocos recomendados</div><span style="font-size:9px;color:var(--t3)">ordem automatica</span></div>
+          <div id="atk-blocks"></div>
+          <div class="atk-callout" style="margin-top:11px"><b>Recomendacao do painel</b><p id="atk-recommendation">Cadastre ou vincule as disciplinas para gerar o plano.</p></div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:14px">
+        <div class="ch"><div class="ct">Configuracao da meta concorrente</div><button class="btn bg2 sm" onclick="atkResetDefaults()">Restaurar exemplo</button></div>
+        <div style="font-size:11px;color:var(--t3);margin-bottom:8px">O realizado e os acertos sao lidos automaticamente dos registros de questoes da data selecionada.</div>
+        <div style="display:grid;grid-template-columns:repeat(3,minmax(130px,190px));gap:9px;margin-bottom:10px">
+          <div class="fg"><label class="fl">Data da disputa</label><input class="fi" id="atk-plan-date" type="date" onchange="atkConfig('date',this.value)"></div>
+          <div class="fg"><label class="fl">Margem por disciplina</label><input class="fi" id="atk-margin-q" type="number" min="0" onchange="atkConfig('marginQ',this.value)"></div>
+          <div class="fg"><label class="fl">Margem de desempenho (pp)</label><input class="fi" id="atk-margin-acc" type="number" min="0" max="20" step=".5" onchange="atkConfig('marginAcc',this.value)"></div>
+        </div>
+        <div id="atk-settings"></div>
+        <div class="atk-add">
+          <div class="fg"><label class="fl">Nome da nova linha</label><input class="fi" id="atk-new-name" placeholder="Nova disciplina"></div>
+          <div class="fg"><label class="fl">Questoes concorrente</label><input class="fi" id="atk-new-q" type="number" min="0" value="20"></div>
+          <div class="fg"><label class="fl">Desempenho concorrente (%)</label><input class="fi" id="atk-new-acc" type="number" min="0" max="100" step="0.01" value="70"></div>
+          <button class="btn bp sm" onclick="atkAddRow()">+ Adicionar</button>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
 </div>
@@ -1313,7 +1417,7 @@ option{background:var(--s3)}
 
 <script>
 const COLS=['#4f72ff','#1db96a','#e8a020','#e84545','#8b5cf6','#06b6d4','#ec4899','#f97316','#84cc16','#14b8a6'];
-const TABS=['d','t','q','m','r','c'];
+const TABS=['d','t','q','m','a','r','c'];
 let ST=lSt();
 // Migração compatível: garante estruturas novas sem afetar dados existentes
 if(!ST.edital) ST.edital={};   // { discId: [ {id,name,done} ] }
@@ -1496,6 +1600,7 @@ function toggleTheme(){
 // NAVIGATION
 const TIT={d:'Dashboard',t:'Cronômetro',q:'Questões',m:'Metas Semanais',r:'Edital & Revisão',c:'Configurações'};
 let curTab='d';
+TIT.a='Plano de Ataque';
 function go(id,el){
   document.querySelectorAll('.tab').forEach(p=>p.classList.remove('on'));
   document.querySelectorAll('.ni').forEach(i=>i.classList.remove('on'));
@@ -1503,9 +1608,9 @@ function go(id,el){
   if(el) el.classList.add('on');
   document.getElementById('ptitle').textContent=TIT[id]||id;
   curTab=id;
-  const rf={d:renderD,q:renderQ,m:renderM,r:renderRev,c:renderCfg};
+  const rf={d:renderD,q:renderQ,m:renderM,a:atkRender,r:renderRev,c:renderCfg};
   if(rf[id]) rf[id]();
-  if(id==='t'||id==='q'||id==='m') popSel();
+  if(id==='t'||id==='q'||id==='m'||id==='a') popSel();
 }
 function toggleSB(){document.getElementById('sb').classList.toggle('col')}
 
@@ -2640,6 +2745,114 @@ function tecDoImport(){
   renderQ(); renderD(); popSel();
   nfy('✔ '+imported+' registros importados do TEC'+(skipped?' · '+skipped+' questões ignoradas':''),'ok');
 }
+/* ===== PLANO DE ATAQUE ===== */
+const ATK_DEFAULTS=[
+  {name:'Direito Tributario',refQ:28,refAcc:92.85},
+  {name:'AFO Direito Financeiro e Contabilidade Publica',refQ:38,refAcc:88.85},
+  {name:'Contabilidade Geral',refQ:30,refAcc:86.67},
+  {name:'Economia e Financas Publicas',refQ:28,refAcc:67.86},
+  {name:'Tecnologia da Informacao (TI)',refQ:35,refAcc:71.43}
+];
+function atkNorm(v){return String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim()}
+function atkPlan(){
+  if(!ST.attackPlan||!Array.isArray(ST.attackPlan.rows)){
+    ST.attackPlan={date:td(),marginQ:5,marginAcc:2,rows:ATK_DEFAULTS.map(x=>({id:uid(),name:x.name,refQ:x.refQ,refAcc:x.refAcc,discId:''}))};
+    sSt();
+  }
+  if(!ST.attackPlan.date) ST.attackPlan.date=td();
+  if(!Number.isFinite(ST.attackPlan.marginQ)) ST.attackPlan.marginQ=5;
+  if(!Number.isFinite(ST.attackPlan.marginAcc)) ST.attackPlan.marginAcc=2;
+  return ST.attackPlan;
+}
+function atkAutoDisc(row){
+  if(row.discId&&discs().some(d=>d.id===row.discId)) return row.discId;
+  const rn=atkNorm(row.name),exact=discs().find(d=>atkNorm(d.name)===rn);
+  if(exact) return exact.id;
+  const partial=discs().find(d=>{const dn=atkNorm(d.name);return dn.length>5&&(rn.includes(dn)||dn.includes(rn))});
+  return partial?partial.id:'';
+}
+function atkRows(){
+  const plan=atkPlan(),day=plan.date||td();
+  return plan.rows.map((row,index)=>{
+    const discId=atkAutoDisc(row);
+    if(!row.discId&&discId) row.discId=discId;
+    const entries=qs().filter(q=>q.date===day&&discId&&q.discId===discId);
+    const done=entries.reduce((a,q)=>a+(Number(q.tot)||0),0),correct=entries.reduce((a,q)=>a+(Number(q.cer)||0),0);
+    const acc=done?correct/done*100:null,targetQ=Math.max(0,(Number(row.refQ)||0)+(Number(plan.marginQ)||0));
+    const targetAcc=Math.min(100,(Number(row.refAcc)||0)+(Number(plan.marginAcc)||0)),gap=Math.max(0,targetQ-done);
+    const accGap=acc===null?Math.max(0,targetAcc-50):Math.max(0,targetAcc-acc);
+    const urgency=Math.min(100,(targetQ?gap/targetQ*72:0)+accGap*.9),impact=Math.min(100,(Number(row.refAcc)||0)*.55+(Number(row.refQ)||0)*.85);
+    const color=(discs().find(d=>d.id===discId)||{}).color||COLS[index%COLS.length];
+    return{...row,index,discId,done,correct,acc,targetQ,targetAcc,gap,urgency,impact,color};
+  });
+}
+function atkStatus(r){
+  if(r.done>=r.targetQ&&r.acc!==null&&r.acc>=r.targetAcc)return{cls:'good',label:'superou'};
+  if(r.gap<=Math.max(3,Math.ceil(r.targetQ*.15))&&r.acc!==null&&r.acc>=r.targetAcc)return{cls:'good',label:'quase la'};
+  if(r.urgency>=58)return{cls:'bad',label:'prioridade'};
+  return{cls:'warn',label:'em curso'};
+}
+function atkClock(date){return date.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}
+function atkProjection(totalDone,totalTarget,gap){
+  const host=document.getElementById('atk-projection');if(!host)return{};
+  const stamps=qs().filter(q=>q.date===atkPlan().date).map(q=>Number(q.ts)||0).filter(Boolean).sort((a,b)=>a-b);
+  const now=Date.now(),elapsed=stamps.length?Math.max(.5,(now-stamps[0])/3600000):0;
+  let rate=elapsed?Math.min(60,totalDone/elapsed):0;if(!rate&&totalDone)rate=20;
+  const finish=rate&&gap?new Date(now+gap/rate*3600000):null,progress=totalTarget?Math.min(1,totalDone/totalTarget):0;
+  const currentX=28+progress*600,currentY=168-progress*125,endY=gap?24:currentY,endX=650;
+  const finishText=gap?(finish?'ultrapassagem '+atkClock(finish):'ritmo insuficiente'):'meta vencida';
+  host.innerHTML='<svg viewBox="0 0 680 205" preserveAspectRatio="none"><defs><linearGradient id="atkArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#22d3ee" stop-opacity=".25"/><stop offset="1" stop-color="#22d3ee" stop-opacity="0"/></linearGradient></defs>'+
+    [42,92,142].map(y=>'<line x1="28" y1="'+y+'" x2="650" y2="'+y+'" stroke="var(--border)" stroke-width="1" stroke-dasharray="3 5"/>').join('')+
+    '<line x1="28" y1="36" x2="650" y2="36" stroke="#fbbf24" stroke-width="1.5" stroke-dasharray="6 5"/><path d="M28 176 C150 165 245 135 '+currentX.toFixed(0)+' '+currentY.toFixed(0)+' S570 '+Math.max(18,endY+16)+' '+endX+' '+endY+'" fill="none" stroke="#67e8f9" stroke-width="3" stroke-linecap="round"/><path d="M28 176 C150 165 245 135 '+currentX.toFixed(0)+' '+currentY.toFixed(0)+' S570 '+Math.max(18,endY+16)+' '+endX+' '+endY+' L650 186 L28 186Z" fill="url(#atkArea)"/><circle cx="'+currentX.toFixed(0)+'" cy="'+currentY.toFixed(0)+'" r="6" fill="#67e8f9" stroke="var(--s2)" stroke-width="3"/><text x="'+Math.min(555,currentX+10).toFixed(0)+'" y="'+Math.max(18,currentY-8).toFixed(0)+'" fill="var(--t2)" font-size="10">'+totalDone+' questoes agora</text><text x="505" y="29" fill="#67e8f9" font-size="10">'+finishText+'</text><text x="28" y="200" fill="var(--t3)" font-size="9">inicio</text><text x="315" y="200" fill="var(--t3)" font-size="9">agora</text><text x="625" y="200" fill="var(--t3)" font-size="9">meta</text></svg>';
+  return{rate,finish};
+}
+function atkRender(){
+  const plan=atkPlan(),rows=atkRows();
+  const ref=rows.reduce((a,r)=>a+(Number(r.refQ)||0),0),target=rows.reduce((a,r)=>a+r.targetQ,0);
+  const done=rows.reduce((a,r)=>a+r.done,0),correct=rows.reduce((a,r)=>a+r.correct,0),gap=Math.max(0,target-done);
+  const acc=done?correct/done*100:null,targetCorrect=rows.reduce((a,r)=>a+r.targetQ*r.targetAcc/100,0),targetAcc=target?targetCorrect/target*100:0;
+  const volumeScore=target?Math.min(100,done/target*100):0,precisionScore=acc===null?0:Math.min(100,acc/Math.max(targetAcc,1)*100),exec=Math.round(volumeScore*.6+precisionScore*.4);
+  const proj=atkProjection(done,target,gap);
+  document.getElementById('atk-date').textContent='Meta de '+new Date((plan.date||td())+'T12:00:00').toLocaleDateString('pt-BR');
+  document.getElementById('atk-ref').textContent=ref;document.getElementById('atk-target').textContent=target;document.getElementById('atk-done').textContent=done;document.getElementById('atk-gap').textContent=gap;
+  document.getElementById('atk-margin-label').textContent='+'+(target-ref)+' de margem estrategica';document.getElementById('atk-progress-label').textContent=(target?Math.round(done/target*100):0)+'% do plano concluido';
+  document.getElementById('atk-time-label').textContent=gap?(proj.rate?Math.ceil(gap/proj.rate*60)+' min no ritmo atual':'aprox. '+gap*2+' min de execucao'):'meta de volume vencida';
+  document.getElementById('atk-acc').textContent=acc===null?'—':acc.toFixed(1).replace('.',',')+'%';
+  document.getElementById('atk-acc-label').textContent=acc===null?'sem questoes hoje':(acc-targetAcc>=0?'+':'')+(acc-targetAcc).toFixed(1).replace('.',',')+' pp sobre o alvo';
+  document.getElementById('atk-index').textContent=exec;document.getElementById('atk-index-label').textContent='de 100 · '+(exec>=85?'excelente':exec>=65?'forte':exec>=40?'em construcao':'inicio');document.getElementById('atk-ring').style.setProperty('--atk-pct',exec+'%');
+  const callTitle=document.getElementById('atk-call-title'),callText=document.getElementById('atk-call-text');
+  if(!gap){callTitle.textContent='Meta de volume vencida';callText.textContent=acc!==null&&acc>=targetAcc?'Quantidade e precisao acima do alvo. Dia conquistado.':'Agora proteja a precisao: faltam '+Math.ceil(Math.max(0,targetCorrect-correct))+' acertos para consolidar a vitoria.'}
+  else if(proj.finish){callTitle.textContent='Vitoria provavel as '+atkClock(proj.finish);callText.textContent='Mantenha '+Math.max(1,Math.round(proj.rate))+' questoes/h e precisao minima de '+targetAcc.toFixed(1).replace('.',',')+'%.'}
+  else{callTitle.textContent='Construa ritmo de ataque';callText.textContent='Registre o primeiro bloco para ativar uma projecao baseada no seu ritmo real.'}
+  const scale=Math.max(10,...rows.map(r=>r.targetQ))*1.08;
+  document.getElementById('atk-bars').innerHTML=rows.map(r=>'<div><div class="atk-bar-head"><span>'+escapeHtml(r.name)+'</span><span>'+r.done+' / '+r.targetQ+'</span></div><div class="atk-track"><div class="atk-target" style="width:'+Math.min(100,r.targetQ/scale*100)+'%"></div><div class="atk-done" style="--disc:'+r.color+';width:'+Math.min(100,r.done/scale*100)+'%"></div><div class="atk-marker" style="left:'+Math.min(99,(Number(r.refQ)||0)/scale*100)+'%"></div></div></div>').join('')||'<div class="empty-mini">Adicione disciplinas para iniciar.</div>';
+  document.getElementById('atk-table').innerHTML=rows.map(r=>{const s=atkStatus(r);return'<tr><td>'+escapeHtml(r.name)+'</td><td>'+r.gap+'q</td><td>'+(r.acc===null?'—':r.acc.toFixed(1).replace('.',',')+'%')+'</td><td><span class="atk-status '+s.cls+'">'+s.label+'</span></td></tr>'}).join('');
+  const ranked=[...rows].filter(r=>r.targetQ>0).sort((a,b)=>b.urgency-a.urgency);
+  document.getElementById('atk-priority').innerHTML='<span class="atk-axis" style="left:-21px;top:-14px">impacto</span><span class="atk-axis" style="right:0;bottom:-19px">maior urgencia →</span>'+ranked.map(r=>{const size=34+Math.min(30,r.gap*1.4),left=10+r.urgency*.82,top=92-r.impact*.72;return'<div class="atk-bubble" title="'+escapeHtml(r.name)+'" style="--size:'+size+'px;--bubble:'+r.color+';left:'+left+'%;top:'+Math.max(10,Math.min(90,top))+'%">'+escapeHtml(r.name.split(' ').map(x=>x[0]).join('').slice(0,5))+'</div>'}).join('');
+  const blocks=ranked.filter(r=>r.gap>0).slice(0,4);
+  document.getElementById('atk-blocks').innerHTML=blocks.map((r,i)=>{const block=Math.min(r.gap,Math.max(8,Math.ceil(r.targetQ*.3)));return'<div class="atk-block"><div class="atk-rank">'+(i+1)+'</div><div><div class="atk-block-name">'+escapeHtml(r.name)+'</div><div class="atk-block-sub">'+block+'q · alvo '+r.targetAcc.toFixed(1).replace('.',',')+'% · gap '+r.gap+'q</div></div><button class="btn bg2 xs" onclick="atkQuick(\''+r.id+'\')">Registrar</button></div>'}).join('')||'<div class="empty-mini">Todas as metas de volume foram cumpridas.</div>';
+  document.getElementById('atk-recommendation').textContent=blocks.length?'Comece por '+blocks[0].name+'. E a maior combinacao de lacuna, urgencia e exigencia de precisao.':'Metas de volume concluidas. Priorize somente a manutencao da precisao.';
+  document.getElementById('atk-plan-date').value=plan.date||td();
+  document.getElementById('atk-margin-q').value=Number(plan.marginQ)||0;
+  document.getElementById('atk-margin-acc').value=Number(plan.marginAcc)||0;
+  atkRenderSettings(rows);
+}
+function atkRenderSettings(rows){
+  const opts='<option value="">— sem vinculo —</option>'+discs().map(d=>'<option value="'+d.id+'">'+escapeHtml(d.name)+'</option>').join('');
+  document.getElementById('atk-settings').innerHTML=rows.map(r=>'<div class="atk-settings"><div class="fg"><label class="fl">Disciplina do painel</label><select class="fi" onchange="atkUpdate(\''+r.id+'\',\'discId\',this.value)">'+opts.replace('value="'+r.discId+'"','value="'+r.discId+'" selected')+'</select></div><div class="fg"><label class="fl">Questoes concorrente</label><input class="fi" type="number" min="0" value="'+(Number(r.refQ)||0)+'" onchange="atkUpdate(\''+r.id+'\',\'refQ\',this.value)"></div><div class="fg"><label class="fl">Desempenho (%)</label><input class="fi" type="number" min="0" max="100" step=".01" value="'+(Number(r.refAcc)||0)+'" onchange="atkUpdate(\''+r.id+'\',\'refAcc\',this.value)"></div><div class="fg"><label class="fl">Meta gerada</label><input class="fi" value="'+r.targetQ+'q · '+r.targetAcc.toFixed(1).replace('.',',')+'%" disabled></div><button class="btn bd xs" onclick="atkRemove(\''+r.id+'\')" title="Remover">×</button></div>').join('');
+}
+function atkUpdate(id,key,value){const row=atkPlan().rows.find(r=>r.id===id);if(!row)return;row[key]=key==='discId'?value:Math.max(0,Number(value)||0);const d=discs().find(x=>x.id===row.discId);if(key==='discId'&&d)row.name=d.name;sSt();atkRender()}
+function atkConfig(key,value){const plan=atkPlan();plan[key]=key==='date'?value:Math.max(0,Number(value)||0);sSt();atkRender()}
+function atkRemove(id){if(!confirm('Remover esta disciplina do Plano de Ataque?'))return;atkPlan().rows=atkPlan().rows.filter(r=>r.id!==id);sSt();atkRender()}
+function atkAddRow(){const name=document.getElementById('atk-new-name').value.trim();if(!name){nfy('Informe o nome da disciplina','err');return}atkPlan().rows.push({id:uid(),name,refQ:Math.max(0,Number(document.getElementById('atk-new-q').value)||0),refAcc:Math.min(100,Math.max(0,Number(document.getElementById('atk-new-acc').value)||0)),discId:''});document.getElementById('atk-new-name').value='';sSt();atkRender();nfy('Disciplina adicionada ao ataque','ok')}
+function atkResetDefaults(){if(!confirm('Restaurar as cinco metas do exemplo?'))return;ST.attackPlan={date:td(),marginQ:5,marginAcc:2,rows:ATK_DEFAULTS.map(x=>({id:uid(),name:x.name,refQ:x.refQ,refAcc:x.refAcc,discId:''}))};sSt();atkRender()}
+function atkQuick(id){
+  const row=atkRows().find(r=>r.id===id);if(!row||!row.discId){nfy('Vincule esta linha a uma disciplina do painel','err');return}
+  const total=Number(prompt('Quantas questoes voce resolveu neste bloco?','10'));if(!total||total<1)return;
+  const correct=Number(prompt('Quantas voce acertou?',String(Math.round(total*row.targetAcc/100))));if(!Number.isFinite(correct)||correct<0||correct>total){nfy('Quantidade de acertos invalida','err');return}
+  if(!ST.qs)ST.qs=[];ST.qs.unshift({id:uid(),discId:row.discId,tot:total,cer:correct,ass:'Plano de Ataque',date:atkPlan().date,fonte:'Plano de Ataque',ts:Date.now()});
+  sSt();atkRender();renderQ();renderD();nfy(correct+'/'+total+' registrado no Plano de Ataque','ok');
+}
 // INIT
 document.addEventListener('DOMContentLoaded',()=>{
   const erd=document.getElementById('er-date'); if(erd) erd.value=td();
@@ -2858,6 +3071,10 @@ if('serviceWorker' in navigator){
   <button class="mni" data-tab="m" onclick="goM('m')" aria-label="Metas Semanais">
     <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
     <span>Metas</span>
+  </button>
+  <button class="mni" data-tab="a" onclick="goM('a')" aria-label="Plano de Ataque">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg>
+    <span>Ataque</span>
   </button>
   <button class="mni" data-tab="r" onclick="goM('r')" aria-label="Edital e Revisão">
     <svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 3 5-6"/></svg>
