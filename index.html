@@ -161,6 +161,37 @@ input,select,textarea{font-family:inherit;outline:none}
 .hour-main{font-family:var(--fh);font-size:16px;font-weight:800;color:var(--t1)}
 .hour-sub{font-size:10.5px;color:var(--t3);margin-top:4px}
 .empty-mini{font-size:12px;color:var(--t3);line-height:1.45}
+/* DASHBOARD ESTATISTICO PREMIUM */
+.pro-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:14px}
+.pro-kicker{font-size:9.5px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:#67e8f9}
+.pro-title{font-family:var(--fh);font-size:22px;font-weight:800;line-height:1.12;letter-spacing:-.025em;margin-top:4px}
+.pro-note{font-size:11.5px;color:var(--t2);margin-top:5px}
+.pro-periods{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}
+.pro-period{border:1px solid var(--border);border-radius:999px;padding:5px 10px;color:var(--t3);font-size:10px;font-weight:700}
+.pro-period:hover{color:var(--t1);border-color:var(--border2)}
+.pro-period.on{color:#67e8f9;border-color:rgba(34,211,238,.35);background:rgba(34,211,238,.07)}
+.pro-grid-main{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(280px,.65fr);gap:14px;margin-bottom:14px}
+.pro-grid-three{display:grid;grid-template-columns:1.05fr 1fr .78fr;gap:14px;margin-bottom:14px}
+.pro-grid-insight{display:grid;grid-template-columns:.9fr 1.1fr;gap:14px;margin-bottom:14px}
+.pro-chart{height:225px;position:relative}
+.pro-chart svg{width:100%;height:100%;overflow:visible}
+.pro-legend{display:flex;align-items:center;gap:10px;color:var(--t3);font-size:9px;flex-wrap:wrap}
+.pro-legend i{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px}
+.pro-ring{width:158px;height:158px;border-radius:50%;display:grid;place-items:center;position:relative;margin:4px auto 8px;background:conic-gradient(#32d3ed 0 var(--correct,0%),#9b78ff var(--correct,0%) var(--answered,0%),var(--s4) var(--answered,0%) 100%)}
+.pro-ring::after{content:"";position:absolute;width:108px;height:108px;border-radius:50%;background:var(--s2);border:1px solid var(--border)}
+.pro-ring-center{position:relative;z-index:1;text-align:center}.pro-ring-center b{display:block;font-family:var(--fh);font-size:27px;line-height:1}.pro-ring-center span{display:block;font-size:9px;color:var(--t3);margin-top:5px}
+.pro-stat{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);font-size:10px}.pro-stat:last-child{border-bottom:0}.pro-stat span{color:var(--t3)}
+.pro-bars{display:flex;flex-direction:column;gap:10px}.pro-bar-head{display:flex;justify-content:space-between;gap:8px;font-size:10px;color:var(--t2);margin-bottom:4px}.pro-track{height:9px;background:#080d15;border-radius:6px;position:relative;overflow:hidden}.pro-fill{height:100%;border-radius:6px;background:linear-gradient(90deg,var(--disc),color-mix(in srgb,var(--disc) 58%,white))}.pro-goal{position:absolute;top:-2px;bottom:-2px;width:2px;background:#fff;opacity:.82}
+.pro-heat{display:grid;grid-template-columns:repeat(12,1fr);gap:4px}.pro-heat-cell{height:17px;border-radius:3px;background:var(--heat,var(--s4))}.pro-heat-labels{display:flex;justify-content:space-between;color:var(--t3);font-size:8px;margin-top:6px}
+.pro-daily{height:175px;display:flex;align-items:flex-end;gap:5px;padding:12px 2px 21px}.pro-day{flex:1;height:var(--height);min-height:3px;border-radius:4px 4px 1px 1px;background:linear-gradient(to top,#315df2,#32d3ed);position:relative;transition:.2s}.pro-day:hover{filter:brightness(1.18)}.pro-day.today{background:linear-gradient(to top,#714bd6,#b29aff)}.pro-day span{position:absolute;left:50%;bottom:-17px;transform:translateX(-50%);font-size:7.5px;color:var(--t3)}
+.pro-radar{height:260px}.pro-radar svg{width:100%;height:100%}.pro-radar-web{fill:none;stroke:var(--border2);stroke-width:1}.pro-radar-old{fill:rgba(139,92,246,.11);stroke:#9b78ff;stroke-width:1.5}.pro-radar-now{fill:rgba(34,211,238,.13);stroke:#32d3ed;stroke-width:2}.pro-radar text{fill:var(--t3);font-size:8px}
+.pro-scatter{height:245px;position:relative;margin:10px 10px 24px 28px;border-left:1px solid var(--border2);border-bottom:1px solid var(--border2);background:linear-gradient(rgba(29,185,106,.03) 50%,rgba(232,69,69,.025) 50%),linear-gradient(90deg,rgba(232,69,69,.025) 50%,rgba(29,185,106,.03) 50%)}
+.pro-bubble{position:absolute;width:var(--size);height:var(--size);border-radius:50%;display:grid;place-items:center;padding:4px;text-align:center;font-size:8px;font-weight:800;color:#fff;background:var(--bubble);border:1px solid rgba(255,255,255,.28);box-shadow:0 0 20px color-mix(in srgb,var(--bubble) 32%,transparent);transform:translate(-50%,-50%)}
+.pro-axis{position:absolute;color:var(--t3);font-size:8px}
+.pro-insight{background:linear-gradient(135deg,rgba(34,211,238,.08),rgba(29,185,106,.055));border:1px solid rgba(34,211,238,.22);border-radius:var(--r);padding:10px 12px;margin-top:10px}.pro-insight b{font-size:10.5px}.pro-insight p{font-size:9.5px;color:var(--t2);line-height:1.45;margin-top:4px}
+.legacy-dashboard{display:none!important}
+@media(max-width:1100px){.pro-grid-main,.pro-grid-insight{grid-template-columns:1fr}.pro-grid-three{grid-template-columns:1fr 1fr}.pro-grid-three>.card:last-child{grid-column:1/-1}}
+@media(max-width:800px){.pro-head{flex-direction:column}.pro-periods{justify-content:flex-start}.pro-grid-three{grid-template-columns:1fr}.pro-grid-three>.card:last-child{grid-column:auto}}
 /* PLANO DE ATAQUE */
 .atk-hero{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:15px}
 .atk-kicker{font-size:10px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:#67e8f9}
@@ -987,7 +1018,58 @@ option{background:var(--s3)}
         <div class="sc cy"><div class="slbl">Recorde</div><div class="sval" id="srec">0</div><div class="ssub">melhor sequência 🏆</div><div class="sico cy">🥇</div></div>
       </div>
 
-      <div class="analytics-command">
+      <div class="pro-head">
+        <div><div class="pro-kicker">Dashboard estatistico premium</div><div class="pro-title">Performance e tendencia em uma leitura clara</div><div class="pro-note">Evolucao, precisao, produtividade e equilibrio entre disciplinas.</div></div>
+        <div class="pro-periods" id="pro-periods">
+          <button class="pro-period" data-days="7" onclick="setProPeriod(7,this)">7 dias</button>
+          <button class="pro-period on" data-days="30" onclick="setProPeriod(30,this)">30 dias</button>
+          <button class="pro-period" data-days="90" onclick="setProPeriod(90,this)">90 dias</button>
+          <button class="pro-period" data-days="0" onclick="setProPeriod(0,this)">Tudo</button>
+        </div>
+      </div>
+      <div class="pro-grid-main">
+        <div class="card">
+          <div class="ch"><div class="ct">Evolucao da taxa de acerto</div><div class="pro-legend"><span><i style="background:#32d3ed"></i>real</span><span><i style="background:#9b78ff"></i>media movel</span><span><i style="background:#f6b73c"></i>meta</span></div></div>
+          <div class="pro-chart" id="pro-evolution"></div>
+        </div>
+        <div class="card">
+          <div class="ch"><div class="ct">Composicao do desempenho</div><span style="font-size:9px;color:var(--t3)" id="pro-volume-label">0 questoes</span></div>
+          <div class="pro-ring" id="pro-ring"><div class="pro-ring-center"><b id="pro-ring-value">—</b><span>acerto no periodo</span></div></div>
+          <div class="pro-stat"><span>Corretas</span><b id="pro-correct" style="color:var(--green)">0</b></div>
+          <div class="pro-stat"><span>Erradas</span><b id="pro-wrong" style="color:var(--red)">0</b></div>
+          <div class="pro-stat"><span>Media diaria</span><b id="pro-daily-average">0</b></div>
+        </div>
+      </div>
+      <div class="pro-grid-three">
+        <div class="card">
+          <div class="ch"><div class="ct">Desempenho por disciplina</div><span style="font-size:9px;color:var(--t3)">marcador = meta de 75%</span></div>
+          <div class="pro-bars" id="pro-discipline-bars"></div>
+        </div>
+        <div class="card">
+          <div class="ch"><div class="ct">Consistencia de estudo</div><span style="font-size:9px;color:var(--t3)">atividade diaria</span></div>
+          <div class="pro-heat" id="pro-heat"></div><div class="pro-heat-labels"><span>mais antigo</span><span>hoje</span></div>
+          <div class="pro-insight"><b id="pro-window-title">Melhor janela em analise</b><p id="pro-window-text">Registre sessoes em horarios diferentes para identificar seu melhor periodo.</p></div>
+        </div>
+        <div class="card">
+          <div class="ch"><div class="ct">Carga diaria</div><span style="font-size:9px;color:var(--t3)">questoes resolvidas</span></div>
+          <div class="pro-daily" id="pro-daily-load"></div>
+          <div class="pro-stat"><span>Maior carga</span><b id="pro-max-load">0</b></div>
+          <div class="pro-stat"><span>Desvio diario</span><b id="pro-load-deviation">0</b></div>
+        </div>
+      </div>
+      <div class="pro-grid-insight">
+        <div class="card">
+          <div class="ch"><div class="ct">Radar de competencias</div><div class="pro-legend"><span><i style="background:#32d3ed"></i>periodo atual</span><span><i style="background:#9b78ff"></i>periodo anterior</span></div></div>
+          <div class="pro-radar" id="pro-radar"></div>
+        </div>
+        <div class="card">
+          <div class="ch"><div class="ct">Matriz volume x precisao</div><span style="font-size:9px;color:var(--t3)">tamanho = tempo investido</span></div>
+          <div class="pro-scatter" id="pro-scatter"><span class="pro-axis" style="left:-24px;top:-14px">precisao</span><span class="pro-axis" style="right:0;bottom:-18px">volume →</span></div>
+          <div class="pro-insight"><b id="pro-insight-title">Insight estatistico</b><p id="pro-insight-text">O painel cruzara volume, precisao e tempo para indicar a maior oportunidade de ganho.</p></div>
+        </div>
+      </div>
+
+      <div class="analytics-command legacy-dashboard">
         <div class="command-card">
           <div class="command-kicker">Centro de decisão</div>
           <div class="command-title" id="cmd-title">Carregando recomendação...</div>
@@ -1005,7 +1087,7 @@ option{background:var(--s3)}
         </div>
       </div>
 
-      <div class="analytics-grid">
+      <div class="analytics-grid legacy-dashboard">
         <div class="card">
           <div class="ch"><div class="ct">🎯 Prioridade de Foco</div><span style="font-size:11px;color:var(--t3)">erro + volume + recência</span></div>
           <div class="focus-list" id="focus-list"></div>
@@ -1016,12 +1098,12 @@ option{background:var(--s3)}
         </div>
       </div>
 
-      <div class="card mb18">
+      <div class="card mb18 legacy-dashboard">
         <div class="ch"><div class="ct">🕒 Janelas Fortes de Estudo</div><span style="font-size:11px;color:var(--t3)">horas com melhor retorno</span></div>
         <div class="hour-grid" id="hour-grid"></div>
       </div>
 
-      <div class="g2 mb18">
+      <div class="g2 mb18 legacy-dashboard">
         <div class="card">
           <div class="ch"><div class="ct">📅 Contagem Regressiva</div></div>
           <div class="cdb">
@@ -1038,7 +1120,7 @@ option{background:var(--s3)}
       </div>
 
       <!-- Evolução do acerto + Heatmap -->
-      <div class="g2 mb18">
+      <div class="g2 mb18 legacy-dashboard">
         <div class="card">
           <div class="ch"><div class="ct">📉 Evolução do Acerto</div><span style="font-size:11px;color:var(--t3)">últimas 8 semanas</span></div>
           <svg id="lchart" class="lchart" viewBox="0 0 300 80" preserveAspectRatio="none"></svg>
@@ -1052,7 +1134,7 @@ option{background:var(--s3)}
       </div>
 
       <!-- Diagnóstico automático -->
-      <div class="mb18">
+      <div class="mb18 legacy-dashboard">
         <div class="card">
           <div class="ch"><div class="ct">🚨 Diagnóstico Automático</div><span style="font-size:11px;color:var(--t3)">disciplinas críticas</span></div>
           <div class="diag-list" id="diaglist"></div>
@@ -1060,7 +1142,7 @@ option{background:var(--s3)}
       </div>
 
       <!-- Desempenho + Sessões -->
-      <div class="g2">
+      <div class="g2 legacy-dashboard">
         <div class="card">
           <div class="ch"><div class="ct">📚 Desempenho por Disciplina</div><div class="ca" onclick="go('c',document.getElementById('ni-c'))">Gerenciar →</div></div>
           <div class="dplist" id="dplist"></div>
@@ -2017,6 +2099,77 @@ function renderAdvancedDashboard(S,Q,c,tSecs,qT){
   document.getElementById('hour-grid').innerHTML=hours.length?hours.map((h,i)=>'<div class="hour-cell '+(i<2?'best':'')+'"><div class="hour-main">'+String(h.hour).padStart(2,'0')+'h</div><div class="hour-sub">'+(h.acc!==null?h.acc+'% · ':'')+fH(h.sec)+(h.tot?' · '+h.tot+'q':'')+'</div></div>').join(''):'<div class="empty-mini">Use o cronômetro e registre questões em horários diferentes para descobrir suas melhores janelas.</div>';
 }
 
+let proPeriod=30;
+function setProPeriod(days,btn){
+  proPeriod=Number(days)||0;
+  document.querySelectorAll('.pro-period').forEach(x=>x.classList.toggle('on',x===btn));
+  renderProfessionalDashboard(sess(),qs());
+}
+function proDateOffset(days){const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()+days);return d.toISOString().slice(0,10)}
+function proRange(data,days,previous){
+  if(!days)return previous?[]:data;
+  const end=previous?proDateOffset(-days):td(),start=previous?proDateOffset(-(days*2)+1):proDateOffset(-days+1);
+  return data.filter(x=>x.date>=start&&x.date<=end);
+}
+function proMoving(values,size){return values.map((_,i)=>{const a=values.slice(Math.max(0,i-size+1),i+1).filter(v=>v!==null);return a.length?a.reduce((s,v)=>s+v,0)/a.length:null})}
+function proLinePath(points){return points.filter(p=>p&&Number.isFinite(p.x)&&Number.isFinite(p.y)).map((p,i)=>(i?'L':'M')+p.x.toFixed(1)+' '+p.y.toFixed(1)).join(' ')}
+function proRenderEvolution(Q){
+  const host=document.getElementById('pro-evolution');if(!host)return;
+  const dates=Q.map(q=>new Date(q.date+'T00:00:00').getTime()).filter(Number.isFinite);
+  const days=proPeriod||Math.max(30,Math.min(365,Math.ceil((Date.now()-Math.min(...dates,Date.now()))/86400000)+1)),bucketSize=days<=30?Math.max(1,Math.ceil(days/10)):Math.max(7,Math.ceil(days/12)),buckets=[];
+  for(let offset=days-1;offset>=0;offset-=bucketSize){const start=proDateOffset(-offset),end=proDateOffset(-Math.max(0,offset-bucketSize+1)),rows=Q.filter(q=>q.date>=start&&q.date<=end),tot=rows.reduce((a,q)=>a+(q.tot||0),0),cer=rows.reduce((a,q)=>a+(q.cer||0),0);buckets.push({start,end,acc:tot?cer/tot*100:null})}
+  const vals=buckets.map(b=>b.acc),moving=proMoving(vals,3),valid=vals.filter(v=>v!==null);
+  if(valid.length<2){host.innerHTML='<div class="empty-mini" style="padding:70px 20px;text-align:center">Registre questoes em dias diferentes para visualizar a tendencia.</div>';return}
+  const W=700,H=220,px=28,py=22,min=Math.max(0,Math.min(...valid)-10),max=Math.min(100,Math.max(80,...valid)+8),range=max-min||10;
+  const point=(v,i)=>v===null?null:{x:px+(W-px*2)*(i/Math.max(1,buckets.length-1)),y:H-py-(v-min)/range*(H-py*2)},real=vals.map(point),avg=moving.map(point),rp=real.filter(Boolean),line=proLinePath(real),avgLine=proLinePath(avg);
+  const area=line+' L'+rp[rp.length-1].x.toFixed(1)+' '+(H-py)+' L'+rp[0].x.toFixed(1)+' '+(H-py)+' Z',goalY=H-py-(75-min)/range*(H-py*2);
+  host.innerHTML='<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none"><defs><linearGradient id="proArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#32d3ed" stop-opacity=".25"/><stop offset="1" stop-color="#32d3ed" stop-opacity="0"/></linearGradient></defs>'+
+    [35,85,135,185].map(y=>'<line x1="'+px+'" y1="'+y+'" x2="'+(W-px)+'" y2="'+y+'" stroke="var(--border)" stroke-width="1" stroke-dasharray="3 5"/>').join('')+
+    (goalY>py&&goalY<H-py?'<line x1="'+px+'" y1="'+goalY.toFixed(1)+'" x2="'+(W-px)+'" y2="'+goalY.toFixed(1)+'" stroke="#f6b73c" stroke-width="1.4" stroke-dasharray="6 5"/><text x="'+(W-92)+'" y="'+(goalY-5).toFixed(1)+'" fill="var(--t3)" font-size="9">meta 75%</text>':'')+
+    '<path d="'+area+'" fill="url(#proArea)"/><path d="'+line+'" fill="none" stroke="#32d3ed" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="'+avgLine+'" fill="none" stroke="#9b78ff" stroke-width="2" stroke-linecap="round"/>'+
+    rp.map(p=>'<circle cx="'+p.x.toFixed(1)+'" cy="'+p.y.toFixed(1)+'" r="4" fill="#32d3ed" stroke="var(--s2)" stroke-width="2"/>').join('')+
+    '<text x="'+px+'" y="'+(H-3)+'" fill="var(--t3)" font-size="9">'+new Date(buckets[0].start+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short'})+'</text><text x="'+(W-68)+'" y="'+(H-3)+'" fill="var(--t3)" font-size="9">hoje</text></svg>';
+}
+function proDisciplineRows(S,Q,previous){
+  const qRows=proRange(Q,proPeriod,previous),sRows=proRange(S,proPeriod,previous);
+  return discs().map(d=>{const dq=qRows.filter(q=>q.discId===d.id),ds=sRows.filter(s=>s.discId===d.id),tot=dq.reduce((a,q)=>a+(q.tot||0),0),cer=dq.reduce((a,q)=>a+(q.cer||0),0),sec=ds.reduce((a,s)=>a+(s.sec||0),0);return{id:d.id,name:d.name,color:d.color||'#5b7cff',tot,cer,acc:tot?cer/tot*100:null,sec}}).filter(x=>x.tot||x.sec).sort((a,b)=>b.tot-a.tot);
+}
+function proRenderBars(rows){
+  const host=document.getElementById('pro-discipline-bars');if(!host)return;
+  host.innerHTML=rows.slice(0,6).map(r=>'<div><div class="pro-bar-head"><span>'+escapeHtml(r.name)+'</span><b>'+(r.acc===null?'—':r.acc.toFixed(0)+'%')+'</b></div><div class="pro-track"><div class="pro-fill" style="--disc:'+r.color+';width:'+(r.acc||0)+'%"></div><i class="pro-goal" style="left:75%"></i></div></div>').join('')||'<div class="empty-mini">Sem dados de disciplinas no periodo.</div>';
+}
+function proRenderHeat(S,Q){
+  const host=document.getElementById('pro-heat');if(!host)return;const values=[];
+  for(let i=71;i>=0;i--){const date=proDateOffset(-i),sec=S.filter(s=>s.date===date).reduce((a,s)=>a+(s.sec||0),0),tot=Q.filter(q=>q.date===date).reduce((a,q)=>a+(q.tot||0),0);values.push({date,value:tot+sec/180})}
+  const max=Math.max(1,...values.map(x=>x.value)),colors=['var(--s4)','rgba(34,211,238,.22)','rgba(34,211,238,.42)','rgba(29,185,106,.55)','rgba(29,185,106,.78)','var(--green)'];
+  host.innerHTML=values.map(x=>'<div class="pro-heat-cell" title="'+x.date+'" style="--heat:'+colors[Math.min(5,Math.ceil(x.value/max*5))]+'"></div>').join('');
+}
+function proRenderDaily(Q){
+  const host=document.getElementById('pro-daily-load');if(!host)return;const days=Math.min(14,proPeriod||14),rows=[];
+  for(let i=days-1;i>=0;i--){const date=proDateOffset(-i),tot=Q.filter(q=>q.date===date).reduce((a,q)=>a+(q.tot||0),0);rows.push({date,tot})}
+  const max=Math.max(1,...rows.map(x=>x.tot)),mean=rows.reduce((a,x)=>a+x.tot,0)/rows.length,deviation=Math.sqrt(rows.reduce((a,x)=>a+Math.pow(x.tot-mean,2),0)/rows.length);
+  host.innerHTML=rows.map((x,i)=>'<div class="pro-day '+(i===rows.length-1?'today':'')+'" title="'+x.date+' · '+x.tot+' questoes" style="--height:'+Math.max(2,x.tot/max*100)+'%"><span>'+new Date(x.date+'T12:00:00').getDate()+'</span></div>').join('');
+  document.getElementById('pro-max-load').textContent=Math.max(...rows.map(x=>x.tot))+' questoes';document.getElementById('pro-load-deviation').textContent='±'+deviation.toFixed(1).replace('.',',');
+}
+function proRenderRadar(current,previous){
+  const host=document.getElementById('pro-radar');if(!host)return;const rows=current.filter(r=>r.acc!==null).slice(0,5);
+  if(rows.length<3){host.innerHTML='<div class="empty-mini" style="padding:85px 20px;text-align:center">Sao necessarias pelo menos 3 disciplinas com dados para formar o radar.</div>';return}
+  const W=330,H=260,cx=165,cy=132,R=94,n=rows.length,point=(value,i,scale=1)=>{const angle=-Math.PI/2+i*2*Math.PI/n,r=R*(Math.max(0,Math.min(100,value||0))/100)*scale;return{x:cx+Math.cos(angle)*r,y:cy+Math.sin(angle)*r}},polygon=(values,scale=1)=>values.map((v,i)=>{const p=point(v,i,scale);return p.x.toFixed(1)+','+p.y.toFixed(1)}).join(' '),prevMap=new Map(previous.map(x=>[x.id,x])),nowVals=rows.map(r=>r.acc||0),oldVals=rows.map(r=>(prevMap.get(r.id)||{}).acc||0);
+  host.innerHTML='<svg viewBox="0 0 '+W+' '+H+'">'+[.33,.66,1].map(s=>'<polygon class="pro-radar-web" points="'+polygon(Array(n).fill(100),s)+'"/>').join('')+rows.map((_,i)=>{const p=point(100,i);return'<line class="pro-radar-web" x1="'+cx+'" y1="'+cy+'" x2="'+p.x.toFixed(1)+'" y2="'+p.y.toFixed(1)+'"/>'}).join('')+'<polygon class="pro-radar-old" points="'+polygon(oldVals)+'"/><polygon class="pro-radar-now" points="'+polygon(nowVals)+'"/>'+rows.map((r,i)=>{const p=point(118,i);return'<text x="'+p.x.toFixed(1)+'" y="'+p.y.toFixed(1)+'" text-anchor="middle">'+escapeHtml(r.name.length>17?r.name.slice(0,15)+'…':r.name)+'</text>'}).join('')+'</svg>';
+}
+function proRenderScatter(rows){
+  const host=document.getElementById('pro-scatter');if(!host)return;const data=rows.filter(r=>r.tot&&r.acc!==null).slice(0,8),maxTot=Math.max(1,...data.map(r=>r.tot)),maxSec=Math.max(1,...data.map(r=>r.sec));
+  host.innerHTML='<span class="pro-axis" style="left:-24px;top:-14px">precisao</span><span class="pro-axis" style="right:0;bottom:-18px">volume →</span>'+data.map(r=>{const left=10+r.tot/maxTot*82,top=92-r.acc*.82,size=34+Math.min(32,(r.sec/maxSec)*24+(r.tot/maxTot)*8),abbr=r.name.split(' ').map(x=>x[0]).join('').slice(0,5);return'<div class="pro-bubble" title="'+escapeHtml(r.name)+' · '+r.tot+'q · '+r.acc.toFixed(1)+'%" style="--size:'+size+'px;--bubble:'+r.color+';left:'+left+'%;top:'+Math.max(8,Math.min(90,top))+'%">'+escapeHtml(abbr)+'</div>'}).join('');
+  const opportunity=[...data].sort((a,b)=>((100-b.acc)*b.tot)-((100-a.acc)*a.tot))[0];
+  document.getElementById('pro-insight-title').textContent=opportunity?'Maior oportunidade: '+opportunity.name:'Insight estatistico';document.getElementById('pro-insight-text').textContent=opportunity?'A disciplina combina '+opportunity.tot+' questoes com '+opportunity.acc.toFixed(1).replace('.',',')+'% de acerto. Revisao direcionada tende a produzir o maior ganho.':'Registre questoes e tempo por disciplina para ativar a analise.';
+}
+function renderProfessionalDashboard(S,Q){
+  const currentQ=proRange(Q,proPeriod,false),tot=currentQ.reduce((a,q)=>a+(q.tot||0),0),cer=currentQ.reduce((a,q)=>a+(q.cer||0),0),wrong=Math.max(0,tot-cer),acc=tot?cer/tot*100:null,activeDays=new Set(currentQ.map(q=>q.date)).size||1;
+  document.getElementById('pro-volume-label').textContent=tot+' questoes';document.getElementById('pro-ring-value').textContent=acc===null?'—':acc.toFixed(1).replace('.',',')+'%';document.getElementById('pro-ring').style.setProperty('--correct',(acc||0)+'%');document.getElementById('pro-ring').style.setProperty('--answered','100%');document.getElementById('pro-correct').textContent=cer;document.getElementById('pro-wrong').textContent=wrong;document.getElementById('pro-daily-average').textContent=(tot/activeDays).toFixed(1).replace('.',',')+' q/dia';
+  const current=proDisciplineRows(S,Q,false),previous=proDisciplineRows(S,Q,true);proRenderEvolution(currentQ);proRenderBars(current);proRenderHeat(S,Q);proRenderDaily(Q);proRenderRadar(current,previous);proRenderScatter(current);
+  const hours=advBestHours(proRange(S,proPeriod,false),currentQ),best=hours[0];document.getElementById('pro-window-title').textContent=best?'Melhor janela: '+String(best.hour).padStart(2,'0')+'h–'+String((best.hour+2)%24).padStart(2,'0')+'h':'Melhor janela em analise';document.getElementById('pro-window-text').textContent=best?(best.acc!==null?'Nesse horario, seu acerto medio e '+best.acc+'% com '+best.tot+' questoes registradas.':'Esse horario concentra '+fH(best.sec)+' de estudo registrado.'):'Registre sessoes em horarios diferentes para identificar seu melhor periodo.';
+}
+
 // DASHBOARD
 function renderD(){
   const c=cfg();
@@ -2044,6 +2197,7 @@ function renderD(){
   document.getElementById('ulvl').textContent=Math.floor(xp/100)+1;
   document.getElementById('xpbar').style.width=(xp%100)+'%';
   renderAdvancedDashboard(S,Q,c,tSecs,qT);
+  renderProfessionalDashboard(S,Q);
   renderWChart(S);renderHMap(S);renderDPerf(S,Q);renderDSess(S);
   renderLineChart(Q);renderDiag(Q);startCD();
 }
