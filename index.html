@@ -281,6 +281,20 @@ input,select,textarea{font-family:inherit;outline:none}
 .slist{display:flex;flex-direction:column;gap:7px}
 .srow2{display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--s3);border:1px solid var(--border);border-radius:var(--r);transition:.15s}
 .srow2:hover{border-color:var(--border2)}
+.rescue-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0 12px}
+.rescue-stat{background:var(--s3);border:1px solid var(--border);border-radius:var(--r);padding:10px}
+.rescue-stat strong{display:block;font-size:20px;line-height:1;color:var(--t1)}
+.rescue-stat span{display:block;margin-top:5px;font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.05em}
+.rescue-progress{height:7px;background:var(--s4);border-radius:20px;overflow:hidden;margin:8px 0 12px}
+.rescue-progress>div{height:100%;background:linear-gradient(90deg,var(--accent),var(--green));border-radius:inherit;transition:.25s}
+.rescue-item{display:grid;grid-template-columns:30px minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 12px;background:var(--s3);border:1px solid var(--border);border-radius:var(--r)}
+.rescue-rank{width:30px;height:30px;display:grid;place-items:center;border-radius:8px;background:var(--abg);color:var(--accent2);font-size:11px;font-weight:800}
+.rescue-name{font-size:12px;font-weight:700;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rescue-meta{font-size:10px;color:var(--t3);margin-top:3px}
+.rescue-actions{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}
+.rescue-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.rescue-limit{width:auto;padding:5px 8px;font-size:11px}
+@media(max-width:640px){.rescue-summary{grid-template-columns:repeat(2,1fr)}.rescue-item{grid-template-columns:28px minmax(0,1fr)}.rescue-actions{grid-column:1/-1;justify-content:flex-start}}
 .sdot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
 .smain{flex:1}
 .sname{font-size:13px;font-weight:500;color:var(--t1)}
@@ -1343,6 +1357,27 @@ option{background:var(--s3)}
     <!-- EDITAL & REVISÃO -->
     <div class="tab" id="tab-r">
       <div class="card mb">
+        <div class="ch">
+          <div>
+            <div class="ct">Central de Resgate</div>
+            <div style="font-size:11px;color:var(--t3);margin-top:3px">um lote possível por dia, sem esconder o acumulado</div>
+          </div>
+          <div class="rescue-controls">
+            <label style="font-size:10px;color:var(--t3)">Lote diário</label>
+            <select class="fi rescue-limit" id="rescue-limit" onchange="pfSetRescueLimit(this.value)">
+              <option value="6">6</option>
+              <option value="12">12</option>
+              <option value="20">20</option>
+            </select>
+            <button class="btn bg2 xs" onclick="pfExpandRescue()">+5 hoje</button>
+          </div>
+        </div>
+        <div id="rescue-center">
+          <div class="empty"><div class="eico">⏳</div><div class="etxt">Aguardando sincronização da extensão</div></div>
+        </div>
+      </div>
+
+      <div class="card mb">
         <div class="ch"><div class="ct">🧠 Revisão Inteligente</div><span style="font-size:11px;color:var(--t3)">prioridades de hoje</span></div>
         <div id="revlist"></div>
       </div>
@@ -1534,9 +1569,10 @@ const PF_SYNC_ORIGIN='https://cazuzaleo89-netizen.github.io';
 let pfPublishTimer=null;
 function pfNorm(v){return String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase()}
 function pfSyncMeta(){
-  if(!ST.extSync) ST.extSync={events:{},questions:{},lastSync:0};
+  if(!ST.extSync) ST.extSync={events:{},questions:{},reviewQueue:[],lastSync:0};
   if(!ST.extSync.events) ST.extSync.events={};
   if(!ST.extSync.questions) ST.extSync.questions={};
+  if(!Array.isArray(ST.extSync.reviewQueue)) ST.extSync.reviewQueue=[];
   return ST.extSync;
 }
 function pfSetSyncStatus(kind,text){
@@ -1596,6 +1632,21 @@ function pfApplySnapshot(snapshot){
     for(let i=prev.e;i<er;i++)changed=pfAddQuestion('wrong',q,'snapshot:'+key+':e:'+i,ts)||changed;
     meta.questions[key]={a:ac,e:er};
   });
+  const reviewQueue=Object.values(snapshot.wrongBank||{}).map(q=>({
+    qid:String(q.qid||''),
+    url:q.url||tecURL(q.qid),
+    materia:q.materia||'Sem disciplina',
+    assunto:q.assunto||'',
+    desc:q.desc||('Questão #'+(q.qid||'')),
+    errorCount:Math.max(1,Number(q.errorCount)||Number(q.erros)||1),
+    nextReview:q.nextReview||'',
+    lastError:q.lastError||q.firstError||'',
+    repetitions:Number(q.repetitions)||0,
+    interval:Number(q.interval)||1,
+  })).filter(q=>q.qid);
+  const prevQueue=JSON.stringify(meta.reviewQueue||[]);
+  meta.reviewQueue=reviewQueue;
+  if(prevQueue!==JSON.stringify(reviewQueue))changed=true;
   meta.lastSync=Date.now();
   if(snapshot.ranking)localStorage.setItem('_pf_tec_ranking',JSON.stringify(snapshot.ranking));
   if(changed){
@@ -1666,6 +1717,10 @@ window.addEventListener('message',event=>{
   if(msg.type==='PF_SYNC_STATUS'&&msg.payload?.connected===false)pfSetSyncStatus('err','Falha na extensao');
   if(msg.type==='PF_REQUEST_PANEL_STATE')pfPublishPanelState();
   if(msg.type==='PF_PANEL_IMPORT_RESULT'&&msg.payload?.ok)pfSetSyncStatus('ok','Extensao conectada');
+  if(msg.type==='PF_REVIEW_RESULT_ACK'){
+    if(msg.payload?.ok){pfSetSyncStatus('ok','Revisao sincronizada');pfRequestSync();}
+    else{pfSetSyncStatus('err','Falha ao reagendar revisao');}
+  }
 });
 
 // THEME
@@ -2496,7 +2551,89 @@ function resetConf(){
 }
 
 /* ===== EDITAL & REVISÃO ===== */
-function renderRev(){ popSel(); renderRevInt(); renderEdital(); renderErros(); }
+function renderRev(){ popSel(); pfRenderRescue(); renderRevInt(); renderEdital(); renderErros(); }
+
+function pfRescueCfg(){
+  const today=td();
+  if(!ST.reviewRescue||ST.reviewRescue.date!==today){
+    ST.reviewRescue={date:today,dailyLimit:Number(ST.reviewRescue?.dailyLimit)||12,extra:0,done:{}};
+  }
+  if(!ST.reviewRescue.done)ST.reviewRescue.done={};
+  return ST.reviewRescue;
+}
+function pfRescueDue(){
+  const meta=pfSyncMeta(),today=td();
+  return (meta.reviewQueue||[]).filter(q=>!q.nextReview||q.nextReview<=today);
+}
+function pfRescueScore(q){
+  const overdue=q.nextReview?Math.max(0,daysSince(q.nextReview)):1;
+  return overdue*9+(Number(q.errorCount)||1)*16+(Number(q.repetitions)||0)*6+(q.assunto?3:0);
+}
+function pfRescueBatch(){
+  const cfg=pfRescueCfg(),limit=Math.max(1,(Number(cfg.dailyLimit)||12)+(Number(cfg.extra)||0));
+  const due=pfRescueDue().filter(q=>!cfg.done[q.qid]).sort((a,b)=>pfRescueScore(b)-pfRescueScore(a));
+  const picked=[],perSubject={};
+  for(const q of due){
+    const key=pfNorm(q.materia)||'geral';
+    if((perSubject[key]||0)>=3&&due.length>limit)continue;
+    picked.push(q);perSubject[key]=(perSubject[key]||0)+1;
+    if(picked.length>=limit)break;
+  }
+  if(picked.length<limit){
+    for(const q of due){
+      if(picked.some(x=>x.qid===q.qid))continue;
+      picked.push(q);if(picked.length>=limit)break;
+    }
+  }
+  return picked;
+}
+function pfSetRescueLimit(value){
+  const cfg=pfRescueCfg();cfg.dailyLimit=Math.max(1,Number(value)||12);cfg.extra=0;sSt();pfRenderRescue();
+}
+function pfExpandRescue(){
+  const cfg=pfRescueCfg();cfg.extra=(Number(cfg.extra)||0)+5;sSt();pfRenderRescue();nfy('Mais 5 revisões liberadas para hoje','info');
+}
+function pfOpenReview(url){if(url)window.open(url,'_blank','noopener');}
+function pfReviewAnswer(qid,quality){
+  const cfg=pfRescueCfg();cfg.done[String(qid)]=Date.now();sSt();pfRenderRescue();
+  window.postMessage({source:'PF_PANEL',type:'PF_REVIEW_RESULT',payload:{qid:String(qid),quality:Number(quality)||4}},PF_SYNC_ORIGIN);
+  nfy(quality<=1?'Reforço mantido na fila':quality>=5?'Revisão concluída como fácil':'Revisão reagendada','ok');
+}
+function pfRenderRescue(){
+  const host=document.getElementById('rescue-center');if(!host)return;
+  const cfg=pfRescueCfg(),due=pfRescueDue(),batch=pfRescueBatch();
+  const doneCount=Object.keys(cfg.done||{}).length;
+  const critical=due.filter(q=>pfRescueScore(q)>=55).length;
+  const target=Math.max(1,(Number(cfg.dailyLimit)||12)+(Number(cfg.extra)||0));
+  const pct=Math.min(100,Math.round(doneCount/target*100));
+  const sel=document.getElementById('rescue-limit');if(sel)sel.value=String(cfg.dailyLimit||12);
+  const summary='<div class="rescue-summary">'+
+    '<div class="rescue-stat"><strong>'+due.length+'</strong><span>vencidas</span></div>'+
+    '<div class="rescue-stat"><strong>'+critical+'</strong><span>críticas</span></div>'+
+    '<div class="rescue-stat"><strong>'+doneCount+'</strong><span>feitas hoje</span></div>'+
+    '<div class="rescue-stat"><strong>'+Math.max(0,target-doneCount)+'</strong><span>faltam no lote</span></div>'+
+  '</div><div class="rescue-progress"><div style="width:'+pct+'%"></div></div>';
+  if(!due.length){
+    host.innerHTML=summary+'<div class="empty"><div class="eico">✅</div><div class="etxt">Fila vencida zerada. Continue apenas com as revisões programadas.</div></div>';
+    return;
+  }
+  if(!batch.length){
+    host.innerHTML=summary+'<div class="empty"><div class="eico">🏁</div><div class="etxt">Lote de hoje concluído. Pare sem culpa ou libere mais 5.</div></div>';
+    return;
+  }
+  host.innerHTML=summary+'<div class="slist">'+batch.map((q,i)=>{
+    const overdue=q.nextReview?Math.max(0,daysSince(q.nextReview)):0;
+    const meta=(q.assunto?escapeHtml(q.assunto)+' · ':'')+(overdue?overdue+'d atrasada · ':'')+(q.errorCount||1)+' erro(s)';
+    return '<div class="rescue-item"><div class="rescue-rank">'+(i+1)+'</div>'+
+      '<div><div class="rescue-name">'+escapeHtml(q.materia||'Geral')+'</div><div class="rescue-meta">'+meta+'</div></div>'+
+      '<div class="rescue-actions">'+
+        '<button class="btn bg2 xs" onclick="pfOpenReview(\''+String(q.url||tecURL(q.qid)).replace(/'/g,'%27')+'\')">Abrir</button>'+
+        '<button class="btn bd xs" onclick="pfReviewAnswer(\''+q.qid+'\',1)">Errei</button>'+
+        '<button class="btn bg2 xs" onclick="pfReviewAnswer(\''+q.qid+'\',4)">Difícil</button>'+
+        '<button class="btn bp xs" onclick="pfReviewAnswer(\''+q.qid+'\',5)">Fácil</button>'+
+      '</div></div>';
+  }).join('')+'</div>';
+}
 
 // --- Revisão Inteligente: prioriza o que revisar hoje ---
 function daysSince(dateStr){ if(!dateStr) return 999; const d=new Date(dateStr+'T00:00:00'); return Math.floor((Date.now()-d.getTime())/86400000); }
