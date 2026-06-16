@@ -1586,7 +1586,7 @@ if(!ST.edital) ST.edital={};   // { discId: [ {id,name,done} ] }
 if(!ST.erros)  ST.erros=[];    // caderno de erros (TEC): [ {id,code,discId,assunto,banca,date,ts,count,done} ]
 let tSec=0,tRun=false,tPsd=false,tDur=0,tIv=null,cdIv=null,selC=COLS[0];
 let pomMode=false,pomPhase='work',pomCycle=0,pomTotal=4;
-let pendingSess=null;
+let pendingSess=null,pendingSessSaved=false;
 let planDone=new Set();
 
 function lSt(){try{return JSON.parse(localStorage.getItem('pf4')||'{}')}catch{return{}}}
@@ -1892,10 +1892,16 @@ function tStop(){
   const ass=document.getElementById('tass').value.trim();
   if(tSec>10&&disc){
     pendingSess={id:uid(),discId:disc,sec:tSec,ass,date:td(),ts:Date.now(),src:'timer',nota:''};
+    if(!ST.sess) ST.sess=[];
+    ST.sess.unshift(pendingSess);
+    pendingSessSaved=true;
+    sSt();
     const d=discs().find(x=>x.id===disc);
     document.getElementById('nota-resumo').textContent=(d?.name||'Sessão')+' · '+fH(tSec)+' estudados';
     document.getElementById('nota-input').value='';
     document.getElementById('notaModal').classList.add('open');
+    nfy('Sessão salva — '+fH(tSec),'ok');
+    playBeep();sendBrowserNotif('Sessão salva! '+fH(tSec)+' estudados.');
   } else {
     finishStop();
   }
@@ -1911,12 +1917,14 @@ function tStop(){
 function confirmStop(){
   if(pendingSess){
     pendingSess.nota=document.getElementById('nota-input').value.trim();
-    if(!ST.sess) ST.sess=[];
-    ST.sess.unshift(pendingSess);
+    if(!pendingSessSaved){
+      if(!ST.sess) ST.sess=[];
+      ST.sess.unshift(pendingSess);
+    }
     sSt();
-    nfy('Sessão salva — '+fH(pendingSess.sec),'ok');
-    playBeep();sendBrowserNotif('Sessão salva! '+fH(pendingSess.sec)+' estudados.');
+    nfy(pendingSess.nota?'Anotação salva':'Sessão salva','ok');
     pendingSess=null;
+    pendingSessSaved=false;
   }
   document.getElementById('notaModal').classList.remove('open');
   renderTSess();renderD();
