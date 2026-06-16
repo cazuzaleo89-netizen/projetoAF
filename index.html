@@ -327,6 +327,17 @@ input,select,textarea{font-family:inherit;outline:none}
 .pom-dot{width:8px;height:8px;border-radius:50%;background:var(--s4);transition:.3s}
 .pom-dot.done{background:var(--green)}
 .pom-dot.active{background:var(--gold)}
+.tface.xp-circular{position:relative;overflow:hidden;padding:28px 20px 26px;background:radial-gradient(circle at 50% 12%,rgba(34,211,238,.14),transparent 32%),linear-gradient(180deg,#101832 0%,#070b18 100%);border-color:rgba(96,165,250,.32);box-shadow:0 24px 70px rgba(2,6,23,.38),0 0 0 1px rgba(125,211,252,.08) inset}
+.tface.xp-circular::before{content:"XP Focus";position:absolute;top:14px;right:16px;padding:4px 9px;border-radius:99px;background:rgba(34,211,238,.11);border:1px solid rgba(34,211,238,.26);color:#67e8f9;font-size:9px;font-weight:900;letter-spacing:.09em;text-transform:uppercase}
+.xp-main-ring{width:188px;height:188px;margin:0 auto 18px;display:grid;place-items:center;position:relative}
+.xp-main-ring svg{position:absolute;inset:0;width:188px;height:188px;margin:0!important;filter:drop-shadow(0 0 18px rgba(34,211,238,.14))}
+.xp-main-ring .trk{stroke:rgba(30,41,59,.92);stroke-width:8}
+.xp-main-ring .tprog{stroke:url(#rg-xp);stroke-width:8;filter:drop-shadow(0 0 8px rgba(34,211,238,.35))}
+.xp-main-ring .tinner{position:relative;z-index:1;width:148px;height:148px;border-radius:50%;background:linear-gradient(180deg,#0d1328,#070b18);border:1px solid rgba(148,163,184,.12);box-shadow:inset 0 0 22px rgba(15,23,42,.92);display:flex;flex-direction:column;align-items:center;justify-content:center}
+.xp-main-ring .tbig{font-size:34px;text-shadow:0 0 18px rgba(125,211,252,.25)}
+.xp-main-ring .tsub{font-size:10px;color:#818cf8;font-weight:800;letter-spacing:.04em}
+.tface.xp-circular .tdtag{background:rgba(15,23,42,.78);border-color:rgba(34,211,238,.2);color:#bfdbfe}
+.tface.xp-circular .btn.bp{background:linear-gradient(135deg,#2563eb,#4f46e5,#7c3aed);border-color:rgba(165,180,252,.38);box-shadow:0 12px 30px rgba(79,70,229,.24);font-weight:900}
 /* HOTKEYS */
 .kbd{display:inline-block;background:var(--s4);border:1px solid var(--border2);border-radius:5px;padding:2px 7px;font-size:11px;font-weight:600;color:var(--t2);font-family:monospace}
 /* LINE CHART */
@@ -657,6 +668,34 @@ option{background:var(--s3)}
 }
 </style>
 
+<style id="circular-xp-floating-timer-skin">
+#painelFlutuante{
+  width:292px;
+  background:radial-gradient(circle at 50% 12%,rgba(34,211,238,.15),transparent 34%),radial-gradient(circle at 92% 8%,rgba(139,92,246,.2),transparent 30%),linear-gradient(180deg,#101832 0%,#070b18 100%);
+  border:1px solid rgba(96,165,250,.36);
+  border-radius:24px;
+  box-shadow:0 24px 70px rgba(2,6,23,.68),0 0 0 1px rgba(125,211,252,.08) inset;
+}
+#painelFlutuante.minimized{width:228px;border-radius:18px}
+#ftHeader{background:rgba(15,23,42,.54);border-bottom:1px solid rgba(125,211,252,.12);padding:10px 13px}
+#ftHeader::after{content:"XP Focus";margin-left:auto;margin-right:7px;padding:3px 8px;border-radius:999px;background:rgba(34,211,238,.11);border:1px solid rgba(34,211,238,.25);color:#67e8f9;font-size:8px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
+#ftBody{padding:14px}
+#ftDisc{height:36px;background:rgba(15,23,42,.72);border-color:rgba(125,211,252,.22);border-radius:11px;color:#e0f2fe;font-weight:700}
+#ftDisplay{width:178px;height:178px;margin:14px auto 13px;display:grid;place-items:center;position:relative;border-radius:50%;background:conic-gradient(from 210deg,#22d3ee var(--xp-pct,0%),rgba(99,102,241,.38) var(--xp-pct,0%) 72%,rgba(30,41,59,.9) 72% 100%);box-shadow:0 0 32px rgba(34,211,238,.14),0 0 0 1px rgba(125,211,252,.12) inset}
+#ftDisplay::before{content:"";position:absolute;inset:11px;border-radius:50%;background:linear-gradient(180deg,#0d1328,#070b18);box-shadow:inset 0 0 22px rgba(15,23,42,.92)}
+#ftClock{position:relative;z-index:1;font-size:36px;letter-spacing:.02em;text-shadow:0 0 18px rgba(125,211,252,.24)}
+#ftXpHint{position:absolute;z-index:1;left:50%;bottom:42px;transform:translateX(-50%);width:max-content;margin:0;color:#818cf8;font-size:10px;font-weight:800;letter-spacing:.04em}
+#ftProgressWrap{height:8px;width:82%;margin:2px auto 14px;border-radius:999px;background:rgba(30,41,59,.92);border:1px solid rgba(148,163,184,.12)}
+#ftProgressBar{background:linear-gradient(90deg,#22d3ee,#6366f1,#a855f7);box-shadow:0 0 14px rgba(34,211,238,.45)}
+#ftControls{gap:8px;margin-bottom:10px}
+#ftPlayBtn{background:linear-gradient(135deg,#2563eb,#4f46e5,#7c3aed);border-color:rgba(165,180,252,.34);color:#fff;border-radius:14px;padding:10px;font-weight:900;box-shadow:0 12px 30px rgba(79,70,229,.26)}
+#ftStopBtn{width:48px;background:rgba(15,23,42,.88);border-color:rgba(148,163,184,.18);border-radius:14px;color:#f8fafc}
+#ftFooter{border-top:1px solid rgba(125,211,252,.1);padding:8px 12px}
+#ftStatusLabel{color:#94a3b8;font-weight:900;letter-spacing:.08em}
+#ftToggleOpen{background:linear-gradient(135deg,#101832,#070b18);border-color:rgba(34,211,238,.42);color:#67e8f9;box-shadow:0 12px 38px rgba(2,6,23,.55),0 0 18px rgba(34,211,238,.16)}
+@media(max-width:800px){#painelFlutuante{width:min(292px,calc(100vw - 24px))}}
+</style>
+
 <a href="planejador.html" style="
   position:fixed; bottom:24px; right:24px; z-index:9999;
   background:#00e5a0; color:#07090f; font-weight:800;
@@ -788,6 +827,7 @@ option{background:var(--s3)}
     miniTime.textContent = t;
     xpHint.textContent = xpFor(seconds);
     bar.style.width = Math.min(100, (seconds / GOAL_SECONDS) * 100) + '%';
+    ft.style.setProperty('--xp-pct', Math.min(100, (seconds / GOAL_SECONDS) * 100) + '%');
     scoreLbl.textContent = `✓ ${certas} · ✗ ${erros}`;
   }
 
@@ -919,7 +959,9 @@ option{background:var(--s3)}
     if (td && document.activeElement !== disc && !running && !paused) {
       if ([...disc.options].some(o => o.value === td.value)) disc.value = td.value;
     }
-    bar.style.width = Math.min(100, (tSec / GOAL_SECONDS) * 100) + '%';
+    const xpPct = Math.min(100, (tSec / GOAL_SECONDS) * 100);
+    bar.style.width = xpPct + '%';
+    ft.style.setProperty('--xp-pct', xpPct + '%');
     if (!running && !paused) {
       playBtn.textContent = '▶ Iniciar';
       playBtn.style.background = 'rgba(74,108,247,0.22)';
@@ -1170,22 +1212,25 @@ option{background:var(--s3)}
 
     <!-- CRONÔMETRO -->
     <div class="tab" id="tab-t">
-      <div class="tface">
-        <svg width="160" height="160" viewBox="0 0 160 160" style="display:block;margin:0 auto 16px;transform:rotate(-90deg)">
+      <div class="tface xp-circular">
+        <div class="trw xp-main-ring">
+        <svg width="188" height="188" viewBox="0 0 160 160" style="display:block;margin:0 auto 16px;transform:rotate(-90deg)">
           <defs>
             <linearGradient id="rg" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#4f72ff"/><stop offset="100%" style="stop-color:#7b96ff"/></linearGradient>
             <linearGradient id="rg2" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#e8a020"/><stop offset="100%" style="stop-color:#fbbf24"/></linearGradient>
+            <linearGradient id="rg-xp" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#22d3ee"/><stop offset="55%" style="stop-color:#6366f1"/><stop offset="100%" style="stop-color:#a855f7"/></linearGradient>
           </defs>
           <circle class="trk" cx="80" cy="80" r="68"/>
           <circle class="tprog" id="tring" cx="80" cy="80" r="68" stroke-dasharray="427.256" stroke-dashoffset="427.256"/>
         </svg>
-        <div style="text-align:center">
+        <div class="tinner" style="text-align:center">
           <div class="tbig" id="tdisp">00:00:00</div>
           <div class="tsub" id="tdursub">Livre</div>
           <div id="pom-info" style="display:none">
             <div class="pom-badge" id="pom-label">🍅 Foco — Ciclo 1/4</div>
             <div class="pom-cycle" id="pom-dots"></div>
           </div>
+        </div>
         </div>
         <div class="tdtag" id="tdtag" style="margin-top:16px;display:inline-flex">⏱ Selecione uma disciplina</div>
         <div class="tctrl" style="margin-top:0">
@@ -3213,14 +3258,21 @@ if('serviceWorker' in navigator){
 
   const PIP_CSS = `
     *{box-sizing:border-box}
-    body{margin:0;font-family:system-ui,'Segoe UI',Roboto,sans-serif;background:#0a0d1a;color:#fff;
+    body{margin:0;font-family:system-ui,'Segoe UI',Roboto,sans-serif;background:
+      radial-gradient(circle at 50% 14%, rgba(34,211,238,.22), transparent 34%),
+      linear-gradient(180deg,#10172f,#070b18 68%);color:#fff;
       height:100vh;display:flex;flex-direction:column;gap:8px;padding:15px;user-select:none}
     .ph{display:flex;align-items:center;gap:6px;font-size:10px;font-weight:700;letter-spacing:.6px;color:rgba(255,255,255,.7)}
     .pd{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.2);transition:background .3s}
     .pdisc{font-size:11px;color:rgba(255,255,255,.55);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .pclock{font-size:42px;font-weight:800;text-align:center;letter-spacing:1px;font-variant-numeric:tabular-nums;line-height:1.05;margin:2px 0}
-    .pbar{height:4px;border-radius:3px;background:rgba(255,255,255,.1);overflow:hidden}
-    .pbar>i{display:block;height:100%;width:0;background:#4a6cf7;transition:width .35s}
+    .pring{--xp-pct:0%;width:138px;height:138px;margin:0 auto;display:grid;place-items:center;border-radius:50%;
+      background:conic-gradient(from -90deg,#22d3ee var(--xp-pct),rgba(99,102,241,.34) 0,rgba(255,255,255,.08) 100%);
+      box-shadow:0 0 26px rgba(34,211,238,.18);position:relative}
+    .pring::before{content:"";position:absolute;inset:7px;border-radius:50%;background:linear-gradient(180deg,#0d1328,#070b18);border:1px solid rgba(148,163,184,.14)}
+    .pclock{position:relative;z-index:1;font-size:31px;font-weight:900;text-align:center;letter-spacing:.5px;font-variant-numeric:tabular-nums;line-height:1.05;margin:0;text-shadow:0 0 16px rgba(125,211,252,.25)}
+    .pring .pcap{position:relative;z-index:1;margin-top:6px;font-size:8px;color:#818cf8;font-weight:800;letter-spacing:.45px;text-transform:uppercase}
+    .pbar{height:5px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden;border:1px solid rgba(148,163,184,.1)}
+    .pbar>i{display:block;height:100%;width:0;background:linear-gradient(90deg,#22d3ee,#6366f1,#a855f7);box-shadow:0 0 12px rgba(34,211,238,.3);transition:width .35s}
     .ppom{display:none;align-items:center;justify-content:center;gap:8px;font-size:10px;color:rgba(255,255,255,.72)}
     .ppom .dots{display:flex;gap:4px}
     .ppom .dots span{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.15);transition:.2s}
@@ -3228,8 +3280,8 @@ if('serviceWorker' in navigator){
     .ppom .dots span.active{background:#4a6cf7;box-shadow:0 0 0 3px rgba(74,108,247,.25)}
     .pstatus{font-size:9.5px;color:rgba(255,255,255,.4);text-align:center}
     .pctr{display:flex;gap:8px}
-    .pctr button{flex:1;border:none;border-radius:10px;padding:11px;font-size:13px;font-weight:700;color:#fff;
-      cursor:pointer;background:rgba(74,108,247,.25);transition:.15s}
+    .pctr button{flex:1;border:none;border-radius:12px;padding:11px;font-size:13px;font-weight:800;color:#fff;
+      cursor:pointer;background:linear-gradient(135deg,rgba(34,211,238,.22),rgba(99,102,241,.36));transition:.15s;border:1px solid rgba(129,140,248,.22)}
     .pctr button:hover{filter:brightness(1.15)}
     .pctr .pstop{flex:0 0 46px;background:rgba(255,255,255,.08)}
     .pdiv{height:1px;background:rgba(255,255,255,.08);margin:4px 0 2px}
@@ -3257,7 +3309,9 @@ if('serviceWorker' in navigator){
     const sec = (typeof tSec==='number') ? tSec : 0;
     g('pclock').textContent = fmtT(sec);
     g('pdisc').textContent = discName(running,paused);
-    g('pbar').style.width = Math.min(100, sec/3600*100) + '%';
+    const pipPct = Math.min(100, sec/3600*100);
+    g('pbar').style.width = pipPct + '%';
+    g('pring').style.setProperty('--xp-pct', pipPct + '%');
     const play=g('pplay'), dot=g('pdot'), st=g('pstatus');
     if(!running && !paused){
       play.textContent='▶ Iniciar'; play.style.background='rgba(74,108,247,.25)';
@@ -3319,7 +3373,7 @@ if('serviceWorker' in navigator){
     win.document.body.innerHTML =
       '<div class="ph"><span style="color:#4a6cf7">⏱</span><span>CRONÔMETRO</span><span class="pd" id="pdot"></span></div>'+
       '<div class="pdisc" id="pdisc">—</div>'+
-      '<div class="pclock" id="pclock">00:00:00</div>'+
+      '<div class="pring" id="pring"><div><div class="pclock" id="pclock">00:00:00</div><div class="pcap">foco ativo gera XP</div></div></div>'+
       '<div class="pbar"><i id="pbar"></i></div>'+
       '<div class="ppom" id="ppom"><span id="ppomlbl"></span><span class="dots" id="ppomdots"></span></div>'+
       '<div class="pstatus" id="pstatus">PRONTO</div>'+
