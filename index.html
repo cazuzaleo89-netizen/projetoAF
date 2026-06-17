@@ -1468,6 +1468,24 @@ option{background:var(--s3)}
           </div>
           <div style="font-size:11px;color:var(--t3);margin-top:9px;line-height:1.6">Cole o <b>número da questão</b> do TEC (aparece na URL: tecconcursos.com.br/questoes/<b>número</b>). Se você errar a mesma questão de novo, use o botão <b>errei+</b> na lista — quem erra 2+ vezes sobe para o topo da revisão.</div>
         </div>
+        <div style="background:linear-gradient(135deg,rgba(34,211,238,.07),rgba(29,185,106,.045));border:1px solid rgba(34,211,238,.18);border-radius:var(--r2);padding:13px;margin-bottom:14px">
+          <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+            <div>
+              <div style="font-size:12px;font-weight:800;color:var(--t1)">Gerador de caderno TEC</div>
+              <div style="font-size:11px;color:var(--t3);line-height:1.5">Monte um lote com os links das questões erradas por disciplina ou assunto.</div>
+            </div>
+            <div style="display:flex;gap:7px;flex-wrap:wrap">
+              <button class="btn bg2 xs" onclick="erCopyNotebookLinks()">Copiar links</button>
+              <button class="btn bg2 xs" onclick="erCopyNotebookCodes()">Copiar códigos</button>
+              <button class="btn bp xs" onclick="erOpenNotebook()">Abrir questões</button>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+            <div class="fg"><label class="fl">Disciplina do caderno</label><select class="fi" id="er-cad-disc" onchange="renderErroCadernos()"><option value="">Todas</option></select></div>
+            <div class="fg"><label class="fl">Assunto do caderno</label><select class="fi" id="er-cad-ass" onchange="renderErroCadernos()"><option value="">Todos</option></select></div>
+          </div>
+          <div id="er-cad-box"></div>
+        </div>
         <div style="font-size:12px;color:var(--t3);margin-bottom:8px">Total: <b id="er-cnt" style="color:var(--t2)">0</b> · Recorrentes: <b id="er-rec" style="color:var(--red)">0</b></div>
         <div class="tblw" id="er-tblw"></div>
       </div>
@@ -2780,6 +2798,86 @@ function addErro(){
 function erroAgain(id){ const e=ST.erros.find(x=>x.id===id); if(!e)return; e.count=(e.count||1)+1; e.done=false; sSt(); nfy('Marcado como erro recorrente (×'+e.count+')','info'); renderErros(); renderRevInt(); }
 function erroResolve(id){ const e=ST.erros.find(x=>x.id===id); if(!e)return; e.done=!e.done; sSt(); renderErros(); renderRevInt(); }
 function delErro(id){ ST.erros=ST.erros.filter(x=>x.id!==id); sSt(); renderErros(); renderRevInt(); }
+function erSubject(e){return (e.assunto||'').trim()||'(sem assunto)'}
+function erBaseData(){
+  const onlyRec=document.getElementById('er-onlyrec')?.checked;
+  const hideDone=document.getElementById('er-hidedone')?.checked;
+  let data=erros().filter(e=>String(e.code||'').replace(/\D/g,''));
+  if(onlyRec) data=data.filter(e=>(e.count||1)>=2);
+  if(hideDone) data=data.filter(e=>!e.done);
+  return data.sort((a,b)=>((b.count||1)-(a.count||1))||((b.ts||0)-(a.ts||0)));
+}
+function erUniqueByCode(data){
+  const seen=new Set(),out=[];
+  data.forEach(e=>{const code=String(e.code||'').replace(/\D/g,'');if(!code||seen.has(code))return;seen.add(code);out.push(e);});
+  return out;
+}
+function erNotebookData(){
+  const disc=document.getElementById('er-cad-disc')?.value||'';
+  const ass=document.getElementById('er-cad-ass')?.value||'';
+  let data=erBaseData();
+  if(disc)data=data.filter(e=>e.discId===disc);
+  if(ass)data=data.filter(e=>erSubject(e)===ass);
+  return erUniqueByCode(data);
+}
+function erCopyText(text,msg){
+  if(!text){nfy('Nenhuma questão no caderno','err');return;}
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(()=>nfy(msg,'ok')).catch(()=>erCopyFallback(text,msg));
+  }else erCopyFallback(text,msg);
+}
+function erCopyFallback(text,msg){
+  const ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.left='-9999px';document.body.appendChild(ta);ta.focus();ta.select();
+  try{document.execCommand('copy');nfy(msg,'ok');}catch{nfy('Não consegui copiar automaticamente','err');}
+  ta.remove();
+}
+function erCopyNotebookLinks(){erCopyText(erNotebookData().map(e=>tecURL(e.code)).filter(Boolean).join('\n'),'Links do caderno copiados');}
+function erCopyNotebookCodes(){erCopyText(erNotebookData().map(e=>String(e.code).replace(/\D/g,'')).join('\n'),'Códigos do caderno copiados');}
+function erOpenNotebook(){
+  const links=erNotebookData().map(e=>tecURL(e.code)).filter(Boolean);
+  if(!links.length){nfy('Nenhuma questão no caderno','err');return;}
+  links.slice(0,12).forEach(url=>window.open(url,'_blank','noopener'));
+  nfy('Abrindo '+Math.min(12,links.length)+' questão(ões)'+(links.length>12?' — copie os links para o restante':''),'info');
+}
+function erSetNotebook(discId,assunto){
+  const d=document.getElementById('er-cad-disc'),a=document.getElementById('er-cad-ass');
+  if(d)d.value=discId||'';
+  renderErroCadernos();
+  if(a)a.value=assunto||'';
+  renderErroCadernos();
+}
+function renderErroCadernos(){
+  const box=document.getElementById('er-cad-box'),discSel=document.getElementById('er-cad-disc'),assSel=document.getElementById('er-cad-ass');
+  if(!box||!discSel||!assSel)return;
+  const base=erBaseData(),curDisc=discSel.value,curAss=assSel.value;
+  const discCounts={};
+  base.forEach(e=>{const k=e.discId||'';discCounts[k]=(discCounts[k]||0)+1;});
+  const validDiscs=new Set(['',...Object.keys(discCounts)]);
+  discSel.innerHTML='<option value="">Todas ('+base.length+')</option>'+discs().filter(d=>discCounts[d.id]).map(d=>'<option value="'+escapeHtml(d.id)+'">'+escapeHtml(d.name)+' ('+discCounts[d.id]+')</option>').join('');
+  discSel.value=validDiscs.has(curDisc)?curDisc:'';
+  const subjectBase=discSel.value?base.filter(e=>e.discId===discSel.value):base;
+  const subjCounts={};
+  subjectBase.forEach(e=>{const k=erSubject(e);subjCounts[k]=(subjCounts[k]||0)+1;});
+  const subjects=Object.keys(subjCounts).sort((a,b)=>subjCounts[b]-subjCounts[a]||a.localeCompare(b,'pt-BR'));
+  assSel.innerHTML='<option value="">Todos ('+subjectBase.length+')</option>'+subjects.map(s=>'<option value="'+escapeHtml(s)+'">'+escapeHtml(s)+' ('+subjCounts[s]+')</option>').join('');
+  assSel.value=subjects.includes(curAss)?curAss:'';
+  const data=erNotebookData();
+  if(!base.length){
+    box.innerHTML='<div style="font-size:11.5px;color:var(--t3)">Nenhum erro ativo para gerar caderno. Registre códigos TEC ou desmarque os filtros acima.</div>';
+    return;
+  }
+  const discLabel=discSel.value?(discs().find(d=>d.id===discSel.value)?.name||'Disciplina'):'todas as disciplinas';
+  const assLabel=assSel.value||'todos os assuntos';
+  const preview=data.slice(0,6).map(e=>'<a href="'+tecURL(e.code)+'" target="_blank" rel="noopener" style="color:var(--accent2);text-decoration:none;font-weight:700">#'+escapeHtml(e.code)+'</a>').join(' ');
+  const groups=subjects.slice(0,6).map(s=>{
+    const qtd=subjCounts[s];
+    return '<button class="btn bg2 xs" style="justify-content:flex-start" data-disc="'+escapeHtml(discSel.value)+'" data-ass="'+escapeHtml(s)+'" onclick="erSetNotebook(this.dataset.disc,this.dataset.ass)">'+escapeHtml(s)+' · '+qtd+'</button>';
+  }).join('');
+  box.innerHTML='<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap">'+
+    '<div style="font-size:11.5px;color:var(--t2)"><b style="color:var(--accent2)">'+data.length+'</b> questão(ões) em <b>'+escapeHtml(discLabel)+'</b> · <b>'+escapeHtml(assLabel)+'</b></div>'+
+    '<div style="font-size:11px;color:var(--t3)">Prévia: '+(preview||'—')+'</div>'+
+  '</div>'+(groups?'<div style="margin-top:10px;display:flex;gap:7px;flex-wrap:wrap">'+groups+'</div>':'');
+}
 function renderErros(){
   const w=document.getElementById('er-tblw'); if(!w) return;
   const onlyRec=document.getElementById('er-onlyrec')?.checked;
@@ -2788,6 +2886,7 @@ function renderErros(){
   const recCount=data.filter(e=>(e.count||1)>=2 && !e.done).length;
   document.getElementById('er-cnt').textContent=data.length;
   document.getElementById('er-rec').textContent=recCount;
+  renderErroCadernos();
   if(onlyRec) data=data.filter(e=>(e.count||1)>=2);
   if(hideDone) data=data.filter(e=>!e.done);
   // ordena: recorrentes primeiro (maior count), depois mais recentes
