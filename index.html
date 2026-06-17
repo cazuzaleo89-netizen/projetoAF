@@ -1603,7 +1603,8 @@ function edTopics(discId){return (ST.edital&&ST.edital[discId])||[]}
 function erros(){return ST.erros||[]}
 function tecURL(code){const n=String(code||'').replace(/\D/g,'');return n?'https://www.tecconcursos.com.br/questoes/'+n:'';}
 function uid(){return Math.random().toString(36).slice(2)+Date.now().toString(36)}
-function td(){return new Date().toISOString().slice(0,10)}
+function ymd(d=new Date()){const local=new Date(d);local.setMinutes(local.getMinutes()-local.getTimezoneOffset());return local.toISOString().slice(0,10)}
+function td(){return ymd()}
 function p2(n){return String(n).padStart(2,'0')}
 function fS(s){return p2(Math.floor(s/3600))+':'+p2(Math.floor(s%3600/60))+':'+p2(s%60)}
 function fH(s){const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h>0?h+'h'+(m>0?m+'m':''):m+'m'}
@@ -1642,7 +1643,7 @@ function pfAddQuestion(result,payload,eventId,timestamp){
   ST.qs=ST.qs||[];
   ST.qs.unshift({
     id:'ext:'+eventId,discId,tot:1,cer:result==='correct'?1:0,
-    ass:payload.assunto||'',date:new Date(ts).toISOString().slice(0,10),
+    ass:payload.assunto||'',date:ymd(new Date(ts)),
     fonte:'Extensao TEC',ts,src:'extension',qid:String(payload.qid||'')
   });
   if(result==='wrong'&&payload.qid){
@@ -1653,7 +1654,7 @@ function pfAddQuestion(result,payload,eventId,timestamp){
     }else{
       ST.erros.unshift({
         id:'ext-error:'+payload.qid,code:String(payload.qid),discId,
-        assunto:payload.assunto||'',banca:'',date:new Date(ts).toISOString().slice(0,10),
+        assunto:payload.assunto||'',banca:'',date:ymd(new Date(ts)),
         ts,count:1,done:false,src:'extension'
       });
     }
@@ -2049,7 +2050,7 @@ function renderM(){
   const dow=now.getDay();
   const mon=new Date(now);mon.setDate(now.getDate()-(dow===0?6:dow-1));
   const sun=new Date(mon);sun.setDate(mon.getDate()+6);
-  const d1=mon.toISOString().slice(0,10),d2=sun.toISOString().slice(0,10);
+  const d1=ymd(mon),d2=ymd(sun);
   document.getElementById('md1').textContent=mon.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'});
   document.getElementById('md2').textContent=sun.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'});
   const wS=sess().filter(s=>s.date>=d1&&s.date<=d2);
@@ -2083,7 +2084,7 @@ function renderHist(){
     const dow=ref.getDay();
     const mon=new Date(ref);mon.setDate(ref.getDate()-(dow===0?6:dow-1));
     const sun=new Date(mon);sun.setDate(mon.getDate()+6);
-    const d1=mon.toISOString().slice(0,10),d2=sun.toISOString().slice(0,10);
+    const d1=ymd(mon),d2=ymd(sun);
     const wS=sess().filter(s=>s.date>=d1&&s.date<=d2);
     const wQ=qs().filter(q=>q.date>=d1&&q.date<=d2);
     const sec=wS.reduce((a,s)=>a+s.sec,0);
@@ -2101,12 +2102,12 @@ let advDashSig='';
 function advDayKey(date){
   const d=new Date(date);
   d.setHours(0,0,0,0);
-  return d.toISOString().slice(0,10);
+  return ymd(d);
 }
 function advRecentDays(n){
   const now=new Date();now.setHours(0,0,0,0);
   const out=[];
-  for(let i=n-1;i>=0;i--){const d=new Date(now);d.setDate(now.getDate()-i);out.push(d.toISOString().slice(0,10));}
+  for(let i=n-1;i>=0;i--){const d=new Date(now);d.setDate(now.getDate()-i);out.push(ymd(d));}
   return out;
 }
 function advDisciplineModel(S,Q){
@@ -2213,7 +2214,7 @@ function setProPeriod(days,btn){
   document.querySelectorAll('.pro-period').forEach(x=>x.classList.toggle('on',x===btn));
   renderProfessionalDashboard(sess(),qs());
 }
-function proDateOffset(days){const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()+days);return d.toISOString().slice(0,10)}
+function proDateOffset(days){const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()+days);return ymd(d)}
 function proRange(data,days,previous){
   if(!days)return previous?[]:data;
   const end=previous?proDateOffset(-days):td(),start=previous?proDateOffset(-(days*2)+1):proDateOffset(-days+1);
@@ -2316,7 +2317,7 @@ function renderWChart(S){
   const cols=[];let mx=0;
   for(let i=6;i>=0;i--){
     const d=new Date(now);d.setDate(now.getDate()-i);
-    const ds=d.toISOString().slice(0,10);
+    const ds=ymd(d);
     const sec=S.filter(s=>s.date===ds).reduce((a,s)=>a+s.sec,0);
     const h=Math.round(sec/3600*10)/10;
     cols.push({lbl:days[d.getDay()],h,now:i===0});
@@ -2331,7 +2332,7 @@ function renderHMap(S){
   const cells=[];
   for(let i=41;i>=0;i--){
     const d=new Date(now);d.setDate(now.getDate()-i);
-    const ds=d.toISOString().slice(0,10);
+    const ds=ymd(d);
     const sec=S.filter(s=>s.date===ds).reduce((a,s)=>a+s.sec,0);
     const h=sec/3600;
     cells.push({ds,v:h<=0?0:h<1?1:h<2?2:h<4?3:4,h:Math.round(h*10)/10});
@@ -2348,7 +2349,7 @@ function renderLineChart(Q){
     const dow=ref.getDay();
     const mon=new Date(ref);mon.setDate(ref.getDate()-(dow===0?6:dow-1));
     const sun=new Date(mon);sun.setDate(mon.getDate()+6);
-    const d1=mon.toISOString().slice(0,10),d2=sun.toISOString().slice(0,10);
+    const d1=ymd(mon),d2=ymd(sun);
     const wQ=Q.filter(q=>q.date>=d1&&q.date<=d2);
     const tot=wQ.reduce((a,q)=>a+q.tot,0),cer=wQ.reduce((a,q)=>a+q.cer,0);
     pts.push({ac:tot?Math.round(cer/tot*100):null,lbl:mon.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})});
