@@ -1423,6 +1423,26 @@ option{background:var(--s3)}
       </div>
 
       <div class="card mb">
+        <div class="ch">
+          <div>
+            <div class="ct">📎 Reforço por Similares</div>
+            <div style="font-size:11px;color:var(--t3);margin-top:3px">busca questões parecidas no seu histórico e monta um lote para revisar no TEC</div>
+          </div>
+          <div style="display:flex;gap:7px;flex-wrap:wrap">
+            <button class="btn bp xs" onclick="simCopyTecQuery()">Copiar para gerar no TEC</button>
+            <button class="btn bg2 xs" onclick="simOpenBatch()">Abrir lote</button>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0">
+          <div class="fg"><label class="fl">Disciplina foco</label><select class="fi" id="sim-disc" onchange="renderSimilarReinforcement()"><option value="">Todas</option></select></div>
+          <div class="fg"><label class="fl">Assunto foco</label><select class="fi" id="sim-ass" onchange="renderSimilarReinforcement()"><option value="">Auto</option></select></div>
+        </div>
+        <div id="similar-center">
+          <div class="empty"><div class="eico">📎</div><div class="etxt">Registre erros do TEC para gerar reforços similares.</div></div>
+        </div>
+      </div>
+
+      <div class="card mb">
         <div class="ch"><div class="ct">🧠 Revisão Inteligente</div><span style="font-size:11px;color:var(--t3)">prioridades de hoje</span></div>
         <div id="revlist"></div>
       </div>
@@ -2624,7 +2644,7 @@ function resetConf(){
 }
 
 /* ===== EDITAL & REVISÃO ===== */
-function renderRev(){ popSel(); pfRenderRescue(); renderRevInt(); renderEdital(); renderErros(); }
+function renderRev(){ popSel(); pfRenderRescue(); renderSimilarReinforcement(); renderRevInt(); renderEdital(); renderErros(); }
 
 function pfRescueCfg(){
   const today=td();
@@ -2706,6 +2726,139 @@ function pfRenderRescue(){
         '<button class="btn bp xs" onclick="pfReviewAnswer(\''+q.qid+'\',5)">Fácil</button>'+
       '</div></div>';
   }).join('')+'</div>';
+}
+
+// --- Reforço por Similares: versão nativa do site ---
+function simTokens(text){
+  const stop=new Set(['de','da','do','das','dos','e','a','o','as','os','em','para','por','com','sem','sobre','no','na','nos','nas','um','uma','ao','aos','lei','cpc']);
+  return new Set(pfNorm(text).split(/[^a-z0-9]+/).filter(w=>w.length>2&&!stop.has(w)));
+}
+function simOverlap(a,b){
+  const ta=simTokens(a),tb=simTokens(b);
+  if(!ta.size||!tb.size)return 0;
+  let common=0;ta.forEach(t=>{if(tb.has(t))common++;});
+  return common/Math.max(ta.size,tb.size);
+}
+function simDiscName(discId,materia){
+  return discId?(discs().find(d=>d.id===discId)?.name||materia||'Sem disciplina'):(materia||'Sem disciplina');
+}
+function simCandidateBase(){
+  const out=[];
+  erros().forEach(e=>{
+    const qid=String(e.code||'').replace(/\D/g,'');
+    if(!qid||e.done)return;
+    out.push({qid,url:tecURL(qid),discId:e.discId||'',materia:simDiscName(e.discId,''),assunto:erSubject(e),errorCount:e.count||1,ts:e.ts||0,src:'erro'});
+  });
+  (pfSyncMeta().reviewQueue||[]).forEach(q=>{
+    const qid=String(q.qid||'').replace(/\D/g,'');
+    if(!qid)return;
+    const disc=discs().find(d=>pfNorm(d.name)===pfNorm(q.materia));
+    out.push({qid,url:q.url||tecURL(qid),discId:disc?.id||'',materia:q.materia||disc?.name||'Sem disciplina',assunto:(q.assunto||'').trim()||'(sem assunto)',errorCount:q.errorCount||1,ts:Date.parse(q.lastError||'')||0,src:q.nextReview&&q.nextReview<=td()?'fila vencida':'fila'});
+  });
+  qs().forEach(q=>{
+    const qid=String(q.qid||'').replace(/\D/g,'');
+    if(!qid||!(Number(q.tot)>Number(q.cer)))return;
+    out.push({qid,url:tecURL(qid),discId:q.discId||'',materia:simDiscName(q.discId,''),assunto:(q.ass||'').trim()||'(sem assunto)',errorCount:Math.max(1,(Number(q.tot)||1)-(Number(q.cer)||0)),ts:q.ts||0,src:'histórico'});
+  });
+  const map=new Map();
+  out.forEach(q=>{
+    const prev=map.get(q.qid);
+    if(!prev){map.set(q.qid,q);return;}
+    prev.errorCount=Math.max(prev.errorCount||1,q.errorCount||1);
+    prev.ts=Math.max(prev.ts||0,q.ts||0);
+    if((prev.assunto||'(sem assunto)')==='(sem assunto)'&&q.assunto)prev.assunto=q.assunto;
+    if(!prev.discId&&q.discId)prev.discId=q.discId;
+    if(!prev.url&&q.url)prev.url=q.url;
+    if(prev.src.indexOf(q.src)<0)prev.src+=' + '+q.src;
+  });
+  return [...map.values()].sort((a,b)=>(b.errorCount-a.errorCount)||((b.ts||0)-(a.ts||0)));
+}
+function simPopulateControls(base){
+  const dsel=document.getElementById('sim-disc'),asel=document.getElementById('sim-ass');
+  if(!dsel||!asel)return {disc:'',ass:''};
+  const curD=dsel.value,curA=asel.value;
+  const discCounts={};
+  base.forEach(q=>{const k=q.discId||'';discCounts[k]=(discCounts[k]||0)+1;});
+  dsel.innerHTML='<option value="">Todas ('+base.length+')</option>'+discs().filter(d=>discCounts[d.id]).map(d=>'<option value="'+escapeHtml(d.id)+'">'+escapeHtml(d.name)+' ('+discCounts[d.id]+')</option>').join('');
+  dsel.value=curD&&discCounts[curD]?curD:'';
+  const scoped=dsel.value?base.filter(q=>q.discId===dsel.value):base;
+  const subjCounts={};
+  scoped.forEach(q=>{const k=(q.assunto||'').trim()||'(sem assunto)';subjCounts[k]=(subjCounts[k]||0)+1;});
+  const subjects=Object.keys(subjCounts).sort((a,b)=>subjCounts[b]-subjCounts[a]||a.localeCompare(b,'pt-BR'));
+  asel.innerHTML='<option value="">Auto: assuntos mais frágeis</option>'+subjects.map(s=>'<option value="'+escapeHtml(s)+'">'+escapeHtml(s)+' ('+subjCounts[s]+')</option>').join('');
+  asel.value=curA&&subjects.includes(curA)?curA:'';
+  return {disc:dsel.value,ass:asel.value};
+}
+function simRankedBatch(){
+  const base=simCandidateBase(),sel=simPopulateControls(base);
+  let pool=sel.disc?base.filter(q=>q.discId===sel.disc):base;
+  if(sel.ass){
+    pool=pool.map(q=>({...q,simScore:(q.assunto===sel.ass?1:simOverlap(q.assunto,sel.ass))}))
+      .filter(q=>q.simScore>=.28||q.assunto===sel.ass);
+  }else{
+    const subjectWeight={};
+    pool.forEach(q=>{const k=q.assunto||'(sem assunto)';subjectWeight[k]=(subjectWeight[k]||0)+(q.errorCount||1)+1;});
+    pool=pool.map(q=>({...q,simScore:(subjectWeight[q.assunto||'(sem assunto)']||1)/10}));
+  }
+  pool.sort((a,b)=>
+    ((b.assunto===sel.ass)-(a.assunto===sel.ass))||
+    ((b.simScore||0)-(a.simScore||0))||
+    ((b.errorCount||1)-(a.errorCount||1))||
+    ((b.ts||0)-(a.ts||0))
+  );
+  if(sel.ass&&pool.length<2){
+    const fallback=(sel.disc?base.filter(q=>q.discId===sel.disc):base)
+      .filter(q=>!pool.some(p=>p.qid===q.qid))
+      .sort((a,b)=>(b.errorCount||1)-(a.errorCount||1));
+    pool=pool.concat(fallback).slice(0,6);
+  }
+  return pool.slice(0,12);
+}
+function simTecQuery(){return simRankedBatch().map(q=>'#'+q.qid).join(' ')}
+function simCopyTecQuery(){erCopyText(simTecQuery(),'Códigos similares copiados para gerar caderno no TEC');}
+function simOpenBatch(){
+  const links=simRankedBatch().map(q=>q.url||tecURL(q.qid)).filter(Boolean);
+  if(!links.length){nfy('Nenhuma questão similar encontrada','err');return;}
+  links.slice(0,8).forEach(url=>window.open(url,'_blank','noopener'));
+  nfy('Abrindo '+Math.min(8,links.length)+' questão(ões) similares','info');
+}
+function simSetFocus(discId,assunto){
+  const d=document.getElementById('sim-disc'),a=document.getElementById('sim-ass');
+  if(d)d.value=discId||'';
+  simPopulateControls(simCandidateBase());
+  if(a)a.value=assunto||'';
+  renderSimilarReinforcement();
+}
+function renderSimilarReinforcement(){
+  const host=document.getElementById('similar-center');if(!host)return;
+  const base=simCandidateBase(),batch=simRankedBatch();
+  if(!base.length){
+    host.innerHTML='<div class="empty"><div class="eico">📎</div><div class="etxt">Ainda não há questões erradas com código TEC para buscar similares.</div></div>';
+    return;
+  }
+  const subjects={};
+  base.forEach(q=>{const k=q.assunto||'(sem assunto)';if(!subjects[k])subjects[k]={ass:k,discId:q.discId,count:0,err:0};subjects[k].count++;subjects[k].err+=q.errorCount||1;});
+  const chips=Object.values(subjects).sort((a,b)=>b.err-a.err||b.count-a.count).slice(0,6).map(s=>
+    '<button class="btn bg2 xs" data-disc="'+escapeHtml(s.discId||'')+'" data-ass="'+escapeHtml(s.ass)+'" onclick="simSetFocus(this.dataset.disc,this.dataset.ass)">'+escapeHtml(s.ass)+' · '+s.count+'</button>'
+  ).join('');
+  const rows=batch.map((q,i)=>{
+    const d=q.discId?discs().find(x=>x.id===q.discId):null;
+    const score=q.simScore!=null?Math.round(q.simScore*100):Math.min(99,50+(q.errorCount||1)*8);
+    return '<div class="rescue-item">'+
+      '<div class="rescue-rank">'+(i+1)+'</div>'+
+      '<div><div class="rescue-name"><a href="'+(q.url||tecURL(q.qid))+'" target="_blank" rel="noopener" style="color:var(--accent2);text-decoration:none">#'+escapeHtml(q.qid)+'</a> · '+escapeHtml(q.assunto||'Sem assunto')+'</div>'+
+      '<div class="rescue-meta">'+escapeHtml(d?.name||q.materia||'Sem disciplina')+' · '+(q.errorCount||1)+' erro(s) · '+escapeHtml(q.src||'histórico')+' · similaridade '+score+'%</div></div>'+
+      '<div class="rescue-actions"><button class="btn bg2 xs" onclick="pfOpenReview(\''+String(q.url||tecURL(q.qid)).replace(/'/g,'%27')+'\')">Abrir</button></div>'+
+    '</div>';
+  }).join('');
+  host.innerHTML='<div class="rescue-summary">'+
+    '<div class="rescue-stat"><strong>'+base.length+'</strong><span>candidatas</span></div>'+
+    '<div class="rescue-stat"><strong>'+batch.length+'</strong><span>no lote</span></div>'+
+    '<div class="rescue-stat"><strong>'+Object.keys(subjects).length+'</strong><span>assuntos</span></div>'+
+    '<div class="rescue-stat"><strong>'+(batch.length>=2?'OK':'1/2')+'</strong><span>mínimo sugerido</span></div>'+
+  '</div><div style="font-size:11px;color:var(--t3);margin:8px 0">Texto para colar no TEC: <b style="color:var(--accent2)">'+escapeHtml(simTecQuery().slice(0,220))+(simTecQuery().length>220?'...':'')+'</b></div>'+
+  (chips?'<div style="display:flex;gap:7px;flex-wrap:wrap;margin:8px 0 10px">'+chips+'</div>':'')+
+  (batch.length?'<div class="slist">'+rows+'</div>':'<div class="empty"><div class="eico">🔎</div><div class="etxt">Nenhuma similar encontrada para esse filtro. Troque o assunto ou a disciplina.</div></div>');
 }
 
 // --- Revisão Inteligente: prioriza o que revisar hoje ---
@@ -2794,11 +2947,11 @@ function addErro(){
   if(ex){ ex.count=(ex.count||1)+1; ex.done=false; if(ass)ex.assunto=ass; if(banca)ex.banca=banca; sSt(); nfy('Questão já existia — marcada como erro recorrente (×'+ex.count+')','info'); }
   else { ST.erros.unshift({id:uid(),code,discId,assunto:ass,banca,date,ts:Date.now(),count:1,done:false}); sSt(); nfy('Erro registrado','ok'); }
   document.getElementById('er-code').value=''; document.getElementById('er-ass').value='';
-  renderErros(); renderRevInt();
+  renderErros(); renderSimilarReinforcement(); renderRevInt();
 }
-function erroAgain(id){ const e=ST.erros.find(x=>x.id===id); if(!e)return; e.count=(e.count||1)+1; e.done=false; sSt(); nfy('Marcado como erro recorrente (×'+e.count+')','info'); renderErros(); renderRevInt(); }
-function erroResolve(id){ const e=ST.erros.find(x=>x.id===id); if(!e)return; e.done=!e.done; sSt(); renderErros(); renderRevInt(); }
-function delErro(id){ ST.erros=ST.erros.filter(x=>x.id!==id); sSt(); renderErros(); renderRevInt(); }
+function erroAgain(id){ const e=ST.erros.find(x=>x.id===id); if(!e)return; e.count=(e.count||1)+1; e.done=false; sSt(); nfy('Marcado como erro recorrente (×'+e.count+')','info'); renderErros(); renderSimilarReinforcement(); renderRevInt(); }
+function erroResolve(id){ const e=ST.erros.find(x=>x.id===id); if(!e)return; e.done=!e.done; sSt(); renderErros(); renderSimilarReinforcement(); renderRevInt(); }
+function delErro(id){ ST.erros=ST.erros.filter(x=>x.id!==id); sSt(); renderErros(); renderSimilarReinforcement(); renderRevInt(); }
 function erSubject(e){return (e.assunto||'').trim()||'(sem assunto)'}
 function erBaseData(){
   const onlyRec=document.getElementById('er-onlyrec')?.checked;
