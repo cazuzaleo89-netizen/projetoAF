@@ -1654,16 +1654,58 @@ const PF_SYNC_ORIGIN='https://cazuzaleo89-netizen.github.io';
 let pfPublishTimer=null;
 function pfNorm(v){return String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase()}
 function pfSyncMeta(){
-  if(!ST.extSync) ST.extSync={events:{},questions:{},reviewQueue:[],lastSync:0};
+  if(!ST.extSync) ST.extSync={events:{},questions:{},reviewQueue:[],similarEvents:[],similarItems:[],lastSync:0};
   if(!ST.extSync.events) ST.extSync.events={};
   if(!ST.extSync.questions) ST.extSync.questions={};
   if(!Array.isArray(ST.extSync.reviewQueue)) ST.extSync.reviewQueue=[];
+  if(!Array.isArray(ST.extSync.similarEvents)) ST.extSync.similarEvents=[];
+  if(!Array.isArray(ST.extSync.similarItems)) ST.extSync.similarItems=[];
   return ST.extSync;
 }
 function pfSetSyncStatus(kind,text){
   const el=document.getElementById('pf-sync-pill');if(!el)return;
   el.className='sync-pill '+(kind||'');
   el.textContent=text||'Extensao';
+}
+function pfSimilarItem(q,origin){
+  const qid=String(q?.qid||q?.code||'').replace(/\D/g,'');
+  if(!qid)return null;
+  return {
+    qid,
+    url:q.url||tecURL(qid),
+    materia:q.materia||origin?.materia||'Sem disciplina',
+    assunto:(q.assunto||origin?.assunto||'').trim()||'(sem assunto)',
+    desc:q.desc||q.enunciado||('Questão #'+qid),
+    errorCount:Math.max(1,Number(q.errorCount)||Number(q.erros)||1),
+    relatedTo:String(q.relatedTo||origin?.qid||''),
+    relatedOriginDesc:q.relatedOriginDesc||origin?.desc||origin?.assunto||'',
+    similarScore:q.similarScore??q.v4_score??q.score??null,
+    similarStrategies:q.similarStrategies||q.v4_strategies||[],
+    similarScheduledAt:Number(q.similarScheduledAt)||Date.now(),
+    reviewReason:q.reviewReason||'similar',
+    src:'extensão similares'
+  };
+}
+function pfMergeSimilarItems(items){
+  const meta=pfSyncMeta(),map=new Map((meta.similarItems||[]).map(q=>[String(q.qid),q]));
+  (items||[]).forEach(item=>{
+    const clean=pfSimilarItem(item,item.origin||null);
+    if(!clean)return;
+    const prev=map.get(clean.qid)||{};
+    map.set(clean.qid,{...prev,...clean,errorCount:Math.max(prev.errorCount||1,clean.errorCount||1),similarScheduledAt:Math.max(prev.similarScheduledAt||0,clean.similarScheduledAt||0)});
+  });
+  meta.similarItems=[...map.values()].sort((a,b)=>(b.similarScheduledAt||0)-(a.similarScheduledAt||0)).slice(0,200);
+}
+function pfApplySimilarReinforcement(payload){
+  if(!payload)return;
+  const meta=pfSyncMeta();
+  const event={origin:payload.origin||null,items:payload.items||[],added:Number(payload.added)||0,scheduledAt:Number(payload.scheduledAt)||Date.now()};
+  meta.similarEvents.unshift(event);
+  meta.similarEvents=meta.similarEvents.slice(0,80);
+  pfMergeSimilarItems((payload.items||[]).map(q=>({...q,origin:payload.origin||null,similarScheduledAt:event.scheduledAt})));
+  meta.lastSync=Date.now();
+  sSt();
+  if(curTab==='r')renderSimilarReinforcement();
 }
 function pfEnsureDisc(name){
   const clean=String(name||'Sem disciplina').trim()||'Sem disciplina';
@@ -1728,10 +1770,26 @@ function pfApplySnapshot(snapshot){
     lastError:q.lastError||q.firstError||'',
     repetitions:Number(q.repetitions)||0,
     interval:Number(q.interval)||1,
+    reviewReason:q.reviewReason||'',
+    relatedTo:String(q.relatedTo||''),
+    relatedOriginDesc:q.relatedOriginDesc||'',
+    similarScore:q.similarScore??null,
+    similarStrategies:q.similarStrategies||[],
+    similarScheduledAt:Number(q.similarScheduledAt)||0,
+    relatedQuestions:Array.isArray(q.relatedQuestions)?q.relatedQuestions.slice(0,12):[],
   })).filter(q=>q.qid);
   const prevQueue=JSON.stringify(meta.reviewQueue||[]);
   meta.reviewQueue=reviewQueue;
   if(prevQueue!==JSON.stringify(reviewQueue))changed=true;
+  const relatedItems=[];
+  reviewQueue.forEach(q=>{
+    if(q.reviewReason==='similar') relatedItems.push(q);
+    (q.relatedQuestions||[]).forEach(r=>relatedItems.push({...r,relatedTo:q.qid,relatedOriginDesc:q.desc||q.assunto||'',similarScheduledAt:q.similarScheduledAt||snapshot.generatedAt}));
+  });
+  if(snapshot.similarReinforcement?.items) relatedItems.push(...snapshot.similarReinforcement.items);
+  const prevSimilar=JSON.stringify(meta.similarItems||[]);
+  pfMergeSimilarItems(relatedItems);
+  if(prevSimilar!==JSON.stringify(meta.similarItems||[]))changed=true;
   meta.lastSync=Date.now();
   if(snapshot.ranking)localStorage.setItem('_pf_tec_ranking',JSON.stringify(snapshot.ranking));
   if(changed){
@@ -1798,6 +1856,7 @@ window.addEventListener('message',event=>{
   if(!msg||msg.source!=='PF_EXTENSION')return;
   if(msg.type==='PF_SYNC_SNAPSHOT')pfApplySnapshot(msg.payload);
   if(msg.type==='PF_SYNC_EVENT')pfApplyEvent(msg.payload);
+  if(msg.type==='PF_SIMILAR_REINFORCEMENT')pfApplySimilarReinforcement(msg.payload);
   if(msg.type==='PF_SYNC_STATUS'&&msg.payload?.connected)pfSetSyncStatus('ok','Extensao conectada');
   if(msg.type==='PF_SYNC_STATUS'&&msg.payload?.connected===false)pfSetSyncStatus('err','Falha na extensao');
   if(msg.type==='PF_REQUEST_PANEL_STATE')pfPublishPanelState();
@@ -2744,6 +2803,17 @@ function simDiscName(discId,materia){
 }
 function simCandidateBase(){
   const out=[];
+  (pfSyncMeta().similarItems||[]).forEach(q=>{
+    const qid=String(q.qid||'').replace(/\D/g,'');
+    if(!qid)return;
+    const disc=discs().find(d=>pfNorm(d.name)===pfNorm(q.materia));
+    out.push({
+      qid,url:q.url||tecURL(qid),discId:disc?.id||'',materia:q.materia||disc?.name||'Sem disciplina',
+      assunto:(q.assunto||'').trim()||'(sem assunto)',errorCount:q.errorCount||1,
+      ts:q.similarScheduledAt||0,src:'extensão similares',extSimilar:true,
+      relatedTo:q.relatedTo||'',similarScore:q.similarScore??null,similarStrategies:q.similarStrategies||[]
+    });
+  });
   erros().forEach(e=>{
     const qid=String(e.code||'').replace(/\D/g,'');
     if(!qid||e.done)return;
@@ -2753,7 +2823,7 @@ function simCandidateBase(){
     const qid=String(q.qid||'').replace(/\D/g,'');
     if(!qid)return;
     const disc=discs().find(d=>pfNorm(d.name)===pfNorm(q.materia));
-    out.push({qid,url:q.url||tecURL(qid),discId:disc?.id||'',materia:q.materia||disc?.name||'Sem disciplina',assunto:(q.assunto||'').trim()||'(sem assunto)',errorCount:q.errorCount||1,ts:Date.parse(q.lastError||'')||0,src:q.nextReview&&q.nextReview<=td()?'fila vencida':'fila'});
+    out.push({qid,url:q.url||tecURL(qid),discId:disc?.id||'',materia:q.materia||disc?.name||'Sem disciplina',assunto:(q.assunto||'').trim()||'(sem assunto)',errorCount:q.errorCount||1,ts:q.similarScheduledAt||Date.parse(q.lastError||'')||0,src:q.reviewReason==='similar'?'extensão similares':(q.nextReview&&q.nextReview<=td()?'fila vencida':'fila'),extSimilar:q.reviewReason==='similar',relatedTo:q.relatedTo||'',similarScore:q.similarScore??null,similarStrategies:q.similarStrategies||[]});
   });
   qs().forEach(q=>{
     const qid=String(q.qid||'').replace(/\D/g,'');
@@ -2769,6 +2839,10 @@ function simCandidateBase(){
     if((prev.assunto||'(sem assunto)')==='(sem assunto)'&&q.assunto)prev.assunto=q.assunto;
     if(!prev.discId&&q.discId)prev.discId=q.discId;
     if(!prev.url&&q.url)prev.url=q.url;
+    if(q.extSimilar)prev.extSimilar=true;
+    if(q.similarScore!=null)prev.similarScore=q.similarScore;
+    if(q.relatedTo)prev.relatedTo=q.relatedTo;
+    if(q.similarStrategies?.length)prev.similarStrategies=q.similarStrategies;
     if(prev.src.indexOf(q.src)<0)prev.src+=' + '+q.src;
   });
   return [...map.values()].sort((a,b)=>(b.errorCount-a.errorCount)||((b.ts||0)-(a.ts||0)));
@@ -2801,8 +2875,10 @@ function simRankedBatch(){
     pool=pool.map(q=>({...q,simScore:(subjectWeight[q.assunto||'(sem assunto)']||1)/10}));
   }
   pool.sort((a,b)=>
+    ((b.extSimilar?1:0)-(a.extSimilar?1:0))||
     ((b.assunto===sel.ass)-(a.assunto===sel.ass))||
     ((b.simScore||0)-(a.simScore||0))||
+    ((Number(b.similarScore)||0)-(Number(a.similarScore)||0))||
     ((b.errorCount||1)-(a.errorCount||1))||
     ((b.ts||0)-(a.ts||0))
   );
@@ -2843,18 +2919,20 @@ function renderSimilarReinforcement(){
   ).join('');
   const rows=batch.map((q,i)=>{
     const d=q.discId?discs().find(x=>x.id===q.discId):null;
-    const score=q.simScore!=null?Math.round(q.simScore*100):Math.min(99,50+(q.errorCount||1)*8);
+    const score=q.similarScore!=null?Math.round(Number(q.similarScore)):q.simScore!=null?Math.round(q.simScore*100):Math.min(99,50+(q.errorCount||1)*8);
+    const badge=q.extSimilar?' · motor da extensão':'';
     return '<div class="rescue-item">'+
       '<div class="rescue-rank">'+(i+1)+'</div>'+
       '<div><div class="rescue-name"><a href="'+(q.url||tecURL(q.qid))+'" target="_blank" rel="noopener" style="color:var(--accent2);text-decoration:none">#'+escapeHtml(q.qid)+'</a> · '+escapeHtml(q.assunto||'Sem assunto')+'</div>'+
-      '<div class="rescue-meta">'+escapeHtml(d?.name||q.materia||'Sem disciplina')+' · '+(q.errorCount||1)+' erro(s) · '+escapeHtml(q.src||'histórico')+' · similaridade '+score+'%</div></div>'+
+      '<div class="rescue-meta">'+escapeHtml(d?.name||q.materia||'Sem disciplina')+' · '+(q.errorCount||1)+' erro(s) · '+escapeHtml(q.src||'histórico')+badge+' · similaridade '+score+'%</div></div>'+
       '<div class="rescue-actions"><button class="btn bg2 xs" onclick="pfOpenReview(\''+String(q.url||tecURL(q.qid)).replace(/'/g,'%27')+'\')">Abrir</button></div>'+
     '</div>';
   }).join('');
+  const extCount=batch.filter(q=>q.extSimilar).length;
   host.innerHTML='<div class="rescue-summary">'+
     '<div class="rescue-stat"><strong>'+base.length+'</strong><span>candidatas</span></div>'+
     '<div class="rescue-stat"><strong>'+batch.length+'</strong><span>no lote</span></div>'+
-    '<div class="rescue-stat"><strong>'+Object.keys(subjects).length+'</strong><span>assuntos</span></div>'+
+    '<div class="rescue-stat"><strong>'+extCount+'</strong><span>da extensão</span></div>'+
     '<div class="rescue-stat"><strong>'+(batch.length>=2?'OK':'1/2')+'</strong><span>mínimo sugerido</span></div>'+
   '</div><div style="font-size:11px;color:var(--t3);margin:8px 0">Texto para colar no TEC: <b style="color:var(--accent2)">'+escapeHtml(simTecQuery().slice(0,220))+(simTecQuery().length>220?'...':'')+'</b></div>'+
   (chips?'<div style="display:flex;gap:7px;flex-wrap:wrap;margin:8px 0 10px">'+chips+'</div>':'')+
