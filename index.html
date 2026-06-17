@@ -1472,12 +1472,13 @@ option{background:var(--s3)}
           <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
             <div>
               <div style="font-size:12px;font-weight:800;color:var(--t1)">Gerador de caderno TEC</div>
-              <div style="font-size:11px;color:var(--t3);line-height:1.5">Monte um lote com os links das questões erradas por disciplina ou assunto.</div>
+              <div style="font-size:11px;color:var(--t3);line-height:1.5">Melhor fluxo: copie os códigos com #, cole em <b>Estudo &gt; Buscar questões</b> no TEC e clique em <b>Gerar caderno</b>.</div>
             </div>
             <div style="display:flex;gap:7px;flex-wrap:wrap">
+              <button class="btn bp xs" onclick="erCopyNotebookTecQuery()">Copiar para gerar no TEC</button>
               <button class="btn bg2 xs" onclick="erCopyNotebookLinks()">Copiar links</button>
               <button class="btn bg2 xs" onclick="erCopyNotebookCodes()">Copiar códigos</button>
-              <button class="btn bp xs" onclick="erOpenNotebook()">Abrir questões</button>
+              <button class="btn bg2 xs" onclick="erOpenNotebook()">Abrir questões</button>
             </div>
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
@@ -2831,8 +2832,10 @@ function erCopyFallback(text,msg){
   try{document.execCommand('copy');nfy(msg,'ok');}catch{nfy('Não consegui copiar automaticamente','err');}
   ta.remove();
 }
+function erNotebookCodes(){return erNotebookData().map(e=>String(e.code).replace(/\D/g,'')).filter(Boolean)}
+function erCopyNotebookTecQuery(){erCopyText(erNotebookCodes().map(code=>'#'+code).join(' '),'Códigos com # copiados para gerar caderno no TEC');}
 function erCopyNotebookLinks(){erCopyText(erNotebookData().map(e=>tecURL(e.code)).filter(Boolean).join('\n'),'Links do caderno copiados');}
-function erCopyNotebookCodes(){erCopyText(erNotebookData().map(e=>String(e.code).replace(/\D/g,'')).join('\n'),'Códigos do caderno copiados');}
+function erCopyNotebookCodes(){erCopyText(erNotebookCodes().join('\n'),'Códigos do caderno copiados');}
 function erOpenNotebook(){
   const links=erNotebookData().map(e=>tecURL(e.code)).filter(Boolean);
   if(!links.length){nfy('Nenhuma questão no caderno','err');return;}
@@ -2868,6 +2871,7 @@ function renderErroCadernos(){
   }
   const discLabel=discSel.value?(discs().find(d=>d.id===discSel.value)?.name||'Disciplina'):'todas as disciplinas';
   const assLabel=assSel.value||'todos os assuntos';
+  const tecQuery=erNotebookCodes().map(code=>'#'+code).join(' ');
   const preview=data.slice(0,6).map(e=>'<a href="'+tecURL(e.code)+'" target="_blank" rel="noopener" style="color:var(--accent2);text-decoration:none;font-weight:700">#'+escapeHtml(e.code)+'</a>').join(' ');
   const groups=subjects.slice(0,6).map(s=>{
     const qtd=subjCounts[s];
@@ -2876,7 +2880,7 @@ function renderErroCadernos(){
   box.innerHTML='<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap">'+
     '<div style="font-size:11.5px;color:var(--t2)"><b style="color:var(--accent2)">'+data.length+'</b> questão(ões) em <b>'+escapeHtml(discLabel)+'</b> · <b>'+escapeHtml(assLabel)+'</b></div>'+
     '<div style="font-size:11px;color:var(--t3)">Prévia: '+(preview||'—')+'</div>'+
-  '</div>'+(groups?'<div style="margin-top:10px;display:flex;gap:7px;flex-wrap:wrap">'+groups+'</div>':'');
+  '</div><div style="margin-top:9px;background:rgba(2,6,23,.32);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:11px;color:var(--t3);line-height:1.5"><b style="color:var(--t2)">Texto para colar no TEC:</b> '+escapeHtml(tecQuery.slice(0,260))+(tecQuery.length>260?'...':'')+'</div>'+(groups?'<div style="margin-top:10px;display:flex;gap:7px;flex-wrap:wrap">'+groups+'</div>':'');
 }
 function renderErros(){
   const w=document.getElementById('er-tblw'); if(!w) return;
