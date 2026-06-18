@@ -585,7 +585,7 @@ option{background:var(--s3)}
   transition: background .15s;
 }
 #ftPlayBtn:hover { background: rgba(74,108,247,0.38); }
-#ftStopBtn {
+#ftSaveBtn,#ftStopBtn {
   width: 36px;
   background: rgba(255,255,255,0.05);
   border: 1px solid rgba(255,255,255,0.1);
@@ -596,6 +596,7 @@ option{background:var(--s3)}
   font-size: 12px;
   transition: background .15s;
 }
+#ftSaveBtn:hover { background: rgba(29,185,106,0.16); border-color: rgba(29,185,106,0.38); color: #6ee7b7; }
 #ftStopBtn:hover { background: rgba(239,68,68,0.18); border-color: rgba(239,68,68,0.35); color: #ef4444; }
 
 #ftFooter {
@@ -689,7 +690,8 @@ option{background:var(--s3)}
 #ftProgressBar{background:linear-gradient(90deg,#22d3ee,#6366f1,#a855f7);box-shadow:0 0 14px rgba(34,211,238,.45)}
 #ftControls{gap:8px;margin-bottom:10px}
 #ftPlayBtn{background:linear-gradient(135deg,#2563eb,#4f46e5,#7c3aed);border-color:rgba(165,180,252,.34);color:#fff;border-radius:14px;padding:10px;font-weight:900;box-shadow:0 12px 30px rgba(79,70,229,.26)}
-#ftStopBtn{width:48px;background:rgba(15,23,42,.88);border-color:rgba(148,163,184,.18);border-radius:14px;color:#f8fafc}
+#ftSaveBtn,#ftStopBtn{width:48px;background:rgba(15,23,42,.88);border-color:rgba(148,163,184,.18);border-radius:14px;color:#f8fafc}
+#ftSaveBtn{color:#6ee7b7;border-color:rgba(29,185,106,.28)}
 #ftFooter{border-top:1px solid rgba(125,211,252,.1);padding:8px 12px}
 #ftStatusLabel{color:#94a3b8;font-weight:900;letter-spacing:.08em}
 #ftToggleOpen{background:linear-gradient(135deg,#101832,#070b18);border-color:rgba(34,211,238,.42);color:#67e8f9;box-shadow:0 12px 38px rgba(2,6,23,.55),0 0 18px rgba(34,211,238,.16)}
@@ -735,6 +737,7 @@ option{background:var(--s3)}
 
     <div id="ftControls">
       <button id="ftPlayBtn">▶ Iniciar</button>
+      <button id="ftSaveBtn" title="Gravar horas">💾</button>
       <button id="ftStopBtn">■</button>
     </div>
 
@@ -787,6 +790,7 @@ option{background:var(--s3)}
   const scoreLbl = document.getElementById('ftScoreLabel');
   const disc     = document.getElementById('ftDisc');
   const playBtn  = document.getElementById('ftPlayBtn');
+  const saveBtn  = document.getElementById('ftSaveBtn');
   const stopBtn  = document.getElementById('ftStopBtn');
   const acertoBtn= document.getElementById('ftAcertoBtn');
   const erroBtn  = document.getElementById('ftErroBtn');
@@ -857,6 +861,12 @@ option{background:var(--s3)}
   stopBtn.addEventListener('click', e => {
     e.stopPropagation();
     if ((tRun || tPsd) && typeof tStop === 'function') tStop();
+    mirror();
+  });
+
+  saveBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    if (typeof tSaveStop === 'function') tSaveStop();
     mirror();
   });
 
@@ -1237,6 +1247,7 @@ option{background:var(--s3)}
           <button class="btn bp" id="tbstart" onclick="tStart()">▶ Iniciar</button>
           <button class="btn bg2" id="tbpause" onclick="tPause()" style="display:none">⏸ Pausar</button>
           <button class="btn bg2" id="tbresume" onclick="tResume()" style="display:none">▶ Retomar</button>
+          <button class="btn bgo" id="tbsave" onclick="tSaveStop()" style="display:none">💾 Gravar horas</button>
           <button class="btn bd" id="tbstop" onclick="tStop()" style="display:none">■ Encerrar</button>
         </div>
         <div style="margin-top:12px;font-size:11.5px;color:var(--t3);text-align:center">
@@ -1959,6 +1970,7 @@ function tStart(){
   if(pomMode){pomCycle=0;pomPhase='work';renderPomDots();}
   document.getElementById('tbstart').style.display='none';
   document.getElementById('tbpause').style.display='';
+  document.getElementById('tbsave').style.display='';
   document.getElementById('tbstop').style.display='';
   const d=discs().find(x=>x.id===disc);
   document.getElementById('rdisc').textContent=d?.name||'Estudando';
@@ -1985,16 +1997,24 @@ function tResume(){
   tPsd=false;document.getElementById('tbresume').style.display='none';document.getElementById('tbpause').style.display='';
   tIv=setInterval(()=>{tSec++;document.getElementById('tdisp').textContent=fS(tSec);document.getElementById('rtime').textContent=p2(Math.floor(tSec/60))+':'+p2(tSec%60);updRing();if(!pomMode&&tDur>0&&tSec>=tDur*60)tStop();},1000);
 }
-function tStop(){
+function tSaveStop(){
+  const disc=document.getElementById('tdisc').value;
+  if(!disc){nfy('Selecione uma disciplina antes de gravar','err');return;}
+  if(tSec<1){nfy('Inicie o cronômetro antes de gravar','err');return;}
+  tStop(true);
+}
+function tStop(forceSave=false){
   clearInterval(tIv);
   const disc=document.getElementById('tdisc').value;
   const ass=document.getElementById('tass').value.trim();
-  if(tSec>10&&disc){
+  if((tSec>10||forceSave)&&disc){
     pendingSess={id:uid(),discId:disc,sec:tSec,ass,date:td(),ts:Date.now(),src:'timer',nota:''};
     if(!ST.sess) ST.sess=[];
     ST.sess.unshift(pendingSess);
     pendingSessSaved=true;
     sSt();
+    renderTSess();
+    renderD();
     const d=discs().find(x=>x.id===disc);
     document.getElementById('nota-resumo').textContent=(d?.name||'Sessão')+' · '+fH(tSec)+' estudados';
     document.getElementById('nota-input').value='';
@@ -2009,6 +2029,7 @@ function tStop(){
   document.getElementById('tbstart').style.display='';
   document.getElementById('tbpause').style.display='none';
   document.getElementById('tbresume').style.display='none';
+  document.getElementById('tbsave').style.display='none';
   document.getElementById('tbstop').style.display='none';
   document.getElementById('rpill').style.display='none';
   document.getElementById('tring').style.strokeDashoffset='427.256';
