@@ -1634,7 +1634,7 @@ let ST=lSt();
 // Migração compatível: garante estruturas novas sem afetar dados existentes
 if(!ST.edital) ST.edital={};   // { discId: [ {id,name,done} ] }
 if(!ST.erros)  ST.erros=[];    // caderno de erros (TEC): [ {id,code,discId,assunto,banca,date,ts,count,done} ]
-let tSec=0,tRun=false,tPsd=false,tDur=0,tIv=null,cdIv=null,selC=COLS[0];
+let tSec=0,tRun=false,tPsd=false,tDur=0,tIv=null,cdIv=null,selC=COLS[0],tDiscId='';
 let pomMode=false,pomPhase='work',pomCycle=0,pomTotal=4;
 let pendingSess=null,pendingSessSaved=false;
 let planDone=new Set();
@@ -1963,9 +1963,22 @@ function renderPomDots(){
   wrap.innerHTML=dots.join('');
   document.getElementById('pom-label').textContent=pomPhase==='work'?'🍅 Foco — Ciclo '+(pomCycle+1)+'/'+pomTotal:'☕ Pausa — '+pomCycle+' ciclos feitos';
 }
+function timerDiscId(){
+  const td=document.getElementById('tdisc');
+  const fd=document.getElementById('ftDisc');
+  const ids=[tDiscId,td?.value||'',fd?.value||''];
+  const valid=ids.find(id=>id&&discs().some(d=>d.id===id))||'';
+  if(!valid)return '';
+  tDiscId=valid;
+  if(td&&[...td.options].some(o=>o.value===valid))td.value=valid;
+  if(fd&&[...fd.options].some(o=>o.value===valid))fd.value=valid;
+  if(typeof updTDisc==='function')updTDisc();
+  return valid;
+}
 function tStart(){
-  const disc=document.getElementById('tdisc').value;
+  const disc=timerDiscId();
   if(!disc){nfy('Selecione uma disciplina!','err');return;}
+  tDiscId=disc;
   tSec=0;tRun=true;tPsd=false;
   if(pomMode){pomCycle=0;pomPhase='work';renderPomDots();}
   document.getElementById('tbstart').style.display='none';
@@ -1998,14 +2011,14 @@ function tResume(){
   tIv=setInterval(()=>{tSec++;document.getElementById('tdisp').textContent=fS(tSec);document.getElementById('rtime').textContent=p2(Math.floor(tSec/60))+':'+p2(tSec%60);updRing();if(!pomMode&&tDur>0&&tSec>=tDur*60)tStop();},1000);
 }
 function tSaveStop(){
-  const disc=document.getElementById('tdisc').value;
+  const disc=timerDiscId();
   if(!disc){nfy('Selecione uma disciplina antes de gravar','err');return;}
   if(tSec<1){nfy('Inicie o cronômetro antes de gravar','err');return;}
   tStop(true);
 }
 function tStop(forceSave=false){
   clearInterval(tIv);
-  const disc=document.getElementById('tdisc').value;
+  const disc=timerDiscId();
   const ass=document.getElementById('tass').value.trim();
   if((tSec>10||forceSave)&&disc){
     pendingSess={id:uid(),discId:disc,sec:tSec,ass,date:td(),ts:Date.now(),src:'timer',nota:''};
@@ -2033,6 +2046,7 @@ function tStop(forceSave=false){
   document.getElementById('tbstop').style.display='none';
   document.getElementById('rpill').style.display='none';
   document.getElementById('tring').style.strokeDashoffset='427.256';
+  tDiscId='';
 }
 function confirmStop(){
   if(pendingSess){
@@ -2691,7 +2705,12 @@ function calcBestStreak(S){
 function popSel(){
   const ds=discs();
   const opts='<option value="">— selecione —</option>'+ds.map(d=>'<option value="'+d.id+'">'+d.name+'</option>').join('');
-  ['tdisc','mdisc','qdisc','er-disc'].forEach(id=>{const el=document.getElementById(id);if(el) el.innerHTML=opts;});
+  ['tdisc','mdisc','qdisc','er-disc'].forEach(id=>{
+    const el=document.getElementById(id);if(!el)return;
+    const cur=id==='tdisc'&&tDiscId?tDiscId:el.value;
+    el.innerHTML=opts;
+    if(cur&&[...el.options].some(o=>o.value===cur))el.value=cur;
+  });
   const ed=document.getElementById('ed-disc');
   if(ed){const cur=ed.value;ed.innerHTML=opts;if(cur)ed.value=cur;}
   const qf=document.getElementById('qfdisc');
