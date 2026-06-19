@@ -301,6 +301,20 @@ input,select,textarea{font-family:inherit;outline:none}
 .smeta{font-size:11px;color:var(--t3);margin-top:1px}
 .sright{display:flex;align-items:center;gap:8px}
 .ttag{font-size:12px;font-weight:600;color:var(--t2)}
+.ts-periods{display:flex;gap:4px;background:var(--s3);border:1px solid var(--border);border-radius:9px;padding:3px}
+.ts-period{border:0;background:transparent;color:var(--t3);padding:5px 10px;border-radius:7px;font-size:11px;font-weight:800;cursor:pointer}
+.ts-period.on{background:var(--abg2);color:var(--accent2)}
+.ts-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.ts-kpi{background:var(--s3);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px}
+.ts-kpi strong{display:block;font-size:19px;line-height:1;color:var(--t1);font-family:var(--fh)}
+.ts-kpi span{display:block;margin-top:5px;color:var(--t3);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.ts-chart{display:flex;align-items:flex-end;gap:9px;height:154px;padding:20px 10px 27px;margin-bottom:12px;background:linear-gradient(180deg,rgba(79,114,255,.035),transparent);border:1px solid var(--border);border-radius:var(--r);overflow-x:auto}
+.ts-col{height:100%;min-width:62px;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;position:relative}
+.ts-value{font-size:9px;color:var(--t2);font-weight:800;margin-bottom:5px;white-space:nowrap}
+.ts-bar{width:min(42px,70%);min-height:4px;border-radius:7px 7px 2px 2px;background:var(--bar);box-shadow:0 0 16px color-mix(in srgb,var(--bar) 24%,transparent);transition:.25s}
+.ts-label{position:absolute;top:calc(100% + 7px);max-width:82px;color:var(--t3);font-size:8px;line-height:1.15;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ts-date{font-size:9px;color:var(--t3);font-weight:700;min-width:42px}
+@media(max-width:640px){.ts-kpis{grid-template-columns:1fr}.ts-chart{height:140px}.ts-col{min-width:54px}.ts-label{max-width:62px}}
 .acbdg{font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px}
 /* COUNTDOWN */
 .cdb{display:flex;gap:10px}
@@ -1296,7 +1310,16 @@ option{background:var(--s3)}
         </div>
       </div>
       <div class="card">
-        <div class="ch"><div class="ct">☀️ Sessões de Hoje</div></div>
+        <div class="ch">
+          <div>
+            <div class="ct" id="tsess-title">☀️ Sessões de Hoje</div>
+            <div style="font-size:10px;color:var(--t3);margin-top:2px" id="tsess-sub">desempenho diário por disciplina</div>
+          </div>
+          <div class="ts-periods">
+            <button class="ts-period on" id="ts-period-day" onclick="setTSessPeriod('day')">Diário</button>
+            <button class="ts-period" id="ts-period-week" onclick="setTSessPeriod('week')">Semanal</button>
+          </div>
+        </div>
         <div id="tsess"></div>
       </div>
     </div>
@@ -1637,6 +1660,7 @@ if(!ST.erros)  ST.erros=[];    // caderno de erros (TEC): [ {id,code,discId,assu
 let tSec=0,tRun=false,tPsd=false,tDur=0,tIv=null,cdIv=null,selC=COLS[0],tDiscId='';
 let pomMode=false,pomPhase='work',pomCycle=0,pomTotal=4;
 let pendingSess=null,pendingSessSaved=false;
+let tSessPeriod='day';
 let planDone=new Set();
 
 function lSt(){try{return JSON.parse(localStorage.getItem('pf4')||'{}')}catch{return{}}}
@@ -2082,14 +2106,80 @@ function saveMan(){
   ['mh','mm','mobs'].forEach(id=>document.getElementById(id).value='');
   renderTSess();renderD();
 }
-function renderTSess(){
-  const rows=sess().filter(s=>s.date===td());
-  const w=document.getElementById('tsess');
-  if(!rows.length){w.innerHTML='<div class="empty"><div class="eico">☀️</div><div class="etxt">Nenhuma sessão hoje</div></div>';return;}
-  w.innerHTML='<div class="slist">'+rows.map(s=>{
+function setTSessPeriod(period){
+  tSessPeriod=period==='week'?'week':'day';
+  renderTSess();
+}
+function tSessWeekRange(){
+  const now=new Date();now.setHours(0,0,0,0);
+  const dow=now.getDay();
+  const start=new Date(now);start.setDate(now.getDate()-(dow===0?6:dow-1));
+  const end=new Date(start);end.setDate(start.getDate()+6);
+  return {start,end,d1:ymd(start),d2:ymd(end)};
+}
+function tSessChart(rows){
+  if(tSessPeriod==='week'){
+    const {start}=tSessWeekRange(),labels=['SEG','TER','QUA','QUI','SEX','SÁB','DOM'];
+    return labels.map((label,i)=>{
+      const date=new Date(start);date.setDate(start.getDate()+i);
+      const key=ymd(date),sec=rows.filter(s=>s.date===key).reduce((sum,s)=>sum+(Number(s.sec)||0),0);
+      return {label:label+' '+String(date.getDate()).padStart(2,'0'),sec,color:key===td()?'var(--accent2)':'#4f72ff'};
+    });
+  }
+  const map=new Map();
+  rows.forEach(s=>{
     const d=discs().find(x=>x.id===s.discId);
-    return '<div class="srow2"><div class="sdot" style="background:'+(d?.color||'#4a6080')+'"></div><div class="smain"><div class="sname">'+(d?.name||'—')+'</div><div class="smeta">'+(s.ass||'Sessão de estudo')+(s.nota?' · '+s.nota:'')+'</div></div><div class="sright"><span class="ttag">'+fH(s.sec)+'</span><button class="btn bd xs" onclick="delS(\''+s.id+'\')">✕</button></div></div>';
+    const key=s.discId||'none',cur=map.get(key)||{label:d?.name||'Sem disciplina',sec:0,color:d?.color||'#4a6080'};
+    cur.sec+=Number(s.sec)||0;map.set(key,cur);
+  });
+  return [...map.values()].sort((a,b)=>b.sec-a.sec);
+}
+function renderTSess(){
+  const w=document.getElementById('tsess');if(!w)return;
+  const title=document.getElementById('tsess-title'),sub=document.getElementById('tsess-sub');
+  const dayBtn=document.getElementById('ts-period-day'),weekBtn=document.getElementById('ts-period-week');
+  dayBtn?.classList.toggle('on',tSessPeriod==='day');
+  weekBtn?.classList.toggle('on',tSessPeriod==='week');
+  let rows,periodLabel;
+  if(tSessPeriod==='week'){
+    const range=tSessWeekRange();
+    rows=sess().filter(s=>s.date>=range.d1&&s.date<=range.d2);
+    periodLabel=range.start.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})+' a '+range.end.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
+    if(title)title.textContent='📊 Sessões da Semana';
+    if(sub)sub.textContent='desempenho semanal · '+periodLabel;
+  }else{
+    rows=sess().filter(s=>s.date===td());
+    periodLabel=new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'long'});
+    if(title)title.textContent='☀️ Sessões de Hoje';
+    if(sub)sub.textContent='desempenho diário · '+periodLabel;
+  }
+  rows.sort((a,b)=>(b.ts||0)-(a.ts||0));
+  const total=rows.reduce((sum,s)=>sum+(Number(s.sec)||0),0);
+  const avg=rows.length?Math.round(total/rows.length):0;
+  const activeDiscs=new Set(rows.map(s=>s.discId).filter(Boolean)).size;
+  const kpis='<div class="ts-kpis">'+
+    '<div class="ts-kpi"><strong>'+fH(total)+'</strong><span>Tempo estudado</span></div>'+
+    '<div class="ts-kpi"><strong>'+rows.length+'</strong><span>Sessões</span></div>'+
+    '<div class="ts-kpi"><strong>'+fH(avg)+'</strong><span>Média por sessão · '+activeDiscs+' disciplina(s)</span></div>'+
+  '</div>';
+  if(!rows.length){
+    w.innerHTML=kpis+'<div class="empty"><div class="eico">'+(tSessPeriod==='week'?'📊':'☀️')+'</div><div class="etxt">Nenhuma sessão neste período</div></div>';
+    return;
+  }
+  const chart=tSessChart(rows),max=Math.max(1,...chart.map(x=>x.sec));
+  const chartHtml='<div class="ts-chart">'+chart.map(x=>
+    '<div class="ts-col" title="'+escapeHtml(x.label)+' · '+fH(x.sec)+'">'+
+      '<div class="ts-value">'+fH(x.sec)+'</div>'+
+      '<div class="ts-bar" style="height:'+Math.max(4,Math.round(x.sec/max*100))+'%;--bar:'+x.color+'"></div>'+
+      '<div class="ts-label">'+escapeHtml(x.label)+'</div>'+
+    '</div>'
+  ).join('')+'</div>';
+  const list='<div class="slist">'+rows.map(s=>{
+    const d=discs().find(x=>x.id===s.discId);
+    const date=tSessPeriod==='week'?'<span class="ts-date">'+new Date(s.date+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})+'</span>':'';
+    return '<div class="srow2">'+date+'<div class="sdot" style="background:'+(d?.color||'#4a6080')+'"></div><div class="smain"><div class="sname">'+escapeHtml(d?.name||'—')+'</div><div class="smeta">'+escapeHtml(s.ass||'Sessão de estudo')+(s.nota?' · '+escapeHtml(s.nota):'')+'</div></div><div class="sright"><span class="ttag">'+fH(s.sec)+'</span><button class="btn bd xs" onclick="delS(\''+s.id+'\')">✕</button></div></div>';
   }).join('')+'</div>';
+  w.innerHTML=kpis+chartHtml+list;
 }
 function delS(id){ST.sess=(ST.sess||[]).filter(s=>s.id!==id);sSt();renderTSess();renderD();}
 
