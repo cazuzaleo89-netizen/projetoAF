@@ -315,6 +315,20 @@ input,select,textarea{font-family:inherit;outline:none}
 .ts-label{position:absolute;top:calc(100% + 7px);max-width:82px;color:var(--t3);font-size:8px;line-height:1.15;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ts-date{font-size:9px;color:var(--t3);font-weight:700;min-width:42px}
 @media(max-width:640px){.ts-kpis{grid-template-columns:1fr}.ts-chart{height:140px}.ts-col{min-width:54px}.ts-label{max-width:62px}}
+/* RECOVERY */
+.rc-hero{background:radial-gradient(circle at 86% 5%,rgba(139,92,246,.22),transparent 31%),linear-gradient(135deg,rgba(34,211,238,.09),rgba(79,70,229,.1));border:1px solid rgba(125,211,252,.2);border-radius:var(--r3);padding:20px;margin-bottom:14px}
+.rc-kicker{font-size:9px;color:#67e8f9;text-transform:uppercase;letter-spacing:.13em;font-weight:900}.rc-title{font-family:var(--fh);font-size:23px;font-weight:800;margin-top:3px}.rc-note{font-size:11px;color:var(--t3);margin-top:5px;max-width:720px}
+.rc-grid{display:grid;grid-template-columns:1.25fr .75fr;gap:14px;margin-bottom:14px}.rc-grid-eq{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.rc-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}.rc-kpi{background:var(--s2);border:1px solid var(--border);border-radius:var(--r2);padding:13px}.rc-kpi b{display:block;font:800 21px/1 var(--fh);color:var(--t1)}.rc-kpi span{display:block;color:var(--t3);font-size:9px;text-transform:uppercase;letter-spacing:.06em;margin-top:6px}
+.rc-checkin{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}.rc-scale{display:flex;gap:4px;margin-top:6px}.rc-scale button{flex:1;border:1px solid var(--border2);border-radius:7px;background:var(--s3);color:var(--t3);padding:7px 3px;font-size:10px;font-weight:800;cursor:pointer}.rc-scale button.on{background:var(--abg2);border-color:rgba(79,114,255,.55);color:var(--accent2)}
+.rc-actions{display:grid;grid-template-columns:repeat(2,1fr);gap:7px}.rc-action{display:flex;align-items:center;gap:8px;background:var(--s3);border:1px solid var(--border);border-radius:9px;padding:9px 10px;color:var(--t2);font-size:11px;cursor:pointer}.rc-action input{width:auto;accent-color:var(--green)}
+.rc-timer{--p:0%;width:176px;height:176px;border-radius:50%;margin:8px auto 12px;display:grid;place-items:center;position:relative;background:conic-gradient(from -90deg,#22d3ee var(--p),rgba(99,102,241,.32) 0,rgba(30,41,59,.88) 100%);box-shadow:0 0 35px rgba(34,211,238,.14)}
+.rc-timer::before{content:"";position:absolute;inset:10px;border-radius:50%;background:linear-gradient(180deg,#101832,#070b18);border:1px solid rgba(148,163,184,.13)}.rc-timer-in{position:relative;text-align:center}.rc-time{font:900 38px/1 var(--fh);font-variant-numeric:tabular-nums}.rc-mission{font-size:9px;color:#818cf8;margin-top:7px;font-weight:800;text-transform:uppercase;letter-spacing:.06em}
+.rc-chart{height:230px;position:relative;overflow:hidden}.rc-chart svg{width:100%;height:100%;display:block}.rc-legend{display:flex;gap:12px;flex-wrap:wrap;font-size:9px;color:var(--t3)}.rc-legend i{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px}
+.rc-help-row{display:grid;grid-template-columns:150px 1fr 42px;gap:9px;align-items:center;margin:10px 0}.rc-help-row span{font-size:10px;color:var(--t2)}.rc-help-bar{height:7px;background:var(--s4);border-radius:99px;overflow:hidden}.rc-help-bar i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#22d3ee,#6366f1)}.rc-help-row b{font-size:10px;text-align:right}
+.rc-evidence{display:flex;flex-direction:column;gap:7px;max-height:230px;overflow:auto}.rc-evidence-item{background:var(--s3);border:1px solid var(--border);border-radius:9px;padding:9px 10px}.rc-evidence-item b{font-size:10px;color:var(--accent2)}.rc-evidence-item p{font-size:11px;color:var(--t2);margin-top:3px}
+.rc-safety{display:flex;justify-content:space-between;align-items:center;gap:12px;background:rgba(232,69,69,.07);border:1px solid rgba(232,69,69,.2);border-radius:var(--r2);padding:12px 14px;font-size:10.5px;color:var(--t2)}.rc-safety a{color:#fca5a5;font-weight:800;text-decoration:none}
+@media(max-width:900px){.rc-grid,.rc-grid-eq{grid-template-columns:1fr}.rc-kpis{grid-template-columns:repeat(2,1fr)}}@media(max-width:560px){.rc-checkin,.rc-actions{grid-template-columns:1fr}.rc-kpis{grid-template-columns:1fr 1fr}.rc-help-row{grid-template-columns:110px 1fr 34px}}
 .acbdg{font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px}
 /* COUNTDOWN */
 .cdb{display:flex;gap:10px}
@@ -468,11 +482,11 @@ option{background:var(--s3)}
     display:flex;position:fixed;left:0;right:0;bottom:0;z-index:900;
     background:var(--s1);border-top:1px solid var(--border);
     padding:6px 4px calc(6px + env(safe-area-inset-bottom));
-    justify-content:space-around;align-items:stretch;
+    justify-content:flex-start;align-items:stretch;overflow-x:auto;
     box-shadow:0 -6px 24px rgba(0,0,0,.25);
   }
   .mobnav .mni{
-    flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
+    flex:0 0 64px;display:flex;flex-direction:column;align-items:center;gap:3px;
     padding:6px 2px;border-radius:10px;color:var(--t3);font-size:10px;font-weight:600;
     background:none;transition:.15s var(--ease);min-width:0;
   }
@@ -1052,6 +1066,10 @@ option{background:var(--s3)}
       <svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 3 5-6"/><circle cx="18" cy="8" r="1.4" fill="currentColor" stroke="none"/></svg>
       <span>Edital &amp; Revisão</span>
     </div>
+    <div class="ni" id="ni-p" onclick="go('p',this)">
+      <svg viewBox="0 0 24 24"><path d="M20.8 4.6a5.5 5.5 0 00-7.8 0L12 5.6l-1-1a5.5 5.5 0 00-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 000-7.8z"/><path d="M7 12h2l1.2-2.4L12.5 15l1.4-3H17"/></svg>
+      <span>Recuperação</span>
+    </div>
     <div class="nlbl">Sistema</div>
     <div class="ni" id="ni-c" onclick="go('c',this)">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
@@ -1546,6 +1564,93 @@ option{background:var(--s3)}
       </div>
     </div>
 
+    <!-- PAINEL DE RECUPERACAO -->
+    <div class="tab" id="tab-p">
+      <div class="rc-hero">
+        <div class="rc-kicker">Autocuidado e ativação gentil</div>
+        <div class="rc-title">Painel de Recuperação</div>
+        <div class="rc-note">Observe padrões, celebre avanços e escolha apenas o próximo passo possível. Este painel apoia seu acompanhamento, mas não substitui psicólogo, psiquiatra ou atendimento de saúde.</div>
+      </div>
+
+      <div class="rc-kpis">
+        <div class="rc-kpi"><b id="rc-k-mood">—</b><span>Humor médio · 14 dias</span></div>
+        <div class="rc-kpi"><b id="rc-k-energy">—</b><span>Energia média · 14 dias</span></div>
+        <div class="rc-kpi"><b id="rc-k-action">0/7</b><span>Dias com ação</span></div>
+        <div class="rc-kpi"><b id="rc-k-study">0m</b><span>Estudo · 7 dias</span></div>
+      </div>
+
+      <div class="rc-grid">
+        <div class="card">
+          <div class="ch"><div><div class="ct">Check-in de hoje</div><div style="font-size:10px;color:var(--t3)">registro simples, sem julgamento</div></div><input class="fi" id="rc-date" type="date" style="width:145px;padding:6px 8px" onchange="rcLoadDay()"></div>
+          <div class="rc-checkin">
+            <div class="fg"><label class="fl">Humor</label><div class="rc-scale" id="rc-mood"></div></div>
+            <div class="fg"><label class="fl">Energia</label><div class="rc-scale" id="rc-energy"></div></div>
+            <div class="fg"><label class="fl">Trava mental</label><div class="rc-scale" id="rc-block"></div></div>
+          </div>
+          <div class="fg" style="margin-top:10px"><label class="fl">O que ajudou hoje?</label>
+            <div class="rc-actions">
+              <label class="rc-action"><input type="checkbox" id="rc-help-study"> Estudo curto</label>
+              <label class="rc-action"><input type="checkbox" id="rc-help-exercise"> Atividade física</label>
+              <label class="rc-action"><input type="checkbox" id="rc-help-sleep"> Sono mais regular</label>
+              <label class="rc-action"><input type="checkbox" id="rc-help-contact"> Contato com alguém</label>
+            </div>
+          </div>
+          <div class="fg"><label class="fl">Evidência de progresso</label><input class="fi" id="rc-evidence" placeholder="Ex.: comecei mesmo sem vontade; fiz 3 questões; pedi ajuda"></div>
+          <div class="fg"><label class="fl">Observação opcional</label><textarea class="fi" id="rc-note" rows="2" placeholder="Como foi o dia, sem precisar explicar tudo" style="resize:vertical"></textarea></div>
+          <button class="btn bp sm" onclick="rcSaveDay()">Salvar check-in</button>
+        </div>
+
+        <div class="card">
+          <div class="ch"><div><div class="ct">Missão de 2 Minutos</div><div style="font-size:10px;color:var(--t3)">você não precisa terminar; só precisa começar</div></div></div>
+          <select class="fi" id="rc-mission" onchange="rcTimerMission()" style="margin-bottom:8px">
+            <option>Abrir o TEC</option>
+            <option>Resolver 1 questão</option>
+            <option>Organizar a mesa</option>
+            <option>Levantar e beber água</option>
+            <option>Respirar devagar por 2 minutos</option>
+          </select>
+          <div class="rc-timer" id="rc-timer"><div class="rc-timer-in"><div class="rc-time" id="rc-time">02:00</div><div class="rc-mission" id="rc-mission-label">Abrir o TEC</div></div></div>
+          <div style="display:flex;gap:7px;justify-content:center">
+            <button class="btn bp sm" id="rc-timer-start" onclick="rcTimerToggle()">Iniciar missão</button>
+            <button class="btn bg2 sm" onclick="rcTimerReset()">Reiniciar</button>
+          </div>
+          <div style="text-align:center;color:var(--t3);font-size:10px;margin-top:9px" id="rc-timer-status">A ação mínima ainda conta.</div>
+        </div>
+      </div>
+
+      <div class="rc-grid">
+        <div class="card">
+          <div class="ch"><div class="ct">Últimos 14 dias</div><div class="rc-legend"><span><i style="background:#22d3ee"></i>Humor</span><span><i style="background:#818cf8"></i>Energia</span><span><i style="background:#fb7185"></i>Trava mental</span></div></div>
+          <div class="rc-chart" id="rc-chart"></div>
+        </div>
+        <div class="card">
+          <div class="ch"><div><div class="ct">O que ajudou nesta semana</div><div style="font-size:10px;color:var(--t3)">frequência nos registros</div></div></div>
+          <div id="rc-help-bars"></div>
+        </div>
+      </div>
+
+      <div class="rc-grid-eq">
+        <div class="card">
+          <div class="ch"><div><div class="ct">Plano de cuidado da semana</div><div style="font-size:10px;color:var(--t3)">metas leves, não obrigações</div></div></div>
+          <div class="rc-actions">
+            <label class="rc-action"><input type="checkbox" id="rc-plan-action" onchange="rcSavePlan()"> 1 ação mínima por dia</label>
+            <label class="rc-action"><input type="checkbox" id="rc-plan-study" onchange="rcSavePlan()"> 2 sessões de estudo leve</label>
+            <label class="rc-action"><input type="checkbox" id="rc-plan-talk" onchange="rcSavePlan()"> 1 conversa de apoio</label>
+            <label class="rc-action"><input type="checkbox" id="rc-plan-care" onchange="rcSavePlan()"> Manter cuidado profissional</label>
+          </div>
+        </div>
+        <div class="card">
+          <div class="ch"><div><div class="ct">Evidências de progresso</div><div style="font-size:10px;color:var(--t3)">pequenos sinais também são avanço</div></div></div>
+          <div class="rc-evidence" id="rc-evidence-list"></div>
+        </div>
+      </div>
+
+      <div class="rc-safety">
+        <span>Se houver risco imediato de você se machucar ou desistir de viver, procure ajuda agora. No Brasil: CVV 188 (24h) ou SAMU 192.</span>
+        <span><a href="https://cvv.org.br/" target="_blank" rel="noopener">Abrir CVV</a> · <a href="tel:188">Ligar 188</a></span>
+      </div>
+    </div>
+
     <!-- PLANO DE ATAQUE -->
     <div class="tab" id="tab-a">
       <div class="atk-hero">
@@ -1652,7 +1757,7 @@ option{background:var(--s3)}
 
 <script>
 const COLS=['#4f72ff','#1db96a','#e8a020','#e84545','#8b5cf6','#06b6d4','#ec4899','#f97316','#84cc16','#14b8a6'];
-const TABS=['d','t','q','m','a','r','c'];
+const TABS=['d','t','q','m','a','r','p','c'];
 let ST=lSt();
 // Migração compatível: garante estruturas novas sem afetar dados existentes
 if(!ST.edital) ST.edital={};   // { discId: [ {id,name,done} ] }
@@ -1914,7 +2019,7 @@ function toggleTheme(){
 }
 
 // NAVIGATION
-const TIT={d:'Dashboard',t:'Cronômetro',q:'Questões',m:'Metas Semanais',r:'Edital & Revisão',c:'Configurações'};
+const TIT={d:'Dashboard',t:'Cronômetro',q:'Questões',m:'Metas Semanais',r:'Edital & Revisão',p:'Painel de Recuperação',c:'Configurações'};
 let curTab='d';
 TIT.a='Plano de Ataque';
 function go(id,el){
@@ -1924,7 +2029,7 @@ function go(id,el){
   if(el) el.classList.add('on');
   document.getElementById('ptitle').textContent=TIT[id]||id;
   curTab=id;
-  const rf={d:renderD,q:renderQ,m:renderM,a:atkRender,r:renderRev,c:renderCfg};
+  const rf={d:renderD,q:renderQ,m:renderM,a:atkRender,r:renderRev,p:rcRender,c:renderCfg};
   if(rf[id]) rf[id]();
   if(id==='t'||id==='q'||id==='m'||id==='a') popSel();
 }
@@ -3672,13 +3777,136 @@ function atkQuick(id){
   if(!ST.qs)ST.qs=[];ST.qs.unshift({id:uid(),discId:row.discId,tot:total,cer:correct,ass:'Plano de Ataque',date:atkPlan().date,fonte:'Plano de Ataque',ts:Date.now()});
   sSt();atkRender();renderQ();renderD();nfy(correct+'/'+total+' registrado no Plano de Ataque','ok');
 }
+
+/* ===== PAINEL DE RECUPERACAO ===== */
+let rcTimerSec=120,rcTimerIv=null,rcTimerRunning=false;
+function rcState(){
+  if(!ST.recovery)ST.recovery={entries:[],missions:[],plan:{}};
+  if(!Array.isArray(ST.recovery.entries))ST.recovery.entries=[];
+  if(!Array.isArray(ST.recovery.missions))ST.recovery.missions=[];
+  if(!ST.recovery.plan)ST.recovery.plan={};
+  return ST.recovery;
+}
+function rcEntry(date){return rcState().entries.find(e=>e.date===date)}
+function rcScaleValue(id){return Number(document.getElementById(id)?.dataset.value)||3}
+function rcSetScale(id,value){
+  const el=document.getElementById(id);if(!el)return;
+  el.dataset.value=String(value);
+  el.querySelectorAll('button').forEach(b=>b.classList.toggle('on',Number(b.dataset.value)===Number(value)));
+}
+function rcBuildScales(){
+  ['rc-mood','rc-energy','rc-block'].forEach(id=>{
+    const el=document.getElementById(id);if(!el||el.children.length)return;
+    el.innerHTML=[1,2,3,4,5].map(v=>'<button type="button" data-value="'+v+'" onclick="rcSetScale(\''+id+'\','+v+')">'+v+'</button>').join('');
+    rcSetScale(id,3);
+  });
+}
+function rcWeekKey(date=new Date()){
+  const d=new Date(date);d.setHours(0,0,0,0);const dow=d.getDay();d.setDate(d.getDate()-(dow===0?6:dow-1));return ymd(d);
+}
+function rcLoadDay(){
+  rcBuildScales();
+  const date=document.getElementById('rc-date')?.value||td(),e=rcEntry(date);
+  rcSetScale('rc-mood',e?.mood||3);rcSetScale('rc-energy',e?.energy||3);rcSetScale('rc-block',e?.block||3);
+  ['study','exercise','sleep','contact'].forEach(k=>{const el=document.getElementById('rc-help-'+k);if(el)el.checked=!!e?.help?.[k]});
+  const ev=document.getElementById('rc-evidence'),note=document.getElementById('rc-note');
+  if(ev)ev.value=e?.evidence||'';if(note)note.value=e?.note||'';
+}
+function rcSaveDay(){
+  const state=rcState(),date=document.getElementById('rc-date')?.value||td();
+  const entry={
+    date,mood:rcScaleValue('rc-mood'),energy:rcScaleValue('rc-energy'),block:rcScaleValue('rc-block'),
+    help:{study:!!document.getElementById('rc-help-study')?.checked,exercise:!!document.getElementById('rc-help-exercise')?.checked,sleep:!!document.getElementById('rc-help-sleep')?.checked,contact:!!document.getElementById('rc-help-contact')?.checked},
+    evidence:(document.getElementById('rc-evidence')?.value||'').trim(),note:(document.getElementById('rc-note')?.value||'').trim(),updatedAt:Date.now()
+  };
+  const i=state.entries.findIndex(e=>e.date===date);if(i>=0)state.entries[i]=entry;else state.entries.push(entry);
+  state.entries.sort((a,b)=>a.date.localeCompare(b.date));sSt();rcRender();nfy('Check-in salvo','ok');
+}
+function rcRecentDays(n){
+  const out=[],now=new Date();now.setHours(0,0,0,0);
+  for(let i=n-1;i>=0;i--){const d=new Date(now);d.setDate(now.getDate()-i);out.push({date:ymd(d),d});}
+  return out;
+}
+function rcAverage(list,key){
+  const vals=list.map(e=>Number(e[key])).filter(v=>v>=1&&v<=5);
+  return vals.length?vals.reduce((a,v)=>a+v,0)/vals.length:null;
+}
+function rcActionDates(){
+  const set=new Set();
+  rcState().entries.forEach(e=>{if(e.evidence||Object.values(e.help||{}).some(Boolean))set.add(e.date)});
+  rcState().missions.forEach(m=>set.add(m.date));
+  sess().forEach(s=>set.add(s.date));
+  return set;
+}
+function rcRenderChart(entries){
+  const host=document.getElementById('rc-chart');if(!host)return;
+  const days=rcRecentDays(14),map=new Map(entries.map(e=>[e.date,e])),W=700,H=220,padX=35,padY=22,innerW=W-padX*2,innerH=H-padY*2;
+  const colors={mood:'#22d3ee',energy:'#818cf8',block:'#fb7185'};
+  const pathFor=key=>{
+    const pts=days.map((x,i)=>{const v=Number(map.get(x.date)?.[key]);return v?{x:padX+i*innerW/13,y:padY+(5-v)*innerH/4}:null}).filter(Boolean);
+    return pts.length?'<polyline points="'+pts.map(p=>p.x.toFixed(1)+','+p.y.toFixed(1)).join(' ')+'" fill="none" stroke="'+colors[key]+'" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>'+pts.map(p=>'<circle cx="'+p.x+'" cy="'+p.y+'" r="3.5" fill="'+colors[key]+'"/>').join(''):'';
+  };
+  const grid=[1,2,3,4,5].map(v=>{const y=padY+(5-v)*innerH/4;return '<line x1="'+padX+'" y1="'+y+'" x2="'+(W-padX)+'" y2="'+y+'" stroke="rgba(148,163,184,.12)"/><text x="9" y="'+(y+3)+'" fill="#64748b" font-size="9">'+v+'</text>'}).join('');
+  const labels=days.map((x,i)=>i%2===0?'<text x="'+(padX+i*innerW/13)+'" y="'+(H-4)+'" text-anchor="middle" fill="#64748b" font-size="8">'+String(x.d.getDate()).padStart(2,'0')+'/'+String(x.d.getMonth()+1).padStart(2,'0')+'</text>':'').join('');
+  host.innerHTML='<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none">'+grid+pathFor('mood')+pathFor('energy')+pathFor('block')+labels+'</svg>';
+}
+function rcRenderHelp(entries){
+  const host=document.getElementById('rc-help-bars');if(!host)return;
+  const defs=[['study','Estudo curto'],['exercise','Atividade física'],['sleep','Sono regular'],['contact','Contato com alguém']];
+  const counts=defs.map(([key,label])=>({label,count:entries.filter(e=>e.help?.[key]).length})),max=Math.max(1,...counts.map(x=>x.count));
+  host.innerHTML=counts.map(x=>'<div class="rc-help-row"><span>'+x.label+'</span><div class="rc-help-bar"><i style="width:'+Math.round(x.count/max*100)+'%"></i></div><b>'+x.count+'x</b></div>').join('');
+}
+function rcRenderEvidence(){
+  const host=document.getElementById('rc-evidence-list');if(!host)return;
+  const entries=rcState().entries.filter(e=>e.evidence).sort((a,b)=>b.date.localeCompare(a.date)).slice(0,8);
+  const missions=rcState().missions.slice().sort((a,b)=>b.ts-a.ts).slice(0,4).map(m=>({date:m.date,evidence:'Missão concluída: '+m.mission}));
+  const all=entries.concat(missions).sort((a,b)=>b.date.localeCompare(a.date)).slice(0,8);
+  host.innerHTML=all.length?all.map(e=>'<div class="rc-evidence-item"><b>'+new Date(e.date+'T12:00:00').toLocaleDateString('pt-BR')+'</b><p>'+escapeHtml(e.evidence)+'</p></div>').join(''):'<div class="empty"><div class="etxt">Registre qualquer pequeno passo que você conseguiu dar.</div></div>';
+}
+function rcLoadPlan(){
+  const state=rcState(),week=rcWeekKey();
+  if(state.plan.week!==week)state.plan={week,action:false,study:false,talk:false,care:false};
+  ['action','study','talk','care'].forEach(k=>{const el=document.getElementById('rc-plan-'+k);if(el)el.checked=!!state.plan[k]});
+}
+function rcSavePlan(){
+  const state=rcState();state.plan={week:rcWeekKey(),action:!!document.getElementById('rc-plan-action')?.checked,study:!!document.getElementById('rc-plan-study')?.checked,talk:!!document.getElementById('rc-plan-talk')?.checked,care:!!document.getElementById('rc-plan-care')?.checked};sSt();
+}
+function rcRender(){
+  rcBuildScales();const state=rcState(),entries14=state.entries.filter(e=>e.date>=rcRecentDays(14)[0].date),entries7=state.entries.filter(e=>e.date>=rcRecentDays(7)[0].date);
+  const mood=rcAverage(entries14,'mood'),energy=rcAverage(entries14,'energy'),actions=rcActionDates(),days7=new Set(rcRecentDays(7).map(x=>x.date));
+  const actionCount=[...actions].filter(d=>days7.has(d)).length,studySec=sess().filter(s=>days7.has(s.date)).reduce((a,s)=>a+(Number(s.sec)||0),0);
+  document.getElementById('rc-k-mood').textContent=mood?mood.toFixed(1).replace('.',','):'—';
+  document.getElementById('rc-k-energy').textContent=energy?energy.toFixed(1).replace('.',','):'—';
+  document.getElementById('rc-k-action').textContent=actionCount+'/7';
+  document.getElementById('rc-k-study').textContent=fH(studySec);
+  rcRenderChart(entries14);rcRenderHelp(entries7);rcRenderEvidence();rcLoadPlan();rcLoadDay();
+}
+function rcTimerMission(){const label=document.getElementById('rc-mission-label'),sel=document.getElementById('rc-mission');if(label&&sel)label.textContent=sel.value}
+function rcTimerPaint(){
+  const time=document.getElementById('rc-time'),ring=document.getElementById('rc-timer');if(time)time.textContent=p2(Math.floor(rcTimerSec/60))+':'+p2(rcTimerSec%60);if(ring)ring.style.setProperty('--p',Math.round((120-rcTimerSec)/120*100)+'%');
+}
+function rcTimerReset(){clearInterval(rcTimerIv);rcTimerIv=null;rcTimerRunning=false;rcTimerSec=120;rcTimerPaint();const b=document.getElementById('rc-timer-start');if(b)b.textContent='Iniciar missão';const s=document.getElementById('rc-timer-status');if(s)s.textContent='A ação mínima ainda conta.'}
+function rcTimerComplete(){
+  clearInterval(rcTimerIv);rcTimerIv=null;rcTimerRunning=false;rcTimerSec=0;rcTimerPaint();
+  const mission=document.getElementById('rc-mission')?.value||'Missão de 2 minutos';rcState().missions.unshift({id:uid(),mission,date:td(),ts:Date.now()});rcState().missions=rcState().missions.slice(0,200);sSt();
+  const b=document.getElementById('rc-timer-start');if(b)b.textContent='Concluída';const st=document.getElementById('rc-timer-status');if(st)st.textContent='Você começou. Isso já é uma evidência de progresso.';rcRenderEvidence();rcRender();playBeep();
+}
+function rcTimerToggle(){
+  if(rcTimerSec<=0){rcTimerReset();return}
+  const b=document.getElementById('rc-timer-start');
+  if(rcTimerRunning){clearInterval(rcTimerIv);rcTimerIv=null;rcTimerRunning=false;if(b)b.textContent='Retomar missão';return}
+  rcTimerRunning=true;if(b)b.textContent='Pausar';rcTimerIv=setInterval(()=>{rcTimerSec--;rcTimerPaint();if(rcTimerSec<=0)rcTimerComplete()},1000);
+}
+function rcInit(){
+  rcBuildScales();const date=document.getElementById('rc-date');if(date&&!date.value)date.value=td();rcTimerPaint();rcTimerMission();rcRender();
+}
 // INIT
 document.addEventListener('DOMContentLoaded',()=>{
   const erd=document.getElementById('er-date'); if(erd) erd.value=td();
   const t=td();
   document.getElementById('mdate').value=t;
   document.getElementById('qdate').value=t;
-  renderSW();applyMeta();popSel();renderD();renderTSess();
+  renderSW();applyMeta();popSel();renderD();renderTSess();rcInit();
   if(ST.plan&&ST.plan.date===t) renderPlan();
   window.postMessage({source:'PF_PANEL',type:'PF_PANEL_READY'},PF_SYNC_ORIGIN);
   pfPublishPanelState();
@@ -3907,6 +4135,10 @@ if('serviceWorker' in navigator){
   <button class="mni" data-tab="r" onclick="goM('r')" aria-label="Edital e Revisão">
     <svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 3 5-6"/></svg>
     <span>Revisão</span>
+  </button>
+  <button class="mni" data-tab="p" onclick="goM('p')" aria-label="Painel de Recuperação">
+    <svg viewBox="0 0 24 24"><path d="M20.8 4.6a5.5 5.5 0 00-7.8 0L12 5.6l-1-1a5.5 5.5 0 00-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 000-7.8z"/><path d="M7 12h2l1.2-2.4L12.5 15l1.4-3H17"/></svg>
+    <span>Cuidado</span>
   </button>
   <button class="mni" data-tab="c" onclick="goM('c')" aria-label="Configurações">
     <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
