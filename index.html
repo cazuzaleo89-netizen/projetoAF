@@ -4384,7 +4384,7 @@ function rxSimilarLinks(disc,subject,limit){
   return '<div class="rx-sim-actions">'+items.map(function(q,i){
     var raw=String(q.url||tecURL(q.qid)),url=/^https:\/\/www\.tecconcursos\.com\.br\/questoes\/\d+/i.test(raw)?raw:tecURL(q.qid);
     var score=Number(q.similarScore),scoreText=Number.isFinite(score)?' · '+Math.round(score<=1?score*100:score)+'%':'';
-    return '<a class="rx-sim-link" href="'+rxE(url).replace(/"/g,'&quot;')+'" target="_blank" rel="noopener">#'+rxE(q.qid)+scoreText+'</a>';
+    return '<a class="rx-sim-link" href="javascript:void(0)" onclick="pfOpenReview(\''+String(url).replace(/'/g,'%27')+'\',\'Raio-X #'+rxE(q.qid)+'\',\'TEC no Raio-X\')">#'+rxE(q.qid)+scoreText+'</a>';
   }).join('')+(all.length>items.length?'<span class="rx-sim-count">+'+(all.length-items.length)+'</span>':'')+'</div>';
 }
 
