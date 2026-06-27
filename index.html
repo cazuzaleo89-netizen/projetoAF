@@ -2477,14 +2477,14 @@ function wqFilters(){
   if(!st.filters)st.filters={disc:'all',discText:'Todas as disciplinas',period:'all'};
   return st.filters;
 }
-function wqSetFilter(k,v){
-  const f=wqFilters();f[k]=v||'all';
-  if(k==='disc'){
-    const el=document.getElementById('wq-disc-filter');
-    f.discText=el&&el.selectedOptions[0]?el.selectedOptions[0].textContent:'';
-  }
+function wqApplyFilters(){
+  const f=wqFilters(),discEl=document.getElementById('wq-disc-filter'),periodEl=document.getElementById('wq-period-filter');
+  f.disc=discEl?discEl.value:'all';
+  f.discText=discEl&&discEl.selectedOptions[0]?discEl.selectedOptions[0].textContent:'Todas as disciplinas';
+  f.period=periodEl?periodEl.value:'all';
   sSt();renderWeeklyQuestionGoals();
 }
+function wqClearFilters(){const f=wqFilters();f.disc='all';f.discText='Todas as disciplinas';f.period='all';sSt();renderWeeklyQuestionGoals();}
 function wqSetPlanning(){
   const st=wqState();
   const h=document.getElementById('wq-hours-day'),m=document.getElementById('wq-min-question'),d=document.getElementById('wq-days-week');
@@ -2536,9 +2536,6 @@ function wqPeriodMatch(x,period){
 }
 function wqFilteredItems(items=safeList(wqState().items)){
   const f=wqFilters();
-  const discEl=document.getElementById('wq-disc-filter'),periodEl=document.getElementById('wq-period-filter');
-  const active={disc:discEl?discEl.value:f.disc,period:periodEl?periodEl.value:f.period,discText:(discEl&&discEl.selectedOptions[0])?discEl.selectedOptions[0].textContent:f.discText};
-  f.disc=active.disc||'all';f.period=active.period||'all';f.discText=active.discText||'';
   const discNeed=pfNorm(f.discText&&f.discText!=='Todas as disciplinas'?f.discText:f.disc);
   return safeList(items).filter(x=>{
     const discOk=f.disc==='all'||wqDiscKeys(x).includes(f.disc)||wqSearchText(x).includes(discNeed);
@@ -2561,13 +2558,14 @@ function wqFilterBar(allItems,shownItems){
     ['overdue','Vencidas ou antigas'],
     ['base','Metas-base']
   ].map(([k,v])=>'<option value="'+k+'" '+(f.period===k?'selected':'')+'>'+v+'</option>').join('');
-  return '<div style="display:grid;grid-template-columns:minmax(150px,1fr) minmax(130px,180px) minmax(95px,120px) minmax(95px,120px) minmax(95px,120px) auto;gap:8px;align-items:end;margin:12px 0">'+
-    '<label style="display:grid;gap:5px"><span class="slbl">Disciplina</span><select id="wq-disc-filter" onchange="wqSetFilter(\'disc\',this.value)" oninput="wqSetFilter(\'disc\',this.value)">'+discOpts+'</select></label>'+
-    '<label style="display:grid;gap:5px"><span class="slbl">Periodo</span><select id="wq-period-filter" onchange="wqSetFilter(\'period\',this.value)" oninput="wqSetFilter(\'period\',this.value)">'+periodOpts+'</select></label>'+
+  return '<div style="display:grid;grid-template-columns:minmax(150px,1fr) minmax(130px,180px) minmax(95px,120px) minmax(95px,120px) minmax(95px,120px) auto auto;gap:8px;align-items:end;margin:12px 0">'+
+    '<label style="display:grid;gap:5px"><span class="slbl">Disciplina</span><select id="wq-disc-filter">'+discOpts+'</select></label>'+
+    '<label style="display:grid;gap:5px"><span class="slbl">Periodo</span><select id="wq-period-filter">'+periodOpts+'</select></label>'+
     '<label style="display:grid;gap:5px"><span class="slbl">Horas/dia</span><input id="wq-hours-day" type="number" min="0.25" step="0.25" value="'+escapeHtml(st.hoursPerDay)+'" onchange="wqSetPlanning()"></label>'+
     '<label style="display:grid;gap:5px"><span class="slbl">Min/questao</span><input id="wq-min-question" type="number" min="1" step="0.5" value="'+escapeHtml(st.minutesPerQuestion)+'" onchange="wqSetPlanning()"></label>'+
     '<label style="display:grid;gap:5px"><span class="slbl">Dias/semana</span><input id="wq-days-week" type="number" min="1" max="7" step="1" value="'+escapeHtml(st.daysPerWeek)+'" onchange="wqSetPlanning()"></label>'+
-    '<button class="btn bg2 xs" onclick="wqSetFilter(\'disc\',\'all\');wqSetFilter(\'period\',\'all\')">Limpar filtros</button>'+
+    '<button class="btn bp xs" onclick="wqApplyFilters()">Filtrar</button>'+
+    '<button class="btn bg2 xs" onclick="wqClearFilters()">Limpar</button>'+
     '<div style="grid-column:1/-1;font-size:11px;color:var(--t3)">'+shownItems.length+' de '+safeList(allItems).length+' meta(s) exibidas · alvo: '+st.dailyTarget+' questoes/dia, '+st.target+' questoes/semana</div>'+
   '</div>';
 }
