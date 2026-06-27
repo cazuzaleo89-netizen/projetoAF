@@ -3063,7 +3063,14 @@ function pfSetRescueLimit(value){
 function pfExpandRescue(){
   const cfg=pfRescueCfg();cfg.extra=(Number(cfg.extra)||0)+5;sSt();pfRenderRescue();nfy('Mais 5 revisões liberadas para hoje','info');
 }
-function pfOpenReview(url){if(url)window.open(url,'_blank','noopener');}
+function pfOpenReview(url,title,context){
+  if(!url)return;
+  if(typeof fcOpenTecOverlay==='function'){
+    fcOpenTecOverlay(url,title||'Questao TEC',context||'TEC no painel');
+    return;
+  }
+  window.open(url,'_blank','noopener');
+}
 function pfReviewAnswer(qid,quality){
   const cfg=pfRescueCfg();cfg.done[String(qid)]=Date.now();sSt();pfRenderRescue();
   window.postMessage({source:'PF_PANEL',type:'PF_REVIEW_RESULT',payload:{qid:String(qid),quality:Number(quality)||4}},PF_SYNC_ORIGIN);
@@ -3238,12 +3245,13 @@ function renderSimilarReinforcement(){
   const rows=batch.map((q,i)=>{
     const d=q.discId?discs().find(x=>x.id===q.discId):null;
     const score=q.similarScore!=null?Math.round(Number(q.similarScore)):q.simScore!=null?Math.round(q.simScore*100):Math.min(99,50+(q.errorCount||1)*8);
+    const openUrl=String(q.url||tecURL(q.qid)).replace(/'/g,'%27');
     const badge=q.extSimilar?' · motor da extensão':'';
     return '<div class="rescue-item">'+
       '<div class="rescue-rank">'+(i+1)+'</div>'+
       '<div><div class="rescue-name"><a href="'+(q.url||tecURL(q.qid))+'" target="_blank" rel="noopener" style="color:var(--accent2);text-decoration:none">#'+escapeHtml(q.qid)+'</a> · '+escapeHtml(q.assunto||'Sem assunto')+'</div>'+
       '<div class="rescue-meta">'+escapeHtml(d?.name||q.materia||'Sem disciplina')+' · '+(q.errorCount||1)+' erro(s) · '+escapeHtml(q.src||'histórico')+badge+' · similaridade '+score+'%</div></div>'+
-      '<div class="rescue-actions"><button class="btn bg2 xs" onclick="pfOpenReview(\''+String(q.url||tecURL(q.qid)).replace(/'/g,'%27')+'\')">Abrir</button></div>'+
+      '<div class="rescue-actions"><button class="btn bg2 xs" onclick="pfOpenReview(\''+openUrl+'\',\'Similar #'+escapeHtml(q.qid)+'\',\'TEC no reforco por similares\')">Ver aqui</button></div>'+
     '</div>';
   }).join('');
   const extCount=batch.filter(q=>q.extSimilar).length;
@@ -3458,11 +3466,13 @@ function renderErros(){
   const rows=data.slice(0,200).map(e=>{
     const d=discs().find(x=>x.id===e.discId);
     const url=tecURL(e.code);
+    const openUrl=String(url).replace(/'/g,'%27');
+    const codeOpenCell=url?'<a href="javascript:void(0)" onclick="pfOpenReview(\''+openUrl+'\',\'Erro #'+escapeHtml(e.code)+'\',\'TEC no caderno de erros\')" style="color:var(--accent2);font-weight:600;text-decoration:none">#'+e.code+' - ver aqui</a>':('#'+e.code);
     const cnt=e.count||1;
     const cntBadge=cnt>=2?'<span class="dbadge br" title="errou '+cnt+' vezes">×'+cnt+'</span>':'<span class="dbadge" style="background:var(--s4);color:var(--t2)">×1</span>';
     const codeCell=url?'<a href="'+url+'" target="_blank" rel="noopener" style="color:var(--accent2);font-weight:600;text-decoration:none">#'+e.code+' ↗</a>':('#'+e.code);
     return '<tr'+(e.done?' style="opacity:.45"':'')+'>'+
-      '<td>'+codeCell+'</td>'+
+      '<td>'+codeOpenCell+'</td>'+
       '<td><span style="display:flex;align-items:center;gap:6px"><span style="width:7px;height:7px;border-radius:50%;background:'+(d?.color||'#4a6080')+';display:inline-block;flex-shrink:0"></span>'+(d?.name||'—')+'</span></td>'+
       '<td style="color:var(--t3)">'+(escapeHtml(e.assunto)||'—')+'</td>'+
       '<td style="color:var(--t3)">'+(escapeHtml(e.banca)||'—')+'</td>'+
@@ -4601,13 +4611,13 @@ function fcGrade(quality){
   nfy('Flashcard reagendado para '+new Date(c.nextReview+'T12:00:00').toLocaleDateString('pt-BR'),'ok');
   fcMove(1);
 }
-function fcOpenTecOverlay(url,title){
+function fcOpenTecOverlay(url,title,context){
   if(!url)return;
   var old=document.getElementById('fc-tec-overlay');if(old)old.remove();
   var ov=document.createElement('div');ov.id='fc-tec-overlay';
   ov.innerHTML='<div class="fc-tec-backdrop" onclick="fcCloseTecOverlay()"></div>'+
     '<section class="fc-tec-modal" role="dialog" aria-modal="true">'+
-      '<header class="fc-tec-head"><div><b>TEC dentro do flashcard</b><span>'+fcEsc(title||'Questao TEC')+'</span></div><div class="fc-tec-actions"><a class="btn bg2 sm" href="'+fcEsc(url)+'" target="_blank" rel="noopener">Nova aba</a><button class="btn bd sm" onclick="fcCloseTecOverlay()">Fechar</button></div></header>'+
+      '<header class="fc-tec-head"><div><b>'+fcEsc(context||'TEC dentro do flashcard')+'</b><span>'+fcEsc(title||'Questao TEC')+'</span></div><div class="fc-tec-actions"><a class="btn bg2 sm" href="'+fcEsc(url)+'" target="_blank" rel="noopener">Nova aba</a><button class="btn bd sm" onclick="fcCloseTecOverlay()">Fechar</button></div></header>'+
       '<div class="fc-tec-note">Se o TEC bloquear a visualizacao dentro da janela, use <b>Nova aba</b>. Isso depende da politica de seguranca do proprio TEC.</div>'+
       '<iframe class="fc-tec-frame" src="'+fcEsc(url)+'" title="Questao TEC"></iframe>'+
     '</section>';
