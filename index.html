@@ -2465,7 +2465,17 @@ function wqFilters(){
 function wqSetFilter(k,v){
   const f=wqFilters();f[k]=v||'all';sSt();renderWeeklyQuestionGoals();
 }
-function wqDiscKey(x){return pfNorm(x?.discId||x?.materia||'sem disciplina')}
+function wqDiscKeys(x){
+  const keys=new Set();
+  if(x?.discId){
+    keys.add(pfNorm(x.discId));
+    const d=discs().find(d=>d.id===x.discId);
+    if(d?.name)keys.add(pfNorm(d.name));
+  }
+  if(x?.materia)keys.add(pfNorm(x.materia));
+  return [...keys].filter(Boolean);
+}
+function wqDiscKey(x){return wqDiscKeys(x)[0]||pfNorm('sem disciplina')}
 function wqDateFromAny(v){
   if(!v)return '';
   const n=Number(v);
@@ -2492,12 +2502,13 @@ function wqPeriodMatch(x,period){
 }
 function wqFilteredItems(items=safeList(wqState().items)){
   const f=wqFilters();
-  return safeList(items).filter(x=>(f.disc==='all'||wqDiscKey(x)===f.disc)&&wqPeriodMatch(x,f.period));
+  return safeList(items).filter(x=>(f.disc==='all'||wqDiscKeys(x).includes(f.disc))&&wqPeriodMatch(x,f.period));
 }
 function wqFilterBar(allItems,shownItems){
   const f=wqFilters(),discMap=new Map();
   safeList(allItems).forEach(x=>{
-    const key=wqDiscKey(x),label=x.materia||wqDiscName(x.discId,'Sem disciplina');
+    const label=x.materia||wqDiscName(x.discId,'Sem disciplina');
+    const key=pfNorm(label);
     if(key&&!discMap.has(key))discMap.set(key,label||'Sem disciplina');
   });
   const discOpts=['<option value="all">Todas as disciplinas</option>'].concat([...discMap.entries()].sort((a,b)=>a[1].localeCompare(b[1])).map(([k,v])=>'<option value="'+escapeHtml(k)+'" '+(f.disc===k?'selected':'')+'>'+escapeHtml(v)+'</option>')).join('');
@@ -2597,15 +2608,25 @@ function wqRefresh(silent=false,reset=false){
 }
 function wqReset(){if(confirm('Refazer o lote semanal automatico? Itens marcados como feitos nesta semana serao limpos.'))wqRefresh(false,true);}
 function wqToggle(id){const st=wqState();st.done[id]=!st.done[id];const item=st.items.find(x=>x.id===id);if(item)item.done=st.done[id];sSt();renderWeeklyQuestionGoals();}
+function wqBatchLinks(){
+  const st=wqState();
+  return wqFilteredItems(st.items).filter(x=>x.url&&!st.done[x.id]).map(x=>({url:x.url,title:x.title||'Meta semanal',id:x.id}));
+}
+function wqOpenMeta(id){
+  const links=wqBatchLinks();
+  if(!links.length){nfy('Nenhuma questao TEC pendente no filtro','err');return;}
+  const idx=Math.max(0,links.findIndex(x=>x.id===id));
+  pfOpenReviewBatch(links,idx,'TEC nas metas semanais');
+}
 function wqCopyTec(){
   const st=wqState();const text=wqFilteredItems(st.items).filter(x=>x.qid&&!st.done[x.id]).map(x=>'#'+x.qid).join(' ');
   if(!text){nfy('Nenhuma questao com codigo TEC pendente','err');return;}
   if(navigator.clipboard)navigator.clipboard.writeText(text).then(()=>nfy('Codigos das metas copiados','ok')).catch(()=>nfy(text,'info'));else nfy(text,'info');
 }
 function wqOpenBatch(){
-  const st=wqState();const links=wqFilteredItems(st.items).filter(x=>x.url&&!st.done[x.id]).slice(0,10);
+  const links=wqBatchLinks().slice(0,20);
   if(!links.length){nfy('Nenhuma questao TEC pendente no lote','err');return;}
-  pfOpenReview(links[0].url,links[0].title||'Meta semanal','TEC nas metas semanais');
+  pfOpenReviewBatch(links,0,'TEC nas metas semanais');
   if(links.length>1)nfy('Abri a primeira. Use Copiar TEC para gerar o caderno completo.','info');
 }
 function renderWeeklyQuestionGoals(){
@@ -2620,7 +2641,7 @@ function renderWeeklyQuestionGoals(){
     if(!items.length){host.innerHTML=wqFilterBar(allItems,items)+head+'<div class="empty"><div class="eico">🔎</div><div class="etxt">Nenhuma meta encontrada nesse filtro.</div></div>';return;}
     host.innerHTML=wqFilterBar(allItems,items)+head+'<div class="slist">'+items.map((x,i)=>{
       const kind=x.kind==='erro'?'Erro':x.kind==='similar'?'Similar':x.kind==='revisao'?'Revisao':x.kind==='inedita'?'Inedita':'Assunto';
-      const open=x.url?'<button class="btn bg2 xs" onclick="pfOpenReview(\''+jsArg(x.url)+'\',\''+jsArg(x.title||'Meta semanal')+'\',\'TEC nas metas semanais\')">Ver aqui</button>':'';
+      const open=x.url?'<button class="btn bg2 xs" onclick="wqOpenMeta(\''+jsArg(x.id)+'\')">Ver aqui</button>':'';
       return '<div class="rescue-item" style="'+(st.done[x.id]?'opacity:.48':'')+'"><div class="rescue-rank">'+(i+1)+'</div><div style="min-width:0"><div class="rescue-name">'+escapeHtml(x.title||x.assunto||x.materia)+'</div><div class="rescue-meta">'+escapeHtml(kind)+' · '+escapeHtml(x.materia||'')+(x.assunto?' · '+escapeHtml(x.assunto):'')+' · '+escapeHtml(x.reason||'')+'</div></div><div class="rescue-actions">'+open+'<button class="btn '+(st.done[x.id]?'bp':'bg2')+' xs" onclick="wqToggle(\''+jsArg(x.id)+'\')">'+(st.done[x.id]?'Feita':'Marcar')+'</button></div></div>';
     }).join('')+'</div>';
   }catch(err){
@@ -3290,6 +3311,22 @@ function pfSetRescueLimit(value){
 }
 function pfExpandRescue(){
   const cfg=pfRescueCfg();cfg.extra=(Number(cfg.extra)||0)+5;sSt();pfRenderRescue();nfy('Mais 5 revisões liberadas para hoje','info');
+}
+let pfTecBatch=null;
+function pfOpenReviewBatch(items,index=0,context='TEC no painel'){
+  const batch=safeList(items).filter(x=>x&&x.url);
+  if(!batch.length)return;
+  pfTecBatch={items:batch,index:Math.max(0,Math.min(Number(index)||0,batch.length-1)),context};
+  window.pfTecBatch=pfTecBatch;
+  const cur=pfTecBatch.items[pfTecBatch.index];
+  pfOpenReview(cur.url,cur.title||'Questao TEC',context);
+}
+function pfTecBatchMove(delta){
+  if(!pfTecBatch||!pfTecBatch.items?.length)return;
+  pfTecBatch.index=(pfTecBatch.index+delta+pfTecBatch.items.length)%pfTecBatch.items.length;
+  window.pfTecBatch=pfTecBatch;
+  const cur=pfTecBatch.items[pfTecBatch.index];
+  pfOpenReview(cur.url,cur.title||'Questao TEC',pfTecBatch.context||'TEC no painel');
 }
 function pfOpenReview(url,title,context){
   if(!url)return;
@@ -4843,9 +4880,15 @@ function fcOpenTecOverlay(url,title,context){
   if(!url)return;
   var old=document.getElementById('fc-tec-overlay');if(old)old.remove();
   var ov=document.createElement('div');ov.id='fc-tec-overlay';
+  var nav='';
+  if(window.pfTecBatch&&pfTecBatch.items&&pfTecBatch.items.length>1){
+    nav='<button class="btn bg2 sm" onclick="pfTecBatchMove(-1)">Anterior</button>'+
+      '<span class="fc-tec-count">'+(pfTecBatch.index+1)+' / '+pfTecBatch.items.length+'</span>'+
+      '<button class="btn bp sm" onclick="pfTecBatchMove(1)">Proxima</button>';
+  }
   ov.innerHTML='<div class="fc-tec-backdrop" onclick="fcCloseTecOverlay()"></div>'+
     '<section class="fc-tec-modal" role="dialog" aria-modal="true">'+
-      '<header class="fc-tec-head"><div><b>'+fcEsc(context||'TEC dentro do flashcard')+'</b><span>'+fcEsc(title||'Questao TEC')+'</span></div><div class="fc-tec-actions"><a class="btn bg2 sm" href="'+fcEsc(url)+'" target="_blank" rel="noopener">Nova aba</a><button class="btn bd sm" onclick="fcCloseTecOverlay()">Fechar</button></div></header>'+
+      '<header class="fc-tec-head"><div><b>'+fcEsc(context||'TEC dentro do flashcard')+'</b><span>'+fcEsc(title||'Questao TEC')+'</span></div><div class="fc-tec-actions">'+nav+'<a class="btn bg2 sm" href="'+fcEsc(url)+'" target="_blank" rel="noopener">Nova aba</a><button class="btn bd sm" onclick="fcCloseTecOverlay()">Fechar</button></div></header>'+
       '<div class="fc-tec-note">Se o TEC bloquear a visualizacao dentro da janela, use <b>Nova aba</b>. Isso depende da politica de seguranca do proprio TEC.</div>'+
       '<iframe class="fc-tec-frame" src="'+fcEsc(url)+'" title="Questao TEC"></iframe>'+
     '</section>';
@@ -4897,7 +4940,7 @@ window.fcFilterChanged=function(){fcIndex=0;fcFlipped=false;fcBuildFilters();fcR
 
 var sty=document.createElement('style');
 sty.textContent='.fc-hero{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;margin-bottom:14px}.fc-title{font-family:var(--fh);font-size:24px;font-weight:900;letter-spacing:-.03em}.fc-sub{font-size:12px;color:var(--t3);max-width:760px}.fc-tools{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1.2fr;gap:9px;margin-bottom:12px}.fc-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:12px}.fc-kpis div{background:var(--s3);border:1px solid var(--border);border-radius:12px;padding:12px}.fc-kpis b{font-family:var(--fh);font-size:24px;display:block}.fc-kpis span{font-size:10px;color:var(--t3);font-weight:800;text-transform:uppercase;letter-spacing:.08em}.fc-progress{font-size:11px;color:var(--t3);margin-bottom:8px}.fc-card{min-height:360px;background:radial-gradient(circle at 10% 0,rgba(34,211,238,.12),transparent 32%),linear-gradient(145deg,var(--s2),#090f1d);border:1px solid rgba(96,165,250,.28);border-radius:22px;padding:22px;box-shadow:0 22px 70px rgba(0,0,0,.28);cursor:pointer;position:relative;overflow:hidden}.fc-card.flip{border-color:rgba(29,185,106,.35);background:radial-gradient(circle at 90% 0,rgba(29,185,106,.12),transparent 34%),linear-gradient(145deg,var(--s2),#09131c)}.fc-face{font-size:10px;color:#67e8f9;font-weight:900;text-transform:uppercase;letter-spacing:.14em;margin-bottom:8px}.fc-card h3{font-family:var(--fh);font-size:19px;margin-bottom:14px}.fc-card pre{white-space:pre-wrap;word-break:break-word;font:500 15px/1.65 var(--fb);color:var(--t1);max-height:420px;overflow:auto}.fc-hint{position:absolute;right:18px;bottom:14px;font-size:10px;color:var(--t4);font-weight:800;text-transform:uppercase}.fc-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.fc-empty{border:1px dashed var(--border2);border-radius:18px;padding:28px;text-align:center;color:var(--t2)}.fc-empty p{color:var(--t3);margin:7px 0 14px}@media(max-width:900px){.fc-tools{grid-template-columns:1fr 1fr}.fc-hero{flex-direction:column}.fc-kpis{grid-template-columns:1fr 1fr 1fr}}@media(max-width:520px){.fc-tools,.fc-kpis{grid-template-columns:1fr}.fc-card{min-height:300px;padding:17px}.fc-card pre{font-size:13px}}';
-sty.textContent+='#fc-tec-overlay{position:fixed;inset:0;z-index:9999}.fc-tec-backdrop{position:absolute;inset:0;background:rgba(2,6,23,.76);backdrop-filter:blur(8px)}.fc-tec-modal{position:absolute;inset:26px;display:flex;flex-direction:column;overflow:hidden;border:1px solid rgba(96,165,250,.32);border-radius:22px;background:linear-gradient(145deg,var(--s2),#06101f);box-shadow:0 28px 90px rgba(0,0,0,.55)}.fc-tec-head{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:12px 14px;border-bottom:1px solid var(--border);background:rgba(15,23,42,.76)}.fc-tec-head b{display:block;font-family:var(--fh);font-size:15px}.fc-tec-head span{display:block;margin-top:2px;font-size:10px;color:var(--t3);max-width:720px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.fc-tec-actions{display:flex;gap:7px;align-items:center;flex-shrink:0}.fc-tec-note{padding:8px 14px;border-bottom:1px solid rgba(96,165,250,.16);font-size:11px;color:var(--t3);background:rgba(34,211,238,.06)}.fc-tec-frame{flex:1;width:100%;border:0;background:#202320}@media(max-width:720px){.fc-tec-modal{inset:8px;border-radius:16px}.fc-tec-head{align-items:flex-start;flex-direction:column}.fc-tec-actions{width:100%;justify-content:flex-end}}';
+sty.textContent+='#fc-tec-overlay{position:fixed;inset:0;z-index:9999}.fc-tec-backdrop{position:absolute;inset:0;background:rgba(2,6,23,.76);backdrop-filter:blur(8px)}.fc-tec-modal{position:absolute;inset:26px;display:flex;flex-direction:column;overflow:hidden;border:1px solid rgba(96,165,250,.32);border-radius:22px;background:linear-gradient(145deg,var(--s2),#06101f);box-shadow:0 28px 90px rgba(0,0,0,.55)}.fc-tec-head{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:12px 14px;border-bottom:1px solid var(--border);background:rgba(15,23,42,.76)}.fc-tec-head b{display:block;font-family:var(--fh);font-size:15px}.fc-tec-head span{display:block;margin-top:2px;font-size:10px;color:var(--t3);max-width:720px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.fc-tec-actions{display:flex;gap:7px;align-items:center;flex-shrink:0}.fc-tec-actions .fc-tec-count{display:inline-flex;align-items:center;height:30px;padding:0 8px;border:1px solid var(--border);border-radius:10px;background:rgba(15,23,42,.72);color:var(--t2);font-size:11px;max-width:none}.fc-tec-note{padding:8px 14px;border-bottom:1px solid rgba(96,165,250,.16);font-size:11px;color:var(--t3);background:rgba(34,211,238,.06)}.fc-tec-frame{flex:1;width:100%;border:0;background:#202320}@media(max-width:720px){.fc-tec-modal{inset:8px;border-radius:16px}.fc-tec-head{align-items:flex-start;flex-direction:column}.fc-tec-actions{width:100%;justify-content:flex-end;flex-wrap:wrap}}';
 document.head.appendChild(sty);
 var tab=document.createElement('div');
 tab.id='tab-fc';tab.className='tab';
