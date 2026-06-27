@@ -1431,6 +1431,7 @@ option{background:var(--s3)}
           </div>
           <div style="display:flex;gap:7px;flex-wrap:wrap">
             <button class="btn bp xs" onclick="wqRefresh()">Atualizar metas</button>
+            <button class="btn bg2 xs" onclick="wqFetchLibraryPending()">Buscar ineditas</button>
             <button class="btn bg2 xs" onclick="wqCopyTec()">Copiar TEC</button>
             <button class="btn bg2 xs" onclick="wqOpenBatch()">Abrir lote</button>
             <button class="btn bd xs" onclick="wqReset()">Refazer</button>
@@ -2042,6 +2043,7 @@ function pfApplyEvent(event){
 function pfRenderAfterSync(){
   popSel();renderD();
   if(curTab==='q')renderQ();
+  if(curTab==='m')renderM();
   if(curTab==='r')renderRev();
   if(curTab==='c')renderCfg();
 }
@@ -2696,6 +2698,23 @@ function wqOpenBatch(){
   if(!links.length){nfy('Nenhuma questao TEC pendente no lote','err');return;}
   pfOpenReviewBatch(links,0,'TEC nas metas semanais');
   if(links.length>1)nfy('Abri a primeira. Use Copiar TEC para gerar o caderno completo.','info');
+}
+function wqFetchLibraryPending(){
+  const before=safeList(pfSyncMeta().libraryPending).length;
+  pfRequestSync();
+  nfy('Buscando questoes ineditas na biblioteca da extensao...','info');
+  setTimeout(()=>{
+    const count=safeList(pfSyncMeta().libraryPending).length;
+    if(count){
+      const st=wqState();st.updatedAt=0;sSt();wqRefresh(true,false);renderWeeklyQuestionGoals();
+      nfy(count+' questao(oes) inedita(s) disponiveis nas metas','ok');
+    }else if(before){
+      const st=wqState();st.updatedAt=0;sSt();wqRefresh(true,false);renderWeeklyQuestionGoals();
+      nfy(before+' questao(oes) inedita(s) ja estavam salvas','ok');
+    }else{
+      nfy('Nao encontrei ineditas ainda. Verifique se a extensao esta conectada e com a biblioteca carregada.','err');
+    }
+  },2600);
 }
 function wqGoalCockpit(allItems,items,done,codes,topics,pct){
   const st=wqState(),pending=items.filter(x=>!st.done?.[x.id]),next=pending[0]||items[0]||null;
