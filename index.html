@@ -2536,6 +2536,12 @@ function wqPeriodMatch(x,period){
 }
 function wqFilteredItems(items=safeList(wqState().items)){
   const f=wqFilters();
+  const discEl=document.getElementById('wq-disc-filter'),periodEl=document.getElementById('wq-period-filter');
+  if(discEl){
+    f.disc=discEl.value||'all';
+    f.discText=discEl.selectedOptions[0]?discEl.selectedOptions[0].textContent:'Todas as disciplinas';
+  }
+  if(periodEl)f.period=periodEl.value||'all';
   const discNeed=pfNorm(f.discText&&f.discText!=='Todas as disciplinas'?f.discText:f.disc);
   return safeList(items).filter(x=>{
     const discOk=f.disc==='all'||wqDiscKeys(x).includes(f.disc)||wqSearchText(x).includes(discNeed);
@@ -2559,8 +2565,8 @@ function wqFilterBar(allItems,shownItems){
     ['base','Metas-base']
   ].map(([k,v])=>'<option value="'+k+'" '+(f.period===k?'selected':'')+'>'+v+'</option>').join('');
   return '<div style="display:grid;grid-template-columns:minmax(150px,1fr) minmax(130px,180px) minmax(95px,120px) minmax(95px,120px) minmax(95px,120px) auto auto;gap:8px;align-items:end;margin:12px 0">'+
-    '<label style="display:grid;gap:5px"><span class="slbl">Disciplina</span><select id="wq-disc-filter">'+discOpts+'</select></label>'+
-    '<label style="display:grid;gap:5px"><span class="slbl">Periodo</span><select id="wq-period-filter">'+periodOpts+'</select></label>'+
+    '<label style="display:grid;gap:5px"><span class="slbl">Disciplina</span><select id="wq-disc-filter" onchange="wqApplyFilters()" oninput="wqApplyFilters()">'+discOpts+'</select></label>'+
+    '<label style="display:grid;gap:5px"><span class="slbl">Periodo</span><select id="wq-period-filter" onchange="wqApplyFilters()" oninput="wqApplyFilters()">'+periodOpts+'</select></label>'+
     '<label style="display:grid;gap:5px"><span class="slbl">Horas/dia</span><input id="wq-hours-day" type="number" min="0.25" step="0.25" value="'+escapeHtml(st.hoursPerDay)+'" onchange="wqSetPlanning()"></label>'+
     '<label style="display:grid;gap:5px"><span class="slbl">Min/questao</span><input id="wq-min-question" type="number" min="1" step="0.5" value="'+escapeHtml(st.minutesPerQuestion)+'" onchange="wqSetPlanning()"></label>'+
     '<label style="display:grid;gap:5px"><span class="slbl">Dias/semana</span><input id="wq-days-week" type="number" min="1" max="7" step="1" value="'+escapeHtml(st.daysPerWeek)+'" onchange="wqSetPlanning()"></label>'+
