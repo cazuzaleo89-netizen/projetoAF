@@ -2512,10 +2512,7 @@ function wqSetPlanning(){
 }
 function wqDiscKeys(x){
   const keys=new Set();
-  if(x?.materia){
-    keys.add(pfNorm(x.materia));
-    return [...keys].filter(Boolean);
-  }
+  ['materia','disciplina','disc','discName'].forEach(k=>{if(x?.[k])keys.add(pfNorm(x[k]));});
   if(x?.discId){
     keys.add(pfNorm(x.discId));
     const d=discs().find(d=>d.id===x.discId);
@@ -2524,6 +2521,13 @@ function wqDiscKeys(x){
   return [...keys].filter(Boolean);
 }
 function wqDiscKey(x){return wqDiscKeys(x)[0]||pfNorm('sem disciplina')}
+function wqDiscMatch(x,f){
+  const selected=pfNorm(f?.disc||'all');
+  if(!selected||selected==='all')return true;
+  const selectedText=pfNorm(f?.discText&&f.discText!=='Todas as disciplinas'?f.discText:'');
+  const keys=wqDiscKeys(x);
+  return keys.some(k=>k===selected||(selectedText&&k===selectedText));
+}
 function wqSearchText(x){
   return pfNorm([x?.materia,x?.discId?wqDiscName(x.discId,''):null,x?.assunto,x?.title,x?.reason].filter(Boolean).join(' '));
 }
@@ -2559,10 +2563,8 @@ function wqFilteredItems(items=safeList(wqState().items)){
     f.discText=discEl.selectedOptions[0]?discEl.selectedOptions[0].textContent:'Todas as disciplinas';
   }
   if(periodEl)f.period=periodEl.value||'all';
-  const discNeed=pfNorm(f.discText&&f.discText!=='Todas as disciplinas'?f.discText:f.disc);
   return safeList(items).filter(x=>{
-    const discOk=f.disc==='all'||wqDiscKeys(x).includes(f.disc)||wqSearchText(x).includes(discNeed);
-    return discOk&&wqPeriodMatch(x,f.period);
+    return wqDiscMatch(x,f)&&wqPeriodMatch(x,f.period);
   });
 }
 function wqFilterBar(allItems,shownItems){
@@ -2572,7 +2574,8 @@ function wqFilterBar(allItems,shownItems){
     const key=pfNorm(label);
     if(key&&!discMap.has(key))discMap.set(key,label||'Sem disciplina');
   });
-  const discOpts=['<option value="all">Todas as disciplinas</option>'].concat([...discMap.entries()].sort((a,b)=>a[1].localeCompare(b[1])).map(([k,v])=>'<option value="'+escapeHtml(k)+'" '+(f.disc===k?'selected':'')+'>'+escapeHtml(v)+'</option>')).join('');
+  const activeDisc=pfNorm(f.disc||'all'),activeText=pfNorm(f.discText||'');
+  const discOpts=['<option value="all" '+(activeDisc==='all'?'selected':'')+'>Todas as disciplinas</option>'].concat([...discMap.entries()].sort((a,b)=>a[1].localeCompare(b[1])).map(([k,v])=>'<option value="'+escapeHtml(k)+'" '+((activeDisc===k||activeText===k)?'selected':'')+'>'+escapeHtml(v)+'</option>')).join('');
   const periodOpts=[
     ['all','Todos os periodos'],
     ['week','Desta semana'],
