@@ -2467,12 +2467,15 @@ function wqSetFilter(k,v){
 }
 function wqDiscKeys(x){
   const keys=new Set();
+  if(x?.materia){
+    keys.add(pfNorm(x.materia));
+    return [...keys].filter(Boolean);
+  }
   if(x?.discId){
     keys.add(pfNorm(x.discId));
     const d=discs().find(d=>d.id===x.discId);
     if(d?.name)keys.add(pfNorm(d.name));
   }
-  if(x?.materia)keys.add(pfNorm(x.materia));
   return [...keys].filter(Boolean);
 }
 function wqDiscKey(x){return wqDiscKeys(x)[0]||pfNorm('sem disciplina')}
@@ -2502,6 +2505,9 @@ function wqPeriodMatch(x,period){
 }
 function wqFilteredItems(items=safeList(wqState().items)){
   const f=wqFilters();
+  const discEl=document.getElementById('wq-disc-filter'),periodEl=document.getElementById('wq-period-filter');
+  const active={disc:discEl?discEl.value:f.disc,period:periodEl?periodEl.value:f.period};
+  f.disc=active.disc||'all';f.period=active.period||'all';
   return safeList(items).filter(x=>(f.disc==='all'||wqDiscKeys(x).includes(f.disc))&&wqPeriodMatch(x,f.period));
 }
 function wqFilterBar(allItems,shownItems){
@@ -2521,8 +2527,8 @@ function wqFilterBar(allItems,shownItems){
     ['base','Metas-base']
   ].map(([k,v])=>'<option value="'+k+'" '+(f.period===k?'selected':'')+'>'+v+'</option>').join('');
   return '<div style="display:grid;grid-template-columns:minmax(180px,1fr) minmax(160px,240px) auto;gap:8px;align-items:end;margin:12px 0">'+
-    '<label style="display:grid;gap:5px"><span class="slbl">Disciplina</span><select onchange="wqSetFilter(\'disc\',this.value)">'+discOpts+'</select></label>'+
-    '<label style="display:grid;gap:5px"><span class="slbl">Periodo</span><select onchange="wqSetFilter(\'period\',this.value)">'+periodOpts+'</select></label>'+
+    '<label style="display:grid;gap:5px"><span class="slbl">Disciplina</span><select id="wq-disc-filter" onchange="wqSetFilter(\'disc\',this.value)">'+discOpts+'</select></label>'+
+    '<label style="display:grid;gap:5px"><span class="slbl">Periodo</span><select id="wq-period-filter" onchange="wqSetFilter(\'period\',this.value)">'+periodOpts+'</select></label>'+
     '<button class="btn bg2 xs" onclick="wqSetFilter(\'disc\',\'all\');wqSetFilter(\'period\',\'all\')">Limpar filtros</button>'+
     '<div style="grid-column:1/-1;font-size:11px;color:var(--t3)">'+shownItems.length+' de '+safeList(allItems).length+' meta(s) exibidas</div>'+
   '</div>';
