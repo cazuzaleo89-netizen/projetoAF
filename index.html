@@ -1407,6 +1407,21 @@ option{background:var(--s3)}
         <div class="plan-list" id="planlist"></div>
       </div>
       <div class="card mb">
+        <div class="ch">
+          <div>
+            <div class="ct">Metas automaticas de questoes</div>
+            <div style="font-size:10.5px;color:var(--t3);margin-top:3px">erros da semana, revisoes vencidas, similares e assuntos antigos entram automaticamente</div>
+          </div>
+          <div style="display:flex;gap:7px;flex-wrap:wrap">
+            <button class="btn bp xs" onclick="wqRefresh()">Atualizar metas</button>
+            <button class="btn bg2 xs" onclick="wqCopyTec()">Copiar TEC</button>
+            <button class="btn bg2 xs" onclick="wqOpenBatch()">Abrir lote</button>
+            <button class="btn bd xs" onclick="wqReset()">Refazer</button>
+          </div>
+        </div>
+        <div id="wqgoals"></div>
+      </div>
+      <div class="card mb">
         <div class="ch"><div class="ct">📆 Semana Atual</div><span style="font-size:12px;color:var(--t3)"><span id="md1">—</span> a <span id="md2">—</span></span></div>
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px" id="mtstats"></div>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px" id="mtdisc"></div>
@@ -2401,8 +2416,107 @@ function renderPlan(){
 function togglePlan(i){
   if(ST.plan&&ST.plan.items[i]){ST.plan.items[i].done=!ST.plan.items[i].done;sSt();renderPlan();}
 }
+function wqWeekRange(ref=new Date()){
+  const now=new Date(ref),dow=now.getDay();
+  const mon=new Date(now);mon.setHours(0,0,0,0);mon.setDate(now.getDate()-(dow===0?6:dow-1));
+  const sun=new Date(mon);sun.setDate(mon.getDate()+6);
+  return {d1:ymd(mon),d2:ymd(sun),key:ymd(mon)};
+}
+function wqState(reset=false){
+  const wk=wqWeekRange();
+  if(reset||!ST.weeklyQuestionGoals||ST.weeklyQuestionGoals.week!==wk.key){
+    ST.weeklyQuestionGoals={week:wk.key,target:Math.max(18,Math.min(60,(cfg().dq||20)*2)),done:{},items:[],updatedAt:0};
+  }
+  if(!ST.weeklyQuestionGoals.done)ST.weeklyQuestionGoals.done={};
+  if(!Array.isArray(ST.weeklyQuestionGoals.items))ST.weeklyQuestionGoals.items=[];
+  return ST.weeklyQuestionGoals;
+}
+function wqDiscName(id,fallback='Sem disciplina'){
+  const d=discs().find(x=>x.id===id);
+  return d?.name||fallback;
+}
+function wqBuildCandidates(){
+  const wk=wqWeekRange(),meta=pfSyncMeta(),map=new Map(),now=Date.now();
+  const add=item=>{
+    if(!item)return;
+    const id=item.id||(item.qid?'q:'+item.qid:'topic:'+pfNorm([item.discId,item.assunto,item.kind].join('|')));
+    const prev=map.get(id);
+    const merged={...prev,...item,id,priority:Math.max(prev?.priority||0,item.priority||0)};
+    map.set(id,merged);
+  };
+  erros().forEach(e=>{
+    const code=String(e.code||'').replace(/\D/g,'');if(!code)return;
+    const inWeek=(e.date&&e.date>=wk.d1&&e.date<=wk.d2)||((Number(e.ts)||0)>=new Date(wk.d1+'T00:00:00').getTime());
+    add({kind:'erro',id:'q:'+code,qid:code,url:tecURL(code),discId:e.discId||'',materia:wqDiscName(e.discId,''),assunto:e.assunto||'',title:'#'+code+' - '+(e.assunto||'questao errada'),reason:(inWeek?'Erro desta semana':'Erro acumulado')+'; '+(e.count||1)+' ocorrencia(s)',priority:(inWeek?120:88)+(e.count||1)*12});
+  });
+  (meta.reviewQueue||[]).forEach(q=>{
+    const qid=String(q.qid||'').replace(/\D/g,'');if(!qid)return;
+    const due=!q.nextReview||q.nextReview<=td();
+    add({kind:'revisao',id:'q:'+qid,qid,url:q.url||tecURL(qid),discId:'',materia:q.materia||'Sem disciplina',assunto:q.assunto||'',title:'#'+qid+' - '+(q.assunto||q.desc||'revisao'),reason:(due?'Revisao vencida':'Revisao programada')+'; '+(q.errorCount||1)+' erro(s)',priority:(due?104:62)+(q.errorCount||1)*8});
+  });
+  (meta.similarItems||[]).forEach(q=>{
+    const qid=String(q.qid||'').replace(/\D/g,'');if(!qid)return;
+    const sc=Number(q.similarScore);const boost=Number.isFinite(sc)?Math.round((sc<=1?sc*100:sc)/3):0;
+    add({kind:'similar',id:'q:'+qid,qid,url:q.url||tecURL(qid),discId:'',materia:q.materia||'Sem disciplina',assunto:q.assunto||'',title:'#'+qid+' - '+(q.assunto||'similar'),reason:'Similar sugerida pela extensao'+(Number.isFinite(sc)?' ('+Math.round(sc<=1?sc*100:sc)+'%)':''),priority:72+boost});
+  });
+  const byTopic={};
+  qs().forEach(q=>{
+    const key=(q.discId||'')+'|'+(q.ass||'');
+    if(!byTopic[key])byTopic[key]={discId:q.discId||'',ass:q.ass||'',tot:0,cer:0,last:'',lastTs:0};
+    byTopic[key].tot+=Number(q.tot)||0;byTopic[key].cer+=Number(q.cer)||0;
+    if((q.date||'')>byTopic[key].last)byTopic[key].last=q.date||'';
+    byTopic[key].lastTs=Math.max(byTopic[key].lastTs,Number(q.ts)||0);
+  });
+  Object.values(byTopic).forEach(t=>{
+    if(!t.tot||!t.discId)return;
+    const acc=t.tot?Math.round(t.cer/t.tot*100):0;
+    const days=t.last?Math.floor((new Date(td()+'T12:00:00')-new Date(t.last+'T12:00:00'))/86400000):99;
+    if(days>=21||acc<70){
+      const target=acc<50?12:acc<70?10:8;
+      add({kind:'assunto',id:'topic:'+t.discId+'|'+pfNorm(t.ass),qid:'',url:'',discId:t.discId,materia:wqDiscName(t.discId),assunto:t.ass||'(sem assunto)',title:(t.ass||wqDiscName(t.discId))+' - '+target+' questoes',reason:(acc<70?'Acerto '+acc+'%':'Sem pratica ha '+days+' dias')+'; meta por assunto',targetQuestions:target,priority:(acc<70?68:46)+Math.min(35,days)});
+    }
+  });
+  return [...map.values()].sort((a,b)=>(b.priority||0)-(a.priority||0));
+}
+function wqRefresh(silent=false,reset=false){
+  const st=wqState(reset),oldDone=st.done||{},candidates=wqBuildCandidates();
+  const existing=new Map((st.items||[]).map(x=>[x.id,x]));
+  const merged=[];
+  candidates.forEach(c=>merged.push({...existing.get(c.id),...c,done:oldDone[c.id]===true}));
+  st.items=merged.slice(0,Math.max(st.target||24,24));
+  st.updatedAt=Date.now();sSt();renderWeeklyQuestionGoals();
+  if(!silent)nfy('Metas semanais de questoes atualizadas','ok');
+}
+function wqReset(){if(confirm('Refazer o lote semanal automatico? Itens marcados como feitos nesta semana serao limpos.'))wqRefresh(false,true);}
+function wqToggle(id){const st=wqState();st.done[id]=!st.done[id];const item=st.items.find(x=>x.id===id);if(item)item.done=st.done[id];sSt();renderWeeklyQuestionGoals();}
+function wqCopyTec(){
+  const st=wqState();const text=(st.items||[]).filter(x=>x.qid&&!st.done[x.id]).map(x=>'#'+x.qid).join(' ');
+  if(!text){nfy('Nenhuma questao com codigo TEC pendente','err');return;}
+  if(navigator.clipboard)navigator.clipboard.writeText(text).then(()=>nfy('Codigos das metas copiados','ok')).catch(()=>nfy(text,'info'));else nfy(text,'info');
+}
+function wqOpenBatch(){
+  const st=wqState();const links=(st.items||[]).filter(x=>x.url&&!st.done[x.id]).slice(0,10);
+  if(!links.length){nfy('Nenhuma questao TEC pendente no lote','err');return;}
+  pfOpenReview(links[0].url,links[0].title||'Meta semanal','TEC nas metas semanais');
+  if(links.length>1)nfy('Abri a primeira. Use Copiar TEC para gerar o caderno completo.','info');
+}
+function renderWeeklyQuestionGoals(){
+  const host=document.getElementById('wqgoals');if(!host)return;
+  const st=wqState();if(!st.updatedAt&&!st.items.length)wqRefresh(true,false);
+  const items=st.items||[],done=items.filter(x=>st.done?.[x.id]).length,target=st.target||24,pct=Math.min(100,Math.round(done/Math.max(1,items.length)*100));
+  const codes=items.filter(x=>x.qid&&!st.done?.[x.id]).length,topics=items.filter(x=>!x.qid&&!st.done?.[x.id]).length;
+  const jsArg=v=>escapeHtml(String(v??'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/[\r\n]+/g,' '));
+  const head='<div class="rescue-summary"><div class="rescue-stat"><strong>'+items.length+'</strong><span>itens da semana</span></div><div class="rescue-stat"><strong>'+done+'</strong><span>feitos</span></div><div class="rescue-stat"><strong>'+codes+'</strong><span>codigos TEC</span></div><div class="rescue-stat"><strong>'+topics+'</strong><span>metas por assunto</span></div></div><div class="rescue-progress"><div style="width:'+pct+'%"></div></div>';
+  if(!items.length){host.innerHTML=head+'<div class="empty"><div class="eico">🎯</div><div class="etxt">Sem dados suficientes. Sincronize a extensao ou registre questoes.</div></div>';return;}
+  host.innerHTML=head+'<div class="slist">'+items.map((x,i)=>{
+    const kind=x.kind==='erro'?'Erro':x.kind==='similar'?'Similar':x.kind==='revisao'?'Revisao':'Assunto';
+    const open=x.url?'<button class="btn bg2 xs" onclick="pfOpenReview(\''+jsArg(x.url)+'\',\''+jsArg(x.title||'Meta semanal')+'\',\'TEC nas metas semanais\')">Ver aqui</button>':'';
+    return '<div class="rescue-item" style="'+(st.done[x.id]?'opacity:.48':'')+'"><div class="rescue-rank">'+(i+1)+'</div><div style="min-width:0"><div class="rescue-name">'+escapeHtml(x.title||x.assunto||x.materia)+'</div><div class="rescue-meta">'+escapeHtml(kind)+' · '+escapeHtml(x.materia||'')+(x.assunto?' · '+escapeHtml(x.assunto):'')+' · '+escapeHtml(x.reason||'')+'</div></div><div class="rescue-actions">'+open+'<button class="btn '+(st.done[x.id]?'bp':'bg2')+' xs" onclick="wqToggle(\''+jsArg(x.id)+'\')">'+(st.done[x.id]?'Feita':'Marcar')+'</button></div></div>';
+  }).join('')+'</div>';
+}
 function renderM(){
   renderPlan();
+  renderWeeklyQuestionGoals();
   const now=new Date();
   const dow=now.getDay();
   const mon=new Date(now);mon.setDate(now.getDate()-(dow===0?6:dow-1));
