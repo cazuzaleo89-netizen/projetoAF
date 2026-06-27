@@ -1809,13 +1809,14 @@ function sSt(){
   localStorage.setItem('pf4',JSON.stringify(ST));
   if(typeof pfPublishPanelState==='function') pfPublishPanelState();
 }
+function safeList(v){return Array.isArray(v)?v:(v&&typeof v==='object'?Object.values(v):[])}
 function cfg(){return ST.cfg||{dh:4,dq:20}}
-function discs(){return ST.discs||[]}
-function sess(){return ST.sess||[]}
-function qs(){return ST.qs||[]}
+function discs(){return safeList(ST.discs)}
+function sess(){return safeList(ST.sess)}
+function qs(){return safeList(ST.qs)}
 function edital(){return ST.edital||{}}
 function edTopics(discId){return (ST.edital&&ST.edital[discId])||[]}
-function erros(){return ST.erros||[]}
+function erros(){return safeList(ST.erros)}
 function tecURL(code){const n=String(code||'').replace(/\D/g,'');return n?'https://www.tecconcursos.com.br/questoes/'+n:'';}
 function uid(){return Math.random().toString(36).slice(2)+Date.now().toString(36)}
 function ymd(d=new Date()){const local=new Date(d);local.setMinutes(local.getMinutes()-local.getTimezoneOffset());return local.toISOString().slice(0,10)}
@@ -2436,7 +2437,7 @@ function wqDiscName(id,fallback='Sem disciplina'){
   return d?.name||fallback;
 }
 function wqBuildCandidates(){
-  const wk=wqWeekRange(),meta=pfSyncMeta(),map=new Map(),now=Date.now();
+  const wk=wqWeekRange(),meta=pfSyncMeta()||{},map=new Map();
   const add=item=>{
     if(!item)return;
     const id=item.id||(item.qid?'q:'+item.qid:'topic:'+pfNorm([item.discId,item.assunto,item.kind].join('|')));
@@ -2476,16 +2477,27 @@ function wqBuildCandidates(){
       add({kind:'assunto',id:'topic:'+t.discId+'|'+pfNorm(t.ass),qid:'',url:'',discId:t.discId,materia:wqDiscName(t.discId),assunto:t.ass||'(sem assunto)',title:(t.ass||wqDiscName(t.discId))+' - '+target+' questoes',reason:(acc<70?'Acerto '+acc+'%':'Sem pratica ha '+days+' dias')+'; meta por assunto',targetQuestions:target,priority:(acc<70?68:46)+Math.min(35,days)});
     }
   });
+  if(!map.size){
+    discs().forEach((d,i)=>{
+      add({kind:'assunto',id:'seed:'+d.id,qid:'',url:'',discId:d.id,materia:d.name,assunto:'Treino base semanal',title:d.name+' - 10 questoes',reason:'Meta inicial ate o sistema acumular erros, revisoes e historico recente',targetQuestions:10,priority:20-i});
+    });
+  }
   return [...map.values()].sort((a,b)=>(b.priority||0)-(a.priority||0));
 }
 function wqRefresh(silent=false,reset=false){
-  const st=wqState(reset),oldDone=st.done||{},candidates=wqBuildCandidates();
-  const existing=new Map((st.items||[]).map(x=>[x.id,x]));
-  const merged=[];
-  candidates.forEach(c=>merged.push({...existing.get(c.id),...c,done:oldDone[c.id]===true}));
-  st.items=merged.slice(0,Math.max(st.target||24,24));
-  st.updatedAt=Date.now();sSt();renderWeeklyQuestionGoals();
-  if(!silent)nfy('Metas semanais de questoes atualizadas','ok');
+  try{
+    const st=wqState(reset),oldDone=st.done||{},candidates=wqBuildCandidates();
+    const existing=new Map(safeList(st.items).map(x=>[x.id,x]));
+    const merged=[];
+    candidates.forEach(c=>merged.push({...existing.get(c.id),...c,done:oldDone[c.id]===true}));
+    st.items=merged.slice(0,Math.max(st.target||24,24));
+    st.updatedAt=Date.now();sSt();renderWeeklyQuestionGoals();
+    if(!silent)nfy('Metas semanais de questoes atualizadas','ok');
+  }catch(err){
+    console.error('weekly question goals refresh failed',err);
+    const st=wqState();st.updatedAt=Date.now();sSt();renderWeeklyQuestionGoals();
+    if(!silent)nfy('Nao consegui atualizar as metas agora','err');
+  }
 }
 function wqReset(){if(confirm('Refazer o lote semanal automatico? Itens marcados como feitos nesta semana serao limpos.'))wqRefresh(false,true);}
 function wqToggle(id){const st=wqState();st.done[id]=!st.done[id];const item=st.items.find(x=>x.id===id);if(item)item.done=st.done[id];sSt();renderWeeklyQuestionGoals();}
@@ -2502,17 +2514,22 @@ function wqOpenBatch(){
 }
 function renderWeeklyQuestionGoals(){
   const host=document.getElementById('wqgoals');if(!host)return;
-  const st=wqState();if(!st.updatedAt&&!st.items.length)wqRefresh(true,false);
-  const items=st.items||[],done=items.filter(x=>st.done?.[x.id]).length,target=st.target||24,pct=Math.min(100,Math.round(done/Math.max(1,items.length)*100));
-  const codes=items.filter(x=>x.qid&&!st.done?.[x.id]).length,topics=items.filter(x=>!x.qid&&!st.done?.[x.id]).length;
-  const jsArg=v=>escapeHtml(String(v??'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/[\r\n]+/g,' '));
-  const head='<div class="rescue-summary"><div class="rescue-stat"><strong>'+items.length+'</strong><span>itens da semana</span></div><div class="rescue-stat"><strong>'+done+'</strong><span>feitos</span></div><div class="rescue-stat"><strong>'+codes+'</strong><span>codigos TEC</span></div><div class="rescue-stat"><strong>'+topics+'</strong><span>metas por assunto</span></div></div><div class="rescue-progress"><div style="width:'+pct+'%"></div></div>';
-  if(!items.length){host.innerHTML=head+'<div class="empty"><div class="eico">🎯</div><div class="etxt">Sem dados suficientes. Sincronize a extensao ou registre questoes.</div></div>';return;}
-  host.innerHTML=head+'<div class="slist">'+items.map((x,i)=>{
-    const kind=x.kind==='erro'?'Erro':x.kind==='similar'?'Similar':x.kind==='revisao'?'Revisao':'Assunto';
-    const open=x.url?'<button class="btn bg2 xs" onclick="pfOpenReview(\''+jsArg(x.url)+'\',\''+jsArg(x.title||'Meta semanal')+'\',\'TEC nas metas semanais\')">Ver aqui</button>':'';
-    return '<div class="rescue-item" style="'+(st.done[x.id]?'opacity:.48':'')+'"><div class="rescue-rank">'+(i+1)+'</div><div style="min-width:0"><div class="rescue-name">'+escapeHtml(x.title||x.assunto||x.materia)+'</div><div class="rescue-meta">'+escapeHtml(kind)+' · '+escapeHtml(x.materia||'')+(x.assunto?' · '+escapeHtml(x.assunto):'')+' · '+escapeHtml(x.reason||'')+'</div></div><div class="rescue-actions">'+open+'<button class="btn '+(st.done[x.id]?'bp':'bg2')+' xs" onclick="wqToggle(\''+jsArg(x.id)+'\')">'+(st.done[x.id]?'Feita':'Marcar')+'</button></div></div>';
-  }).join('')+'</div>';
+  try{
+    const st=wqState();if(!st.updatedAt&&!st.items.length)wqRefresh(true,false);
+    const items=safeList(st.items),done=items.filter(x=>st.done?.[x.id]).length,target=st.target||24,pct=Math.min(100,Math.round(done/Math.max(1,items.length)*100));
+    const codes=items.filter(x=>x.qid&&!st.done?.[x.id]).length,topics=items.filter(x=>!x.qid&&!st.done?.[x.id]).length;
+    const jsArg=v=>escapeHtml(String(v??'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/[\r\n]+/g,' '));
+    const head='<div class="rescue-summary"><div class="rescue-stat"><strong>'+items.length+'</strong><span>itens da semana</span></div><div class="rescue-stat"><strong>'+done+'</strong><span>feitos</span></div><div class="rescue-stat"><strong>'+codes+'</strong><span>codigos TEC</span></div><div class="rescue-stat"><strong>'+topics+'</strong><span>metas por assunto</span></div></div><div class="rescue-progress"><div style="width:'+pct+'%"></div></div>';
+    if(!items.length){host.innerHTML=head+'<div class="empty"><div class="eico">🎯</div><div class="etxt">Sem dados suficientes. Sincronize a extensao ou registre questoes.</div></div>';return;}
+    host.innerHTML=head+'<div class="slist">'+items.map((x,i)=>{
+      const kind=x.kind==='erro'?'Erro':x.kind==='similar'?'Similar':x.kind==='revisao'?'Revisao':'Assunto';
+      const open=x.url?'<button class="btn bg2 xs" onclick="pfOpenReview(\''+jsArg(x.url)+'\',\''+jsArg(x.title||'Meta semanal')+'\',\'TEC nas metas semanais\')">Ver aqui</button>':'';
+      return '<div class="rescue-item" style="'+(st.done[x.id]?'opacity:.48':'')+'"><div class="rescue-rank">'+(i+1)+'</div><div style="min-width:0"><div class="rescue-name">'+escapeHtml(x.title||x.assunto||x.materia)+'</div><div class="rescue-meta">'+escapeHtml(kind)+' · '+escapeHtml(x.materia||'')+(x.assunto?' · '+escapeHtml(x.assunto):'')+' · '+escapeHtml(x.reason||'')+'</div></div><div class="rescue-actions">'+open+'<button class="btn '+(st.done[x.id]?'bp':'bg2')+' xs" onclick="wqToggle(\''+jsArg(x.id)+'\')">'+(st.done[x.id]?'Feita':'Marcar')+'</button></div></div>';
+    }).join('')+'</div>';
+  }catch(err){
+    console.error('weekly question goals failed',err);
+    host.innerHTML='<div class="empty"><div class="eico">🎯</div><div class="etxt">Nao consegui montar as metas automaticamente agora. Clique em Atualizar metas ou sincronize a extensao.</div></div>';
+  }
 }
 function renderM(){
   renderPlan();
