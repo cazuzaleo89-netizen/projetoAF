@@ -2447,11 +2447,26 @@ function wqWeekRange(ref=new Date()){
 function wqState(reset=false){
   const wk=wqWeekRange();
   if(reset||!ST.weeklyQuestionGoals||ST.weeklyQuestionGoals.week!==wk.key){
-    ST.weeklyQuestionGoals={week:wk.key,target:Math.max(18,Math.min(60,(cfg().dq||20)*2)),done:{},items:[],updatedAt:0};
+    const hours=Math.max(.25,Number(cfg().dh)||4),mpq=2.5,days=5;
+    const daily=Math.max(1,Math.round(hours*60/mpq));
+    ST.weeklyQuestionGoals={week:wk.key,hoursPerDay:hours,minutesPerQuestion:mpq,daysPerWeek:days,dailyTarget:daily,target:daily*days,done:{},items:[],updatedAt:0};
   }
   if(!ST.weeklyQuestionGoals.done)ST.weeklyQuestionGoals.done={};
   if(!Array.isArray(ST.weeklyQuestionGoals.items))ST.weeklyQuestionGoals.items=[];
+  if(!ST.weeklyQuestionGoals.hoursPerDay)ST.weeklyQuestionGoals.hoursPerDay=Number(cfg().dh)||4;
+  if(!ST.weeklyQuestionGoals.minutesPerQuestion)ST.weeklyQuestionGoals.minutesPerQuestion=2.5;
+  if(!ST.weeklyQuestionGoals.daysPerWeek)ST.weeklyQuestionGoals.daysPerWeek=5;
+  wqRecalcTargets(ST.weeklyQuestionGoals);
   return ST.weeklyQuestionGoals;
+}
+function wqRecalcTargets(st=wqState()){
+  const hours=Math.max(.25,Number(st.hoursPerDay)||4);
+  const mpq=Math.max(1,Number(st.minutesPerQuestion)||2.5);
+  const days=Math.max(1,Math.min(7,Math.round(Number(st.daysPerWeek)||5)));
+  st.hoursPerDay=hours;st.minutesPerQuestion=mpq;st.daysPerWeek=days;
+  st.dailyTarget=Math.max(1,Math.round((hours*60)/mpq));
+  st.target=Math.max(1,st.dailyTarget*days);
+  return st;
 }
 function wqDiscName(id,fallback='Sem disciplina'){
   const d=discs().find(x=>x.id===id);
@@ -2459,11 +2474,24 @@ function wqDiscName(id,fallback='Sem disciplina'){
 }
 function wqFilters(){
   const st=wqState();
-  if(!st.filters)st.filters={disc:'all',period:'all'};
+  if(!st.filters)st.filters={disc:'all',discText:'Todas as disciplinas',period:'all'};
   return st.filters;
 }
 function wqSetFilter(k,v){
-  const f=wqFilters();f[k]=v||'all';sSt();renderWeeklyQuestionGoals();
+  const f=wqFilters();f[k]=v||'all';
+  if(k==='disc'){
+    const el=document.getElementById('wq-disc-filter');
+    f.discText=el&&el.selectedOptions[0]?el.selectedOptions[0].textContent:'';
+  }
+  sSt();renderWeeklyQuestionGoals();
+}
+function wqSetPlanning(){
+  const st=wqState();
+  const h=document.getElementById('wq-hours-day'),m=document.getElementById('wq-min-question'),d=document.getElementById('wq-days-week');
+  st.hoursPerDay=Math.max(.25,Number(h?.value)||4);
+  st.minutesPerQuestion=Math.max(1,Number(m?.value)||2.5);
+  st.daysPerWeek=Math.max(1,Math.min(7,Math.round(Number(d?.value)||5)));
+  wqRecalcTargets(st);st.updatedAt=0;sSt();wqRefresh(false,false);
 }
 function wqDiscKeys(x){
   const keys=new Set();
@@ -2479,6 +2507,9 @@ function wqDiscKeys(x){
   return [...keys].filter(Boolean);
 }
 function wqDiscKey(x){return wqDiscKeys(x)[0]||pfNorm('sem disciplina')}
+function wqSearchText(x){
+  return pfNorm([x?.materia,x?.discId?wqDiscName(x.discId,''):null,x?.assunto,x?.title,x?.reason].filter(Boolean).join(' '));
+}
 function wqDateFromAny(v){
   if(!v)return '';
   const n=Number(v);
@@ -2506,12 +2537,16 @@ function wqPeriodMatch(x,period){
 function wqFilteredItems(items=safeList(wqState().items)){
   const f=wqFilters();
   const discEl=document.getElementById('wq-disc-filter'),periodEl=document.getElementById('wq-period-filter');
-  const active={disc:discEl?discEl.value:f.disc,period:periodEl?periodEl.value:f.period};
-  f.disc=active.disc||'all';f.period=active.period||'all';
-  return safeList(items).filter(x=>(f.disc==='all'||wqDiscKeys(x).includes(f.disc))&&wqPeriodMatch(x,f.period));
+  const active={disc:discEl?discEl.value:f.disc,period:periodEl?periodEl.value:f.period,discText:(discEl&&discEl.selectedOptions[0])?discEl.selectedOptions[0].textContent:f.discText};
+  f.disc=active.disc||'all';f.period=active.period||'all';f.discText=active.discText||'';
+  const discNeed=pfNorm(f.discText&&f.discText!=='Todas as disciplinas'?f.discText:f.disc);
+  return safeList(items).filter(x=>{
+    const discOk=f.disc==='all'||wqDiscKeys(x).includes(f.disc)||wqSearchText(x).includes(discNeed);
+    return discOk&&wqPeriodMatch(x,f.period);
+  });
 }
 function wqFilterBar(allItems,shownItems){
-  const f=wqFilters(),discMap=new Map();
+  const st=wqState(),f=wqFilters(),discMap=new Map();
   safeList(allItems).forEach(x=>{
     const label=x.materia||wqDiscName(x.discId,'Sem disciplina');
     const key=pfNorm(label);
@@ -2526,11 +2561,14 @@ function wqFilterBar(allItems,shownItems){
     ['overdue','Vencidas ou antigas'],
     ['base','Metas-base']
   ].map(([k,v])=>'<option value="'+k+'" '+(f.period===k?'selected':'')+'>'+v+'</option>').join('');
-  return '<div style="display:grid;grid-template-columns:minmax(180px,1fr) minmax(160px,240px) auto;gap:8px;align-items:end;margin:12px 0">'+
-    '<label style="display:grid;gap:5px"><span class="slbl">Disciplina</span><select id="wq-disc-filter" onchange="wqSetFilter(\'disc\',this.value)">'+discOpts+'</select></label>'+
-    '<label style="display:grid;gap:5px"><span class="slbl">Periodo</span><select id="wq-period-filter" onchange="wqSetFilter(\'period\',this.value)">'+periodOpts+'</select></label>'+
+  return '<div style="display:grid;grid-template-columns:minmax(150px,1fr) minmax(130px,180px) minmax(95px,120px) minmax(95px,120px) minmax(95px,120px) auto;gap:8px;align-items:end;margin:12px 0">'+
+    '<label style="display:grid;gap:5px"><span class="slbl">Disciplina</span><select id="wq-disc-filter" onchange="wqSetFilter(\'disc\',this.value)" oninput="wqSetFilter(\'disc\',this.value)">'+discOpts+'</select></label>'+
+    '<label style="display:grid;gap:5px"><span class="slbl">Periodo</span><select id="wq-period-filter" onchange="wqSetFilter(\'period\',this.value)" oninput="wqSetFilter(\'period\',this.value)">'+periodOpts+'</select></label>'+
+    '<label style="display:grid;gap:5px"><span class="slbl">Horas/dia</span><input id="wq-hours-day" type="number" min="0.25" step="0.25" value="'+escapeHtml(st.hoursPerDay)+'" onchange="wqSetPlanning()"></label>'+
+    '<label style="display:grid;gap:5px"><span class="slbl">Min/questao</span><input id="wq-min-question" type="number" min="1" step="0.5" value="'+escapeHtml(st.minutesPerQuestion)+'" onchange="wqSetPlanning()"></label>'+
+    '<label style="display:grid;gap:5px"><span class="slbl">Dias/semana</span><input id="wq-days-week" type="number" min="1" max="7" step="1" value="'+escapeHtml(st.daysPerWeek)+'" onchange="wqSetPlanning()"></label>'+
     '<button class="btn bg2 xs" onclick="wqSetFilter(\'disc\',\'all\');wqSetFilter(\'period\',\'all\')">Limpar filtros</button>'+
-    '<div style="grid-column:1/-1;font-size:11px;color:var(--t3)">'+shownItems.length+' de '+safeList(allItems).length+' meta(s) exibidas</div>'+
+    '<div style="grid-column:1/-1;font-size:11px;color:var(--t3)">'+shownItems.length+' de '+safeList(allItems).length+' meta(s) exibidas · alvo: '+st.dailyTarget+' questoes/dia, '+st.target+' questoes/semana</div>'+
   '</div>';
 }
 function wqBuildCandidates(){
