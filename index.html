@@ -1831,12 +1831,14 @@ const PF_SYNC_ORIGIN='https://cazuzaleo89-netizen.github.io';
 let pfPublishTimer=null;
 function pfNorm(v){return String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase()}
 function pfSyncMeta(){
-  if(!ST.extSync) ST.extSync={events:{},questions:{},reviewQueue:[],similarEvents:[],similarItems:[],lastSync:0};
+  if(!ST.extSync) ST.extSync={events:{},questions:{},reviewQueue:[],similarEvents:[],similarItems:[],libraryPending:[],libraryStats:{},lastSync:0};
   if(!ST.extSync.events) ST.extSync.events={};
   if(!ST.extSync.questions) ST.extSync.questions={};
   if(!Array.isArray(ST.extSync.reviewQueue)) ST.extSync.reviewQueue=[];
   if(!Array.isArray(ST.extSync.similarEvents)) ST.extSync.similarEvents=[];
   if(!Array.isArray(ST.extSync.similarItems)) ST.extSync.similarItems=[];
+  if(!Array.isArray(ST.extSync.libraryPending)) ST.extSync.libraryPending=[];
+  if(!ST.extSync.libraryStats) ST.extSync.libraryStats={};
   return ST.extSync;
 }
 function pfSetSyncStatus(kind,text){
@@ -1975,6 +1977,25 @@ function pfApplySnapshot(snapshot){
   const prevSimilar=JSON.stringify(meta.similarItems||[]);
   pfMergeSimilarItems(relatedItems);
   if(prevSimilar!==JSON.stringify(meta.similarItems||[]))changed=true;
+  const lib= snapshot.libraryPending || {};
+  const pendingLibrary=safeList(lib.items).map(q=>({
+    qid:String(q.qid||'').replace(/\D/g,''),
+    url:q.url||tecURL(q.qid),
+    materia:q.materia||'Sem disciplina',
+    assunto:q.assunto||'',
+    banca:q.banca||'',
+    ano:q.ano||'',
+    desc:q.desc||('Questao inedita #'+(q.qid||'')),
+    importedFrom:q.importedFrom||'',
+    importedAt:Number(q.importedAt)||0,
+  })).filter(q=>q.qid);
+  const prevLibrary=JSON.stringify(meta.libraryPending||[]);
+  meta.libraryPending=pendingLibrary;
+  meta.libraryStats={total:Number(lib.total)||0,pending:Number(lib.pending)||pendingLibrary.length,resolved:Number(lib.resolved)||0};
+  if(prevLibrary!==JSON.stringify(meta.libraryPending||[])){
+    changed=true;
+    if(ST.weeklyQuestionGoals)ST.weeklyQuestionGoals.updatedAt=0;
+  }
   meta.lastSync=Date.now();
   if(snapshot.ranking)localStorage.setItem('_pf_tec_ranking',JSON.stringify(snapshot.ranking));
   if(changed){
@@ -2465,6 +2486,7 @@ function wqPeriodMatch(x,period){
     return date&&date>=lim;
   }
   if(period==='overdue')return x.period==='overdue'||/vencida|antig/i.test(x.reason||'');
+  if(period==='unseen')return x.period==='unseen'||x.kind==='inedita';
   if(period==='base')return x.period==='base'||String(x.id||'').startsWith('seed:');
   return true;
 }
@@ -2483,6 +2505,7 @@ function wqFilterBar(allItems,shownItems){
     ['all','Todos os periodos'],
     ['week','Desta semana'],
     ['30d','Ultimos 30 dias'],
+    ['unseen','Ineditas da biblioteca'],
     ['overdue','Vencidas ou antigas'],
     ['base','Metas-base']
   ].map(([k,v])=>'<option value="'+k+'" '+(f.period===k?'selected':'')+'>'+v+'</option>').join('');
@@ -2517,6 +2540,11 @@ function wqBuildCandidates(){
     const sc=Number(q.similarScore);const boost=Number.isFinite(sc)?Math.round((sc<=1?sc*100:sc)/3):0;
     add({kind:'similar',id:'q:'+qid,qid,url:q.url||tecURL(qid),discId:'',materia:q.materia||'Sem disciplina',assunto:q.assunto||'',date:wqDateFromAny(q.similarScheduledAt),period:'similar',title:'#'+qid+' - '+(q.assunto||'similar'),reason:'Similar sugerida pela extensao'+(Number.isFinite(sc)?' ('+Math.round(sc<=1?sc*100:sc)+'%)':''),priority:72+boost});
   });
+  (meta.libraryPending||[]).forEach((q,i)=>{
+    const qid=String(q.qid||'').replace(/\D/g,'');if(!qid)return;
+    const imported=wqDateFromAny(q.importedAt);
+    add({kind:'inedita',id:'q:'+qid,qid,url:q.url||tecURL(qid),discId:'',materia:q.materia||'Sem disciplina',assunto:q.assunto||'',date:imported,period:'unseen',title:'#'+qid+' - '+(q.assunto||'questao inedita'),reason:'Ainda nao resolvida na biblioteca da extensao'+(q.banca?' - '+q.banca:'')+(q.ano?' - '+q.ano:''),priority:58+Math.max(0,12-Math.floor(i/8))});
+  });
   const byTopic={};
   qs().forEach(q=>{
     const key=(q.discId||'')+'|'+(q.ass||'');
@@ -2545,9 +2573,20 @@ function wqRefresh(silent=false,reset=false){
   try{
     const st=wqState(reset),oldDone=st.done||{},candidates=wqBuildCandidates();
     const existing=new Map(safeList(st.items).map(x=>[x.id,x]));
+    const limit=Math.max(st.target||24,24);
+    const selected=candidates.slice(0,limit);
+    const selectedIds=new Set(selected.map(x=>x.id));
+    const unseen=candidates.filter(x=>x.kind==='inedita');
+    const minUnseen=Math.min(unseen.length,Math.max(4,Math.round(limit*.2)));
+    unseen.slice(0,minUnseen).forEach(item=>{
+      if(selectedIds.has(item.id))return;
+      let idx=selected.map((x,i)=>({x,i})).reverse().find(p=>!['erro','revisao','inedita'].includes(p.x.kind))?.i;
+      if(idx==null)idx=selected.length-1;
+      if(idx>=0){selectedIds.delete(selected[idx].id);selected[idx]=item;selectedIds.add(item.id);}
+    });
     const merged=[];
-    candidates.forEach(c=>merged.push({...existing.get(c.id),...c,done:oldDone[c.id]===true}));
-    st.items=merged.slice(0,Math.max(st.target||24,24));
+    selected.sort((a,b)=>(b.priority||0)-(a.priority||0)).forEach(c=>merged.push({...existing.get(c.id),...c,done:oldDone[c.id]===true}));
+    st.items=merged;
     st.updatedAt=Date.now();sSt();renderWeeklyQuestionGoals();
     if(!silent)nfy('Metas semanais de questoes atualizadas','ok');
   }catch(err){
@@ -2572,7 +2611,7 @@ function wqOpenBatch(){
 function renderWeeklyQuestionGoals(){
   const host=document.getElementById('wqgoals');if(!host)return;
   try{
-    const st=wqState();if(!st.updatedAt&&!st.items.length)wqRefresh(true,false);
+    const st=wqState();if(!st.updatedAt)wqRefresh(true,false);
     const allItems=safeList(st.items),items=wqFilteredItems(allItems),done=items.filter(x=>st.done?.[x.id]).length,target=st.target||24,pct=Math.min(100,Math.round(done/Math.max(1,items.length)*100));
     const codes=items.filter(x=>x.qid&&!st.done?.[x.id]).length,topics=items.filter(x=>!x.qid&&!st.done?.[x.id]).length;
     const jsArg=v=>escapeHtml(String(v??'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/[\r\n]+/g,' '));
@@ -2580,7 +2619,7 @@ function renderWeeklyQuestionGoals(){
     if(!allItems.length){host.innerHTML=wqFilterBar(allItems,items)+head+'<div class="empty"><div class="eico">🎯</div><div class="etxt">Sem dados suficientes. Sincronize a extensao ou registre questoes.</div></div>';return;}
     if(!items.length){host.innerHTML=wqFilterBar(allItems,items)+head+'<div class="empty"><div class="eico">🔎</div><div class="etxt">Nenhuma meta encontrada nesse filtro.</div></div>';return;}
     host.innerHTML=wqFilterBar(allItems,items)+head+'<div class="slist">'+items.map((x,i)=>{
-      const kind=x.kind==='erro'?'Erro':x.kind==='similar'?'Similar':x.kind==='revisao'?'Revisao':'Assunto';
+      const kind=x.kind==='erro'?'Erro':x.kind==='similar'?'Similar':x.kind==='revisao'?'Revisao':x.kind==='inedita'?'Inedita':'Assunto';
       const open=x.url?'<button class="btn bg2 xs" onclick="pfOpenReview(\''+jsArg(x.url)+'\',\''+jsArg(x.title||'Meta semanal')+'\',\'TEC nas metas semanais\')">Ver aqui</button>':'';
       return '<div class="rescue-item" style="'+(st.done[x.id]?'opacity:.48':'')+'"><div class="rescue-rank">'+(i+1)+'</div><div style="min-width:0"><div class="rescue-name">'+escapeHtml(x.title||x.assunto||x.materia)+'</div><div class="rescue-meta">'+escapeHtml(kind)+' · '+escapeHtml(x.materia||'')+(x.assunto?' · '+escapeHtml(x.assunto):'')+' · '+escapeHtml(x.reason||'')+'</div></div><div class="rescue-actions">'+open+'<button class="btn '+(st.done[x.id]?'bp':'bg2')+' xs" onclick="wqToggle(\''+jsArg(x.id)+'\')">'+(st.done[x.id]?'Feita':'Marcar')+'</button></div></div>';
     }).join('')+'</div>';
