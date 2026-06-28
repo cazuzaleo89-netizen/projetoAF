@@ -1829,6 +1829,7 @@ function sSt(){
 }
 function safeList(v){return Array.isArray(v)?v:(v&&typeof v==='object'?Object.values(v):[])}
 function ensureSess(){if(!Array.isArray(ST.sess))ST.sess=safeList(ST.sess);return ST.sess}
+function ensureDiscs(){if(!Array.isArray(ST.discs))ST.discs=safeList(ST.discs);return ST.discs}
 function cfg(){return ST.cfg||{dh:4,dq:20}}
 function discs(){return safeList(ST.discs)}
 function sess(){return safeList(ST.sess)}
@@ -1916,10 +1917,16 @@ function pfEnsureDisc(name){
   const clean=String(name||'Sem disciplina').trim()||'Sem disciplina';
   let disc=discs().find(d=>pfNorm(d.name)===pfNorm(clean));
   if(disc)return disc.id;
-  if(!ST.discs)ST.discs=[];
-  disc={id:uid(),name:clean,color:COLS[ST.discs.length%COLS.length],meta:0,src:'extension'};
-  ST.discs.push(disc);
+  const list=ensureDiscs();
+  disc={id:uid(),name:clean,color:COLS[list.length%COLS.length],meta:0,src:'auto'};
+  list.push(disc);
   return disc.id;
+}
+function pfDefaultStudyDisc(){
+  const had=discs().length;
+  const id=pfEnsureDisc('Sem disciplina');
+  if(discs().length!==had){sSt();popSel();}
+  return id;
 }
 function pfAddQuestion(result,payload,eventId,timestamp){
   const meta=pfSyncMeta();
@@ -2182,8 +2189,7 @@ function timerDiscId(){
   const td=document.getElementById('tdisc');
   const fd=document.getElementById('ftDisc');
   const ids=[tDiscId,td?.value||'',fd?.value||''];
-  const valid=ids.find(id=>id&&discs().some(d=>d.id===id))||'';
-  if(!valid)return '';
+  const valid=ids.find(id=>id&&discs().some(d=>d.id===id))||pfDefaultStudyDisc();
   tDiscId=valid;
   if(td&&[...td.options].some(o=>o.value===valid))td.value=valid;
   if(fd&&[...fd.options].some(o=>o.value===valid))fd.value=valid;
@@ -2192,7 +2198,6 @@ function timerDiscId(){
 }
 function tStart(){
   const disc=timerDiscId();
-  if(!disc){nfy('Selecione uma disciplina!','err');return;}
   tDiscId=disc;
   tSec=0;tRun=true;tPsd=false;
   if(pomMode){pomCycle=0;pomPhase='work';renderPomDots();}
@@ -2300,12 +2305,12 @@ function finishStop(){
   renderTSess();renderD();
 }
 function saveMan(){
-  const disc=document.getElementById('mdisc').value;
+  let disc=document.getElementById('mdisc').value;
   const h=parseInt(document.getElementById('mh').value)||0;
   const m=parseInt(document.getElementById('mm').value)||0;
   const date=document.getElementById('mdate').value||td();
   const obs=document.getElementById('mobs').value.trim();
-  if(!disc){nfy('Selecione disciplina!','err');return;}
+  if(!disc){disc=pfDefaultStudyDisc();document.getElementById('mdisc').value=disc;}
   const sec=(h*3600)+(m*60);
   if(!sec){nfy('Informe o tempo!','err');return;}
   ensureSess().unshift({id:uid(),discId:disc,sec,ass:obs,date,ts:Date.now(),src:'manual',nota:''});
@@ -3304,8 +3309,7 @@ function saveD(){
   const name=document.getElementById('dninp').value.trim();
   const meta=parseInt(document.getElementById('dminp').value)||0;
   if(!name){nfy('Nome obrigatório!','err');return;}
-  if(!ST.discs) ST.discs=[];
-  ST.discs.push({id:uid(),name,color:selC2,meta,ts:Date.now()});
+  ensureDiscs().push({id:uid(),name,color:selC2,meta,ts:Date.now()});
   sSt();
   document.getElementById('dninp').value='';
   document.getElementById('dminp').value='';
@@ -3324,7 +3328,7 @@ function renderDList(){
 }
 function delD(id){
   openM('Excluir disciplina','Os dados de sessões e questões são mantidos.',()=>{
-    ST.discs=(ST.discs||[]).filter(d=>d.id!==id);sSt();renderCfg();popSel();nfy('Removida','err');
+    ST.discs=ensureDiscs().filter(d=>d.id!==id);sSt();renderCfg();popSel();nfy('Removida','err');
   });
 }
 
@@ -4420,6 +4424,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   const t=td();
   document.getElementById('mdate').value=t;
   document.getElementById('qdate').value=t;
+  if(!discs().length){pfEnsureDisc('Sem disciplina');sSt();}
   renderSW();applyMeta();popSel();renderD();renderTSess();rcInit();
   if(ST.plan&&ST.plan.date===t) renderPlan();
   window.postMessage({source:'PF_PANEL',type:'PF_PANEL_READY'},PF_SYNC_ORIGIN);
