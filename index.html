@@ -2597,8 +2597,40 @@ function wqFilterBar(allItems,shownItems){
     '<div style="grid-column:1/-1;font-size:11px;color:var(--t3)">'+shownItems.length+' de '+safeList(allItems).length+' meta(s) exibidas · alvo: '+st.dailyTarget+' questoes/dia, '+st.target+' questoes/semana</div>'+
   '</div>';
 }
+function wqWeaknessModel(){
+  const disc=new Map(),topic=new Map();
+  const add=(map,key,score,why)=>{
+    if(!key||score<=0)return;
+    const cur=map.get(key)||{score:0,reasons:[]};
+    cur.score+=score;
+    if(why&&cur.reasons.length<3)cur.reasons.push(why);
+    map.set(key,cur);
+  };
+  erros().forEach(e=>{
+    const mat=pfNorm(wqDiscName(e.discId,e.materia||'')),ass=pfNorm(e.assunto||''),count=Math.max(1,Number(e.count)||1);
+    add(disc,mat,18+count*10,'erro recorrente');
+    add(topic,mat+'|'+ass,26+count*14,'erro no assunto');
+  });
+  qs().forEach(q=>{
+    const tot=Number(q.tot)||0;if(!tot)return;
+    const cer=Number(q.cer)||0,acc=cer/tot,mat=pfNorm(wqDiscName(q.discId,'')),ass=pfNorm(q.ass||'');
+    const last=q.date||wqDateFromAny(q.ts),days=last?Math.floor((new Date(td()+'T12:00:00')-new Date(last+'T12:00:00'))/86400000):99;
+    const score=Math.max(0,Math.round((.72-acc)*100))+Math.max(0,tot-cer)*4+(days>=21?Math.min(24,days-14):0);
+    add(disc,mat,Math.round(score*.45),acc<.72?'baixo acerto':'sem pratica recente');
+    add(topic,mat+'|'+ass,score,acc<.72?'baixo acerto no assunto':'assunto antigo');
+  });
+  return {disc,topic};
+}
+function wqLibraryDeficiency(q,model){
+  const mat=pfNorm(q?.materia||''),ass=pfNorm(q?.assunto||''),d=model.disc.get(mat),t=model.topic.get(mat+'|'+ass);
+  const score=Math.min(110,Math.round((d?.score||0)*.55+(t?.score||0)));
+  const reasons=[...(t?.reasons||[]),...(d?.reasons||[])].filter(Boolean);
+  const label=score>=70?'deficiencia alta':score>=35?'ponto de atencao':score>0?'reforco preventivo':'treino inedito';
+  return {score,label,reasons:[...new Set(reasons)].slice(0,2)};
+}
 function wqBuildCandidates(){
   const wk=wqWeekRange(),meta=pfSyncMeta()||{},map=new Map();
+  const weak=wqWeaknessModel();
   const add=item=>{
     if(!item)return;
     const id=item.id||(item.qid?'q:'+item.qid:'topic:'+pfNorm([item.discId,item.assunto,item.kind].join('|')));
@@ -2623,8 +2655,9 @@ function wqBuildCandidates(){
   });
   (meta.libraryPending||[]).forEach((q,i)=>{
     const qid=String(q.qid||'').replace(/\D/g,'');if(!qid)return;
-    const imported=wqDateFromAny(q.importedAt);
-    add({kind:'inedita',id:'q:'+qid,qid,url:q.url||tecURL(qid),discId:'',materia:q.materia||'Sem disciplina',assunto:q.assunto||'',date:imported,period:'unseen',title:'#'+qid+' - '+(q.assunto||'questao inedita'),reason:'Ainda nao resolvida na biblioteca da extensao'+(q.banca?' - '+q.banca:'')+(q.ano?' - '+q.ano:''),priority:58+Math.max(0,12-Math.floor(i/8))});
+    const imported=wqDateFromAny(q.importedAt),def=wqLibraryDeficiency(q,weak);
+    const src=q.importedFrom||'biblioteca TEC',why=def.reasons.length?' - '+def.reasons.join(', '):'';
+    add({kind:'inedita',id:'q:'+qid,qid,url:q.url||tecURL(qid),discId:'',materia:q.materia||'Sem disciplina',assunto:q.assunto||'',date:imported,period:'unseen',title:'#'+qid+' - '+(q.assunto||'questao inedita'),reason:'Nao resolvida do banco PDF/TEC; '+def.label+why+(q.banca?' - '+q.banca:'')+(q.ano?' - '+q.ano:'')+' - '+src,priority:62+def.score+Math.max(0,18-Math.floor(i/10))});
   });
   const byTopic={};
   qs().forEach(q=>{
