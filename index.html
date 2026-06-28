@@ -1822,12 +1822,56 @@ let pendingSess=null,pendingSessSaved=false,lastTimerSaveKey='';
 let tSessPeriod='day';
 let planDone=new Set();
 
-function lSt(){try{return JSON.parse(localStorage.getItem('pf4')||'{}')}catch{return{}}}
+function safeList(v){return Array.isArray(v)?v:(v&&typeof v==='object'?Object.values(v):[])}
+function mergeById(primary,backup){
+  const map=new Map();
+  safeList(primary).forEach(x=>{if(x&&x.id)map.set(String(x.id),x);});
+  safeList(backup).forEach(x=>{if(x&&x.id&&!map.has(String(x.id)))map.set(String(x.id),x);});
+  return [...map.values()].sort((a,b)=>(Number(b.ts)||0)-(Number(a.ts)||0));
+}
+function lSt(){
+  let st={};
+  try{st=JSON.parse(localStorage.getItem('pf4')||'{}')||{}}catch{st={}}
+  try{
+    const core=JSON.parse(localStorage.getItem('pf4_core')||'{}')||{};
+    if(core.sess)st.sess=mergeById(st.sess,core.sess);
+    if(core.discs&&!safeList(st.discs).length)st.discs=safeList(core.discs);
+  }catch{}
+  return st;
+}
+function compactStateForStorage(state){
+  const copy=JSON.parse(JSON.stringify(state||{}));
+  if(copy.flashResumo){
+    copy.flashResumo.db=null;
+    copy.flashResumo.dbPrunedAt=Date.now();
+    if(Array.isArray(copy.flashResumo.cards))copy.flashResumo.cards=copy.flashResumo.cards.slice(0,700);
+  }
+  if(copy.extSync){
+    if(Array.isArray(copy.extSync.reviewQueue))copy.extSync.reviewQueue=copy.extSync.reviewQueue.slice(0,500);
+    if(Array.isArray(copy.extSync.similarEvents))copy.extSync.similarEvents=copy.extSync.similarEvents.slice(0,40);
+    if(Array.isArray(copy.extSync.similarItems))copy.extSync.similarItems=copy.extSync.similarItems.slice(0,300);
+    if(Array.isArray(copy.extSync.libraryPending))copy.extSync.libraryPending=copy.extSync.libraryPending.slice(0,400);
+  }
+  return copy;
+}
+function persistCore(){
+  try{localStorage.setItem('pf4_core',JSON.stringify({sess:safeList(ST.sess),discs:safeList(ST.discs),cfg:ST.cfg||{},ts:Date.now()}));}catch{}
+}
 function sSt(){
-  localStorage.setItem('pf4',JSON.stringify(ST));
+  persistCore();
+  try{
+    localStorage.setItem('pf4',JSON.stringify(ST));
+  }catch(e){
+    try{
+      localStorage.setItem('pf4',JSON.stringify(compactStateForStorage(ST)));
+      nfy&&nfy('Dados salvos em modo compacto para preservar sessões','info');
+    }catch(e2){
+      try{localStorage.setItem('pf4',JSON.stringify({sess:safeList(ST.sess),discs:safeList(ST.discs),qs:safeList(ST.qs),erros:safeList(ST.erros),cfg:ST.cfg||{},edital:ST.edital||{}}));}catch{}
+    }
+  }
   if(typeof pfPublishPanelState==='function') pfPublishPanelState();
 }
-function safeList(v){return Array.isArray(v)?v:(v&&typeof v==='object'?Object.values(v):[])}
+function forceSaveCore(){persistCore();sSt();}
 function ensureSess(){if(!Array.isArray(ST.sess))ST.sess=safeList(ST.sess);return ST.sess}
 function ensureDiscs(){if(!Array.isArray(ST.discs))ST.discs=safeList(ST.discs);return ST.discs}
 function cfg(){return ST.cfg||{dh:4,dq:20}}
@@ -2025,7 +2069,7 @@ function pfApplySnapshot(snapshot){
   meta.lastSync=Date.now();
   if(snapshot.ranking)localStorage.setItem('_pf_tec_ranking',JSON.stringify(snapshot.ranking));
   if(changed){
-    localStorage.setItem('pf4',JSON.stringify(ST));
+    sSt();
     pfRenderAfterSync();
   }
   pfSetSyncStatus('ok','Extensao conectada');
@@ -2042,7 +2086,7 @@ function pfApplyEvent(event){
       if(event.result==='wrong')counts.e++;
       meta.questions[key]=counts;
     }
-    localStorage.setItem('pf4',JSON.stringify(ST));
+    sSt();
     pfRenderAfterSync();
     nfy('Questao do TEC sincronizada','ok');
   }
@@ -4969,7 +5013,7 @@ window.pfApplyCommentDatabase=function(db){
   st.db=db;
   st.lastImport=Date.now();
   st.stats=Object.assign({},st.stats,{sourceItems:db.items.length,comments:(db.stats&&db.stats.comments)||0});
-  localStorage.setItem('pf4',JSON.stringify(ST));
+  sSt();
   fcBuildFilters();
   if(curTab==='fc')fcRender();
 };
