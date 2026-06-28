@@ -1828,6 +1828,7 @@ function sSt(){
   if(typeof pfPublishPanelState==='function') pfPublishPanelState();
 }
 function safeList(v){return Array.isArray(v)?v:(v&&typeof v==='object'?Object.values(v):[])}
+function ensureSess(){if(!Array.isArray(ST.sess))ST.sess=safeList(ST.sess);return ST.sess}
 function cfg(){return ST.cfg||{dh:4,dq:20}}
 function discs(){return safeList(ST.discs)}
 function sess(){return safeList(ST.sess)}
@@ -2238,8 +2239,7 @@ function saveTimerSession(sec,disc,ass=''){
   if(lastTimerSaveKey===key)return pendingSess||null;
   lastTimerSaveKey=key;
   const saved={id:uid(),discId:disc,sec,ass,date:td(),ts:Date.now(),src:'timer',nota:''};
-  if(!Array.isArray(ST.sess)) ST.sess=[];
-  ST.sess.unshift(saved);
+  ensureSess().unshift(saved);
   pendingSess=saved;
   pendingSessSaved=true;
   sSt();
@@ -2285,8 +2285,7 @@ function confirmStop(){
   if(pendingSess){
     pendingSess.nota=document.getElementById('nota-input').value.trim();
     if(!pendingSessSaved){
-      if(!ST.sess) ST.sess=[];
-      ST.sess.unshift(pendingSess);
+      ensureSess().unshift(pendingSess);
     }
     sSt();
     nfy(pendingSess.nota?'Anotação salva':'Sessão salva','ok');
@@ -2309,8 +2308,7 @@ function saveMan(){
   if(!disc){nfy('Selecione disciplina!','err');return;}
   const sec=(h*3600)+(m*60);
   if(!sec){nfy('Informe o tempo!','err');return;}
-  if(!ST.sess) ST.sess=[];
-  ST.sess.unshift({id:uid(),discId:disc,sec,ass:obs,date,ts:Date.now(),src:'manual',nota:''});
+  ensureSess().unshift({id:uid(),discId:disc,sec,ass:obs,date,ts:Date.now(),src:'manual',nota:''});
   sSt();nfy('Registro salvo — '+h+'h '+m+'m','ok');
   ['mh','mm','mobs'].forEach(id=>document.getElementById(id).value='');
   renderTSess();renderD();
@@ -2390,7 +2388,7 @@ function renderTSess(){
   }).join('')+'</div>';
   w.innerHTML=kpis+chartHtml+list;
 }
-function delS(id){ST.sess=(ST.sess||[]).filter(s=>s.id!==id);sSt();renderTSess();renderD();}
+function delS(id){ST.sess=ensureSess().filter(s=>s.id!==id);sSt();renderTSess();renderD();}
 
 // QUESTOES
 function saveQ(){
