@@ -1818,7 +1818,7 @@ if(!ST.edital) ST.edital={};   // { discId: [ {id,name,done} ] }
 if(!ST.erros)  ST.erros=[];    // caderno de erros (TEC): [ {id,code,discId,assunto,banca,date,ts,count,done} ]
 let tSec=0,tRun=false,tPsd=false,tDur=0,tIv=null,cdIv=null,selC=COLS[0],tDiscId='';
 let pomMode=false,pomPhase='work',pomCycle=0,pomTotal=4;
-let pendingSess=null,pendingSessSaved=false;
+let pendingSess=null,pendingSessSaved=false,lastTimerSaveKey='';
 let tSessPeriod='day';
 let planDone=new Set();
 
@@ -2230,24 +2230,36 @@ function tSaveStop(){
   if(tSec<1){nfy('Inicie o cronômetro antes de gravar','err');return;}
   tStop(true);
 }
+function saveTimerSession(sec,disc,ass=''){
+  sec=Math.max(0,Math.round(Number(sec)||0));
+  disc=disc||timerDiscId();
+  if(sec<1||!disc)return null;
+  const key=disc+'|'+sec+'|'+Math.floor(Date.now()/2000);
+  if(lastTimerSaveKey===key)return pendingSess||null;
+  lastTimerSaveKey=key;
+  const saved={id:uid(),discId:disc,sec,ass,date:td(),ts:Date.now(),src:'timer',nota:''};
+  if(!Array.isArray(ST.sess)) ST.sess=[];
+  ST.sess.unshift(saved);
+  pendingSess=saved;
+  pendingSessSaved=true;
+  sSt();
+  renderTSess();
+  renderD();
+  return saved;
+}
 function tStop(forceSave=false){
   clearInterval(tIv);
+  const stoppedSec=tSec;
   const disc=timerDiscId();
   const ass=document.getElementById('tass').value.trim();
-  if((tSec>10||forceSave)&&disc){
-    pendingSess={id:uid(),discId:disc,sec:tSec,ass,date:td(),ts:Date.now(),src:'timer',nota:''};
-    if(!ST.sess) ST.sess=[];
-    ST.sess.unshift(pendingSess);
-    pendingSessSaved=true;
-    sSt();
-    renderTSess();
-    renderD();
+  if((stoppedSec>0||forceSave)&&disc){
+    const saved=saveTimerSession(stoppedSec,disc,ass);
     const d=discs().find(x=>x.id===disc);
-    document.getElementById('nota-resumo').textContent=(d?.name||'Sessão')+' · '+fH(tSec)+' estudados';
+    document.getElementById('nota-resumo').textContent=(d?.name||'Sessão')+' · '+fH(stoppedSec)+' estudados';
     document.getElementById('nota-input').value='';
     document.getElementById('notaModal').classList.add('open');
-    nfy('Sessão salva — '+fH(tSec),'ok');
-    playBeep();sendBrowserNotif('Sessão salva! '+fH(tSec)+' estudados.');
+    nfy('Sessão salva — '+fH(stoppedSec),'ok');
+    playBeep();sendBrowserNotif('Sessão salva! '+fH(stoppedSec)+' estudados.');
   } else {
     finishStop();
   }
@@ -2262,6 +2274,13 @@ function tStop(forceSave=false){
   document.getElementById('tring').style.strokeDashoffset='427.256';
   tDiscId='';
 }
+window.addEventListener('beforeunload',()=>{
+  if((tRun||tPsd)&&tSec>0){
+    const disc=timerDiscId();
+    const ass=document.getElementById('tass')?.value?.trim?.()||'';
+    if(disc) saveTimerSession(tSec,disc,ass);
+  }
+});
 function confirmStop(){
   if(pendingSess){
     pendingSess.nota=document.getElementById('nota-input').value.trim();
