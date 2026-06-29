@@ -308,8 +308,10 @@ input,select,textarea{font-family:inherit;outline:none}
 .rescue-stat span{display:block;margin-top:5px;font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.05em}
 .rescue-progress{height:7px;background:var(--s4);border-radius:20px;overflow:hidden;margin:8px 0 12px}
 .rescue-progress>div{height:100%;background:linear-gradient(90deg,var(--accent),var(--green));border-radius:inherit;transition:.25s}
-.rescue-item{display:grid;grid-template-columns:30px minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 12px;background:var(--s3);border:1px solid var(--border);border-radius:var(--r)}
+.rescue-item{display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 12px;background:var(--s3);border:1px solid var(--border);border-radius:var(--r)}
+.rescue-item.picked{border-color:rgba(34,211,238,.72);box-shadow:0 0 0 1px rgba(34,211,238,.16),0 0 18px rgba(34,211,238,.10)}
 .rescue-rank{width:30px;height:30px;display:grid;place-items:center;border-radius:8px;background:var(--abg);color:var(--accent2);font-size:11px;font-weight:800}
+.wq-pick{width:34px;height:34px;border-radius:10px;background:var(--abg);border:1px solid rgba(96,165,250,.18);display:grid;place-items:center;cursor:pointer;position:relative;color:var(--accent2);font-size:11px;font-weight:900}.wq-pick input{position:absolute;opacity:0;pointer-events:none}.wq-pick span{display:grid;place-items:center;width:100%;height:100%}.wq-pick input:checked+span{background:linear-gradient(135deg,#22d3ee,var(--accent));color:white;border-radius:9px;box-shadow:0 0 16px rgba(34,211,238,.25)}
 .rescue-name{font-size:12px;font-weight:700;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rescue-meta{font-size:10px;color:var(--t3);margin-top:3px}
 .rescue-actions{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}
@@ -336,7 +338,7 @@ input,select,textarea{font-family:inherit;outline:none}
 .wq-plan-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}.wq-plan-kpi{background:rgba(15,23,42,.48);border:1px solid var(--border);border-radius:12px;padding:9px}.wq-plan-kpi strong{display:block;font-family:var(--fh);font-size:18px;color:var(--t1)}.wq-plan-kpi span{display:block;margin-top:4px;font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);font-weight:800}
 .wq-day-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}.wq-day{background:var(--s3);border:1px solid var(--border);border-radius:12px;padding:9px;min-height:116px;cursor:pointer;transition:.16s ease}.wq-day:hover{border-color:rgba(34,211,238,.72);transform:translateY(-1px)}.wq-day.active{border-color:#22d3ee;box-shadow:0 0 0 1px rgba(34,211,238,.28),0 0 24px rgba(34,211,238,.14)}.wq-day.off{opacity:.48}.wq-day-name{font-size:10px;font-weight:900;color:#67e8f9;text-transform:uppercase;letter-spacing:.08em}.wq-day-main{font-family:var(--fh);font-size:18px;color:var(--t1);margin-top:5px}.wq-day-sub{font-size:10px;color:var(--t3);line-height:1.35;margin-top:4px}.wq-day-top{font-size:10px;color:var(--t2);line-height:1.35;margin-top:7px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .wq-plan-select{background:rgba(15,23,42,.72);border:1px solid var(--border);border-radius:9px;color:var(--t1);font-size:11px;font-weight:700;padding:6px 8px;max-width:112px}
-.wq-day-planner{background:linear-gradient(145deg,rgba(79,70,229,.12),var(--s2));border:1px solid rgba(129,140,248,.24);border-radius:var(--r2);padding:12px;margin:0 0 12px;display:grid;grid-template-columns:1.1fr 1fr auto;gap:10px;align-items:end}.wq-day-planner h4{font-family:var(--fh);font-size:14px;margin:0 0 4px;color:var(--t1)}.wq-day-planner p{font-size:11px;color:var(--t3);margin:0;line-height:1.35}.wq-day-planner select{background:var(--s3);border:1px solid var(--border);border-radius:10px;color:var(--t1);padding:9px 10px;font-weight:700;min-width:190px}
+.wq-day-planner{background:linear-gradient(145deg,rgba(79,70,229,.12),var(--s2));border:1px solid rgba(129,140,248,.24);border-radius:var(--r2);padding:12px;margin:0 0 12px;display:grid;grid-template-columns:1.1fr minmax(160px,.65fr) minmax(220px,.9fr);gap:10px;align-items:end}.wq-day-planner h4{font-family:var(--fh);font-size:14px;margin:0 0 4px;color:var(--t1)}.wq-day-planner p{font-size:11px;color:var(--t3);margin:0;line-height:1.35}.wq-day-planner select{background:var(--s3);border:1px solid var(--border);border-radius:10px;color:var(--t1);padding:9px 10px;font-weight:700;min-width:100%}.wq-builder-actions{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;background:rgba(15,23,42,.38);border:1px solid rgba(129,140,248,.14);border-radius:12px;padding:8px}.wq-builder-actions .left,.wq-builder-actions .right{display:flex;gap:6px;flex-wrap:wrap;align-items:center}.wq-builder-actions .count{font-size:11px;color:#67e8f9;font-weight:900;text-transform:uppercase;letter-spacing:.06em}
 .wq-import-status{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;background:linear-gradient(145deg,rgba(16,185,129,.10),rgba(15,23,42,.62));border:1px solid rgba(16,185,129,.18);border-radius:var(--r2);padding:10px;margin:0 0 12px}.wq-import-status .mini{background:rgba(15,23,42,.45);border:1px solid var(--border);border-radius:10px;padding:8px}.wq-import-status b{display:block;font-family:var(--fh);font-size:17px;color:var(--t1)}.wq-import-status span{font-size:9px;color:var(--t3);font-weight:800;text-transform:uppercase;letter-spacing:.07em}
 .wq-lote-head{display:flex;align-items:center;justify-content:space-between;gap:12px;background:linear-gradient(145deg,rgba(34,211,238,.09),rgba(15,23,42,.65));border:1px solid rgba(34,211,238,.18);border-radius:var(--r2);padding:12px;margin:0 0 10px}.wq-lote-head h4{font-family:var(--fh);font-size:15px;margin:0;color:var(--t1)}.wq-lote-head p{font-size:11px;color:var(--t3);margin:4px 0 0}.wq-lote-head .pill{font-size:11px;font-weight:900;color:#67e8f9;background:rgba(34,211,238,.1);border:1px solid rgba(34,211,238,.22);border-radius:999px;padding:6px 10px;white-space:nowrap}
 @media(max-width:1050px){.wq-cockpit{grid-template-columns:1fr}.wq-toolbar{grid-template-columns:1fr 1fr 1fr}.wq-filter-note{grid-column:1/-1}}
@@ -2551,6 +2553,7 @@ function wqState(reset=false){
   if(!ST.weeklyQuestionGoals.planDays)ST.weeklyQuestionGoals.planDays={};
   if(!ST.weeklyQuestionGoals.activePlanDay)ST.weeklyQuestionGoals.activePlanDay='all';
   if(!ST.weeklyQuestionGoals.activePlanDisc)ST.weeklyQuestionGoals.activePlanDisc='all';
+  if(!ST.weeklyQuestionGoals.pickedItems)ST.weeklyQuestionGoals.pickedItems={};
   if(!Array.isArray(ST.weeklyQuestionGoals.items))ST.weeklyQuestionGoals.items=[];
   if(!ST.weeklyQuestionGoals.hoursPerDay)ST.weeklyQuestionGoals.hoursPerDay=Number(cfg().dh)||4;
   if(!ST.weeklyQuestionGoals.minutesPerQuestion)ST.weeklyQuestionGoals.minutesPerQuestion=2.5;
@@ -2603,6 +2606,61 @@ function wqSetActivePlanDisc(value){
   const st=wqState();
   st.activePlanDisc=value||'all';
   sSt();renderWeeklyQuestionGoals();
+}
+function wqCurrentVisibleItems(){
+  const st=wqState(),items=wqFilteredItems(st.items),dayItems=wqPlanItemsForDay(items,st.activePlanDay||'all');
+  return (st.activePlanDisc&&st.activePlanDisc!=='all')?dayItems.filter(x=>wqItemDiscPlanKey(x)===st.activePlanDisc):dayItems;
+}
+function wqPickedIds(){
+  const st=wqState();
+  if(!st.pickedItems)st.pickedItems={};
+  return Object.keys(st.pickedItems).filter(id=>st.pickedItems[id]);
+}
+function wqTogglePick(id){
+  const st=wqState();
+  if(!st.pickedItems)st.pickedItems={};
+  st.pickedItems[id]=!st.pickedItems[id];
+  if(!st.pickedItems[id])delete st.pickedItems[id];
+  sSt();renderWeeklyQuestionGoals();
+}
+function wqPickVisible(){
+  const st=wqState();if(!st.pickedItems)st.pickedItems={};
+  wqCurrentVisibleItems().forEach(x=>{st.pickedItems[x.id]=true;});
+  sSt();renderWeeklyQuestionGoals();
+}
+function wqClearPicks(){
+  const st=wqState();st.pickedItems={};sSt();renderWeeklyQuestionGoals();
+}
+function wqAssignmentDay(){
+  const st=wqState();
+  if(st.activePlanDay==='all'||st.activePlanDay==null){
+    st.activePlanDay=String(wqTodayPlanDay());
+  }
+  return st.activePlanDay;
+}
+function wqAssignPickedToDay(){
+  const st=wqState(),ids=wqPickedIds(),day=wqAssignmentDay();
+  if(!ids.length){nfy('Selecione pelo menos uma questao do lote','err');return;}
+  if(!st.planDays)st.planDays={};
+  ids.forEach(id=>{st.planDays[id]=String(day);});
+  st.pickedItems={};sSt();renderWeeklyQuestionGoals();
+  nfy(ids.length+' questao(oes) enviada(s) para a meta do dia','ok');
+}
+function wqPickedAuto(){
+  const st=wqState(),ids=wqPickedIds();
+  if(!ids.length){nfy('Selecione pelo menos uma questao','err');return;}
+  if(!st.planDays)st.planDays={};
+  ids.forEach(id=>delete st.planDays[id]);
+  st.pickedItems={};sSt();renderWeeklyQuestionGoals();
+  nfy(ids.length+' questao(oes) voltaram para distribuicao automatica','ok');
+}
+function wqPickedSkip(){
+  const st=wqState(),ids=wqPickedIds();
+  if(!ids.length){nfy('Selecione pelo menos uma questao','err');return;}
+  if(!st.planDays)st.planDays={};
+  ids.forEach(id=>{st.planDays[id]='skip';});
+  st.pickedItems={};sSt();renderWeeklyQuestionGoals();
+  nfy(ids.length+' questao(oes) ficaram fora desta semana','ok');
 }
 function wqSetPlanning(){
   const st=wqState();
@@ -3096,6 +3154,7 @@ function wqStartPlanDay(day){
 function wqDayPlannerHtml(dayItems,visibleItems){
   const st=wqState(),names=['Segunda','Terca','Quarta','Quinta','Sexta','Sabado','Domingo'];
   const dayLabel=st.activePlanDay==='all'?'Todos os dias':(names[Number(st.activePlanDay)]||'Dia selecionado');
+  const dayOpts=['<option value="all" '+(st.activePlanDay==='all'?'selected':'')+'>Todos os dias</option>'].concat(names.map((n,i)=>'<option value="'+i+'" '+(String(st.activePlanDay)===String(i)?'selected':'')+'>'+n+'</option>')).join('');
   const discMap=new Map();
   safeList(dayItems).forEach(x=>{
     const label=x.materia||wqDiscName(x.discId,'Sem disciplina'),key=wqItemDiscPlanKey(x);
@@ -3103,10 +3162,12 @@ function wqDayPlannerHtml(dayItems,visibleItems){
   });
   const active=st.activePlanDisc||'all';
   const opts=['<option value="all" '+(active==='all'?'selected':'')+'>Todas as disciplinas do dia</option>'].concat([...discMap.entries()].sort((a,b)=>a[1].localeCompare(b[1])).map(([k,v])=>'<option value="'+escapeHtml(k)+'" '+(active===k?'selected':'')+'>'+escapeHtml(v)+'</option>')).join('');
+  const picked=wqPickedIds().length;
   return '<section class="wq-day-planner">'+
-    '<div><h4>Planejar este dia</h4><p>Escolha o dia nos cards acima. Depois escolha a disciplina aqui. As questoes exibidas abaixo sao o lote que voce vai fazer.</p></div>'+
+    '<div><h4>Montador de meta</h4><p>Escolha dia e disciplina, marque as questoes na lista e envie as selecionadas para a meta. O automatico continua funcionando como base.</p></div>'+
+    '<label style="display:grid;gap:5px"><span class="slbl">Dia da meta</span><select onchange="wqSetActivePlanDay(this.value)">'+dayOpts+'</select></label>'+
     '<label style="display:grid;gap:5px"><span class="slbl">'+escapeHtml(dayLabel)+' - disciplina</span><select onchange="wqSetActivePlanDisc(this.value)">'+opts+'</select></label>'+
-    '<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end"><button class="btn bp xs" onclick="wqStartPlanDay()">Comecar lote</button><button class="btn bg2 xs" onclick="wqSetActivePlanDisc(\'all\')">Todas disciplinas</button></div>'+
+    '<div class="wq-builder-actions"><div class="left"><span class="count">'+picked+' selecionada(s)</span><button class="btn bg2 xs" onclick="wqPickVisible()">Selecionar visiveis</button><button class="btn bg2 xs" onclick="wqClearPicks()">Limpar selecao</button></div><div class="right"><button class="btn bp xs" onclick="wqAssignPickedToDay()">Enviar para este dia</button><button class="btn bg2 xs" onclick="wqPickedAuto()">Voltar automatico</button><button class="btn br xs" onclick="wqPickedSkip()">Fora da semana</button><button class="btn bg2 xs" onclick="wqStartPlanDay()">Comecar lote</button></div></div>'+
     '<div style="grid-column:1/-1;font-size:11px;color:var(--t3)">'+safeList(visibleItems).length+' questao(oes) exibida(s) de '+safeList(dayItems).length+' planejada(s) para este recorte.</div>'+
   '</section>';
 }
@@ -3234,7 +3295,8 @@ function renderWeeklyQuestionGoals(){
     host.innerHTML=wqFilterBar(allItems,visibleItems)+importStatus+head+campaign+planner+lote+'<div class="slist">'+visibleItems.map((x,i)=>{
       const kind=x.kind==='erro'?'Erro':x.kind==='similar'?'Similar':x.kind==='revisao'?'Revisao':x.kind==='inedita'?'Inedita':'Assunto';
       const open=x.url?'<button class="btn bg2 xs" onclick="wqOpenMeta(\''+jsArg(x.id)+'\')">Ver aqui</button>':'';
-      return '<div class="rescue-item" style="'+(st.done[x.id]?'opacity:.48':'')+'"><div class="rescue-rank">'+(i+1)+'</div><div style="min-width:0"><div class="rescue-name">'+escapeHtml(x.title||x.assunto||x.materia)+'</div><div class="rescue-meta">'+escapeHtml(kind)+' · '+escapeHtml(x.materia||'')+(x.assunto?' · '+escapeHtml(x.assunto):'')+' · '+escapeHtml(x.reason||'')+'</div></div><div class="rescue-actions">'+wqPlanDaySelect(x.id)+open+'<button class="btn '+(st.done[x.id]?'bp':'bg2')+' xs" onclick="wqToggle(\''+jsArg(x.id)+'\')">'+(st.done[x.id]?'Feita':'Marcar')+'</button></div></div>';
+      const picked=!!st.pickedItems?.[x.id];
+      return '<div class="rescue-item '+(picked?'picked':'')+'" style="'+(st.done[x.id]?'opacity:.48':'')+'"><label class="wq-pick" title="Selecionar para montar a meta"><input type="checkbox" '+(picked?'checked':'')+' onchange="wqTogglePick(\''+jsArg(x.id)+'\')"><span>'+(i+1)+'</span></label><div style="min-width:0"><div class="rescue-name">'+escapeHtml(x.title||x.assunto||x.materia)+'</div><div class="rescue-meta">'+escapeHtml(kind)+' · '+escapeHtml(x.materia||'')+(x.assunto?' · '+escapeHtml(x.assunto):'')+' · '+escapeHtml(x.reason||'')+'</div></div><div class="rescue-actions">'+wqPlanDaySelect(x.id)+open+'<button class="btn '+(st.done[x.id]?'bp':'bg2')+' xs" onclick="wqToggle(\''+jsArg(x.id)+'\')">'+(st.done[x.id]?'Feita':'Marcar')+'</button></div></div>';
     }).join('')+'</div>';
   }catch(err){
     console.error('weekly question goals failed',err);
