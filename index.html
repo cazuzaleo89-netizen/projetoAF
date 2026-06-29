@@ -343,6 +343,7 @@ input,select,textarea{font-family:inherit;outline:none}
 .wq-plan-select{background:rgba(15,23,42,.72);border:1px solid var(--border);border-radius:9px;color:var(--t1);font-size:11px;font-weight:700;padding:6px 8px;max-width:112px}
 .wq-day-planner{background:linear-gradient(145deg,rgba(79,70,229,.12),var(--s2));border:1px solid rgba(129,140,248,.24);border-radius:var(--r2);padding:12px;margin:0 0 12px;display:grid;grid-template-columns:minmax(220px,.85fr) minmax(160px,.45fr) minmax(360px,1.35fr);gap:10px;align-items:end}.wq-day-planner h4{font-family:var(--fh);font-size:14px;margin:0 0 4px;color:var(--t1)}.wq-day-planner p{font-size:11px;color:var(--t3);margin:0;line-height:1.35}.wq-day-planner select{background:var(--s3);border:1px solid var(--border);border-radius:10px;color:var(--t1);padding:9px 10px;font-weight:700;min-width:100%}.wq-builder-actions{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;background:rgba(15,23,42,.38);border:1px solid rgba(129,140,248,.14);border-radius:12px;padding:8px}.wq-builder-actions .left,.wq-builder-actions .right{display:flex;gap:6px;flex-wrap:wrap;align-items:center}.wq-builder-actions .count{font-size:11px;color:#67e8f9;font-weight:900;text-transform:uppercase;letter-spacing:.06em}
 .wq-disc-picker{display:grid;gap:8px;align-self:stretch}.wq-disc-picker-head{display:flex;align-items:center;justify-content:space-between;gap:8px}.wq-disc-picker-head span{font-size:10px;color:var(--t3);font-weight:900;text-transform:uppercase;letter-spacing:.08em}.wq-disc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:7px}.wq-disc-card{display:grid;grid-template-columns:24px minmax(0,1fr);gap:8px;text-align:left;align-items:center;background:rgba(15,23,42,.58);border:1px solid var(--border);border-radius:12px;padding:8px 9px;color:var(--t1);cursor:pointer;transition:.15s ease}.wq-disc-card:hover{border-color:rgba(34,211,238,.55);transform:translateY(-1px)}.wq-disc-card.on{border-color:#22d3ee;background:linear-gradient(145deg,rgba(34,211,238,.14),rgba(79,70,229,.10));box-shadow:0 0 0 1px rgba(34,211,238,.18),0 0 18px rgba(34,211,238,.10)}.wq-disc-card .check{width:24px;height:24px;border-radius:8px;display:grid;place-items:center;background:rgba(96,165,250,.12);border:1px solid rgba(96,165,250,.22);font-size:12px;color:#67e8f9;font-weight:900;grid-row:span 2}.wq-disc-card b{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.wq-disc-card small{font-size:10px;color:var(--t3);font-weight:800}.wq-disc-empty{font-size:11px;color:var(--t3);border:1px dashed var(--border);border-radius:10px;padding:10px}
+.wq-disc-qty{grid-column:2;display:flex;align-items:center;gap:6px;font-size:10px;color:var(--t3);font-weight:900;text-transform:uppercase}.wq-disc-qty input{width:62px;background:rgba(2,6,23,.72);border:1px solid rgba(34,211,238,.32);border-radius:9px;color:#eaf6ff;padding:6px 7px;font-weight:900;text-align:center}.wq-disc-hint{grid-column:2;font-size:10px;color:var(--t3);font-weight:800}
 .wq-import-status{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;background:linear-gradient(145deg,rgba(16,185,129,.10),rgba(15,23,42,.62));border:1px solid rgba(16,185,129,.18);border-radius:var(--r2);padding:10px;margin:0 0 12px}.wq-import-status .mini{background:rgba(15,23,42,.45);border:1px solid var(--border);border-radius:10px;padding:8px}.wq-import-status b{display:block;font-family:var(--fh);font-size:17px;color:var(--t1)}.wq-import-status span{font-size:9px;color:var(--t3);font-weight:800;text-transform:uppercase;letter-spacing:.07em}
 .wq-lote-head{display:flex;align-items:center;justify-content:space-between;gap:12px;background:linear-gradient(145deg,rgba(34,211,238,.09),rgba(15,23,42,.65));border:1px solid rgba(34,211,238,.18);border-radius:var(--r2);padding:12px;margin:0 0 10px}.wq-lote-head h4{font-family:var(--fh);font-size:15px;margin:0;color:var(--t1)}.wq-lote-head p{font-size:11px;color:var(--t3);margin:4px 0 0}.wq-lote-head .pill{font-size:11px;font-weight:900;color:#67e8f9;background:rgba(34,211,238,.1);border:1px solid rgba(34,211,238,.22);border-radius:999px;padding:6px 10px;white-space:nowrap}
 @media(max-width:1050px){.wq-cockpit{grid-template-columns:1fr}.wq-toolbar{grid-template-columns:1fr 1fr 1fr}.wq-filter-note{grid-column:1/-1}.wq-week-strip{grid-template-columns:repeat(5,1fr)}.wq-day-planner{grid-template-columns:1fr}}
@@ -2672,6 +2673,7 @@ function wqState(reset=false){
   if(!ST.weeklyQuestionGoals.activePlanDay)ST.weeklyQuestionGoals.activePlanDay='all';
   if(!ST.weeklyQuestionGoals.activePlanDisc)ST.weeklyQuestionGoals.activePlanDisc='all';
   if(!ST.weeklyQuestionGoals.dayDiscSelections)ST.weeklyQuestionGoals.dayDiscSelections={};
+  if(!ST.weeklyQuestionGoals.dayDiscCounts)ST.weeklyQuestionGoals.dayDiscCounts={};
   if(!ST.weeklyQuestionGoals.pickedItems)ST.weeklyQuestionGoals.pickedItems={};
   if(!Array.isArray(ST.weeklyQuestionGoals.items))ST.weeklyQuestionGoals.items=[];
   if(!ST.weeklyQuestionGoals.hoursPerDay)ST.weeklyQuestionGoals.hoursPerDay=Number(cfg().dh)||4;
@@ -2739,15 +2741,32 @@ function wqActiveDiscSet(st=wqState()){
   if(arr.length)return new Set(arr);
   return (st.activePlanDisc&&st.activePlanDisc!=='all')?new Set([st.activePlanDisc]):new Set();
 }
+function wqDayDiscCounts(st=wqState(),day=st.activePlanDay||'all'){
+  if(!st.dayDiscCounts)st.dayDiscCounts={};
+  if(!st.dayDiscCounts[day])st.dayDiscCounts[day]={};
+  return st.dayDiscCounts[day];
+}
+function wqDefaultDiscQty(st=wqState(),discCount=1){
+  return Math.max(1,Math.round((Number(st.dailyTarget)||96)/Math.max(1,discCount)));
+}
+function wqSetDayDiscQty(key,value){
+  const st=wqState(),day=st.activePlanDay||'all',bag=wqDayDiscCounts(st,day);
+  const qty=Math.max(1,Math.min(999,Math.round(Number(String(value).replace(',','.'))||1)));
+  bag[key]=qty;
+  st.listPage=1;
+  sSt();renderWeeklyQuestionGoals();
+}
 function wqToggleDayDisc(key){
   const st=wqState(),day=st.activePlanDay||'all';
   if(!st.dayDiscSelections)st.dayDiscSelections={};
+  const counts=wqDayDiscCounts(st,day);
   const set=wqActiveDiscSet(st);
-  if(set.has(key))set.delete(key);
+  if(set.has(key)){set.delete(key);delete counts[key];}
   else{
     const max=Math.max(1,Math.min(4,Number(st.maxDisciplinesPerDay)||4));
     if(set.size>=max){nfy('Limite de '+max+' disciplinas por dia. Desmarque uma para incluir outra.','err');return;}
     set.add(key);
+    if(!counts[key])counts[key]=wqDefaultDiscQty(st,set.size);
   }
   st.dayDiscSelections[day]=[...set];
   st.activePlanDisc='all';
@@ -2758,6 +2777,7 @@ function wqClearDayDiscSelection(){
   const st=wqState(),day=st.activePlanDay||'all';
   if(!st.dayDiscSelections)st.dayDiscSelections={};
   delete st.dayDiscSelections[day];
+  if(st.dayDiscCounts)delete st.dayDiscCounts[day];
   st.activePlanDisc='all';
   st.listPage=1;
   sSt();renderWeeklyQuestionGoals();
@@ -3404,7 +3424,13 @@ function wqVisibleItemsForDay(items,dayItems,st=wqState()){
   const selected=safeList(items).filter(x=>discSet.has(wqItemDiscPlanKey(x)));
   const selectedDay=selected.filter(x=>dayIds.has(String(x.id)));
   const selectedExtra=selected.filter(x=>!dayIds.has(String(x.id)));
-  return selectedDay.concat(selectedExtra);
+  const counts=wqDayDiscCounts(st,st.activePlanDay||'all'),seen={},defaultLimit=wqDefaultDiscQty(st,discSet.size);
+  return selectedDay.concat(selectedExtra).filter(x=>{
+    const key=wqItemDiscPlanKey(x),limit=Math.round(Number(counts[key])||defaultLimit||0);
+    if(!limit)return true;
+    seen[key]=(seen[key]||0)+1;
+    return seen[key]<=limit;
+  });
 }
 function wqPageSize(){return 120;}
 function wqSetListPage(page){
@@ -3450,11 +3476,13 @@ function wqDayPlannerHtml(dayItems,visibleItems,allFilteredItems){
   const activeSet=wqActiveDiscSet(st),maxDisc=Math.max(1,Math.min(4,Number(st.maxDisciplinesPerDay)||4));
   const discCards=[...discMap.entries()].sort((a,b)=>a[1].localeCompare(b[1])).map(([k,v])=>{
     const total=totalCount.get(k)||0,planned=dayCount.get(k)||0,checked=activeSet.has(k);
+    const qty=Number(wqDayDiscCounts(st)[k])||wqDefaultDiscQty(st,Math.max(1,activeSet.size||1));
     const countLabel=planned?planned+' no dia - '+total+' no filtro':total+' no filtro';
     const safeKey=String(k).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/[\r\n]+/g,' ');
-    return '<button type="button" class="wq-disc-card '+(checked?'on':'')+'" onclick="wqToggleDayDisc(\''+safeKey+'\')"><span class="check">'+(checked?'OK':'')+'</span><b>'+escapeHtml(v)+'</b><small>'+escapeHtml(countLabel)+'</small></button>';
+    const qtyHtml=checked?'<label class="wq-disc-qty" onclick="event.stopPropagation()">Qtd <input type="number" min="1" max="'+total+'" step="1" value="'+escapeHtml(qty)+'" onchange="wqSetDayDiscQty(\''+safeKey+'\',this.value)"></label>':'<span class="wq-disc-hint">Clique para incluir no dia</span>';
+    return '<div role="button" tabindex="0" class="wq-disc-card '+(checked?'on':'')+'" onclick="wqToggleDayDisc(\''+safeKey+'\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();wqToggleDayDisc(\''+safeKey+'\')}"><span class="check">'+(checked?'OK':'')+'</span><b>'+escapeHtml(v)+'</b><small>'+escapeHtml(countLabel)+'</small>'+qtyHtml+'</div>';
   }).join('');
-  const discHelp=activeSet.size?activeSet.size+' de '+maxDisc+' disciplinas escolhidas para montar este dia':'Sem disciplina fixada: mostrando o lote automatico do dia. Marque ate '+maxDisc+' para personalizar.';
+  const discHelp=activeSet.size?activeSet.size+' de '+maxDisc+' disciplinas escolhidas. Ajuste a Qtd de cada uma para montar seu lote do dia.':'Sem disciplina fixada: mostrando o lote automatico do dia. Marque ate '+maxDisc+' para personalizar.';
   const picked=wqPickedIds().length;
   return '<section class="wq-day-planner">'+
     '<div><h4>Montador simples do dia</h4><p>Escolha o dia e marque ate '+maxDisc+' disciplinas. A lista abaixo muda automaticamente; depois use Comecar lote.</p></div>'+
