@@ -1850,6 +1850,16 @@ function lSt(){
     if(core.sess)st.sess=mergeById(st.sess,core.sess);
     if(core.discs&&!safeList(st.discs).length)st.discs=safeList(core.discs);
   }catch{}
+  try{
+    const lib=JSON.parse(localStorage.getItem('pf4_library')||'{}')||{};
+    if(safeList(lib.items).length){
+      st.extSync=st.extSync||{};
+      const map=new Map(safeList(st.extSync.libraryPending).map(q=>[String(q.qid||''),q]).filter(([k])=>k));
+      safeList(lib.items).forEach(q=>{if(q?.qid)map.set(String(q.qid),{...map.get(String(q.qid)),...q});});
+      st.extSync.libraryPending=[...map.values()].sort((a,b)=>(Number(b.importedAt)||0)-(Number(a.importedAt)||0));
+      st.extSync.libraryStats={...(st.extSync.libraryStats||{}),...(lib.stats||{}),pending:st.extSync.libraryPending.length,total:Math.max(Number(lib.stats?.total)||0,st.extSync.libraryPending.length),restoredAt:Date.now()};
+    }
+  }catch{}
   return st;
 }
 function compactStateForStorage(state){
@@ -1870,8 +1880,18 @@ function compactStateForStorage(state){
 function persistCore(){
   try{localStorage.setItem('pf4_core',JSON.stringify({sess:safeList(ST.sess),discs:safeList(ST.discs),cfg:ST.cfg||{},ts:Date.now()}));}catch{}
 }
+function persistLibraryCache(){
+  try{
+    const meta=ST.extSync||{};
+    const items=safeList(meta.libraryPending).slice(0,5000).map(q=>({
+      qid:q.qid,url:q.url,materia:q.materia,assunto:q.assunto,banca:q.banca,ano:q.ano,concurso:q.concurso,cargo:q.cargo,orgao:q.orgao,desc:q.desc,importedFrom:q.importedFrom,importedAt:q.importedAt,src:q.src
+    }));
+    if(items.length)localStorage.setItem('pf4_library',JSON.stringify({items,stats:meta.libraryStats||{},ts:Date.now()}));
+  }catch{}
+}
 function sSt(){
   persistCore();
+  persistLibraryCache();
   try{
     localStorage.setItem('pf4',JSON.stringify(ST));
   }catch(e){
@@ -3064,15 +3084,14 @@ function wqLoadPdfJs(){
   if(window.pdfjsLib)return Promise.resolve(window.pdfjsLib);
   return new Promise((resolve,reject)=>{
     const s=document.createElement('script');
-    s.src='https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs';
-    s.type='module';
-    s.onload=()=>setTimeout(()=>window.pdfjsLib?resolve(window.pdfjsLib):reject(new Error('PDF.js nao carregou')),120);
+    s.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+    s.onload=()=>{if(window.pdfjsLib){window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';resolve(window.pdfjsLib)}else reject(new Error('PDF.js indisponivel'))};
     s.onerror=()=>reject(new Error('Nao consegui carregar o leitor de PDF'));
     document.head.appendChild(s);
   }).catch(()=>new Promise((resolve,reject)=>{
     const s=document.createElement('script');
-    s.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
-    s.onload=()=>{if(window.pdfjsLib){window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';resolve(window.pdfjsLib)}else reject(new Error('PDF.js indisponivel'))};
+    s.src='https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.min.js';
+    s.onload=()=>{if(window.pdfjsLib){window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js';resolve(window.pdfjsLib)}else reject(new Error('PDF.js indisponivel'))};
     s.onerror=()=>reject(new Error('Nao consegui carregar o leitor de PDF'));
     document.head.appendChild(s);
   }));
@@ -3106,6 +3125,10 @@ function wqExtractTecLinksFromRaw(raw){
   });
   return [...out];
 }
+function wqPdfLooksInternalRaw(text){
+  const s=String(text||'').slice(0,5000);
+  return /\/(?:Border|StructParent|URI|Type|Annot|Subtype|Rect)\b|endobj\b|\/FlateDecode\b|xref\b/i.test(s);
+}
 async function wqPdfPayload(file){
   if(/\.txt$/i.test(file.name)||file.type==='text/plain')return {text:await file.text(),links:[]};
   const buf=await file.arrayBuffer();
@@ -3119,7 +3142,7 @@ async function wqPdfPayload(file){
     const parts=[],links=[...rawLinks];
     for(let p=1;p<=pdf.numPages;p++){
       const page=await pdf.getPage(p),txt=await page.getTextContent();
-      parts.push(txt.items.map(i=>i.str||'').join(' '));
+      parts.push(txt.items.map(i=>(i.str||'')+(i.hasEOL?'\n':' ')).join('').replace(/[ \t]+\n/g,'\n'));
       try{
         const anns=await page.getAnnotations({intent:'display'});
         safeList(anns).forEach(a=>{
@@ -3131,7 +3154,7 @@ async function wqPdfPayload(file){
     return {text:parts.join('\n')||'',links:[...new Set(links)],rawLinks:rawLinks.length,fastLinks:rawLinks.length};
   }catch(err){
     console.warn('PDF.js falhou, usando leitura direta dos links do PDF',err);
-    return {text:raw,links:rawLinks,fallback:true,error:String(err?.message||err||'PDF.js indisponivel')};
+    return {text:'',links:rawLinks,fallback:true,rawFallback:true,error:String(err?.message||err||'PDF.js indisponivel')};
   }
 }
 async function wqPdfText(file){
@@ -3164,18 +3187,37 @@ function wqPdfDisciplinaFallback(fileName){
 }
 function wqPdfMetaCleanNear(text,index,fileName){
   const src=String(text||''),pos=Math.max(0,Number(index)||0),baseMateria=wqPdfDisciplinaFallback(fileName);
-  const chunk=src.slice(Math.max(0,pos-1400),Math.min(src.length,pos+1200)).replace(/\s+/g,' ');
+  const rawChunk=src.slice(Math.max(0,pos-1400),Math.min(src.length,pos+1200));
+  const rawLines=rawChunk.split(/\n|\r/).map(x=>pfLibraryCleanText(x,220)).filter(Boolean);
+  const chunk=rawChunk.replace(/\s+/g,' ');
   let materia=baseMateria,assunto='',banca='',ano='',concurso='';
+  const headerLine=rawLines.find(l=>/\b(FCC|FGV|CEBRASPE|CESPE|VUNESP|AOCP|IBFC|IADES|IDECAN|CONSULPLAN|QUADRIX|ESAF)\s*-/i.test(l)&&/\b(20\d{2}|19\d{2})\b/.test(l))||'';
   const header=chunk.match(/\b(FCC|FGV|CEBRASPE|CESPE|VUNESP|AOCP|IBFC|IADES|IDECAN|CONSULPLAN|QUADRIX|ESAF)\s*-\s*([^#\n\r]{0,220}?)(20\d{2}|19\d{2})\b/i);
   if(header){
     banca=header[1].toUpperCase();
     ano=header[3];
     concurso=pfLibraryCleanText(header[2].replace(/[\/\-\s]+$/,''),170);
   }
+  if(headerLine){
+    const h=headerLine.match(/\b(FCC|FGV|CEBRASPE|CESPE|VUNESP|AOCP|IBFC|IADES|IDECAN|CONSULPLAN|QUADRIX|ESAF)\s*-\s*(.*?)(20\d{2}|19\d{2})\b/i);
+    if(h){
+      banca=h[1].toUpperCase();
+      ano=h[3];
+      concurso=pfLibraryCleanText(h[2].replace(/[\/\-\s]+$/,''),170)||concurso;
+    }
+  }
   const subj=chunk.match(/\b(Contabilidade Geral|Direito Tributario|Direito Tribut[aÃ¡]rio|Auditoria|Direito Constitucional|Direito Administrativo|Tecnologia da Informacao|Tecnologia da Informa[cÃ§][aÃ£]o|TI\s*-\s*[^|]+|Administracao Financeira e Orcamentaria|Administra[cÃ§][aÃ£]o Financeira e Or[cÃ§]ament[aÃ¡]ria|AFO)\s*-\s*([^#]{4,180})/i);
   if(subj){
     materia=pfLibraryCleanText(subj[1],120)||materia;
     assunto=pfLibraryCleanText(subj[2],180);
+  }
+  const subjectLine=rawLines.find(l=>/\s+-\s+/.test(l)&&/(Direito|Contabilidade|Auditoria|Tecnologia|Inform|Administra|AFO|TI\b|Portug|Racioc|Estat)/i.test(l)&&!/^(FCC|FGV|CEBRASPE|CESPE|VUNESP|AOCP|IBFC)\s*-/i.test(l))||'';
+  if(subjectLine){
+    const sm=subjectLine.match(/^(.+?)\s+-\s+(.+)$/);
+    if(sm){
+      materia=pfLibraryCleanText(sm[1],140)||materia;
+      assunto=pfLibraryCleanText(sm[2],180)||assunto;
+    }
   }
   if(!assunto){
     const before=src.slice(Math.max(0,pos-900),pos+220);
@@ -3212,6 +3254,7 @@ function wqExtractTecCodes(text,fileName){
 }
 function wqExtractTecPdfItems(payload,fileName){
   const data=typeof payload==='string'?{text:payload,links:[]}:payload||{},text=String(data.text||''),links=safeList(data.links),now=Date.now();
+  const rawFallback=!!data.rawFallback||(!!data.fallback&&(!text||wqPdfLooksInternalRaw(text)));
   const found=new Map();
   const put=(qid,url,index)=>{
     qid=String(qid||'').replace(/\D/g,'');
@@ -3223,6 +3266,7 @@ function wqExtractTecPdfItems(payload,fileName){
     const m=String(url).match(/tecconcursos\.com\.br\/questoes\/(\d{5,8})/i);
     if(m)put(m[1],String(url),text.indexOf(m[1]));
   });
+  if(rawFallback&&found.size)return [...found.values()];
   [
     /(?:#|quest[aÃ£]o\s*(?:n[Âºo.]*)?|c[oÃ³]digo\s*)\s*(\d{5,8})/gi,
     /(?:(?:https?:\/\/)?(?:www\.)?tecconcursos\.com\.br\/questoes\/)(\d{5,8})/gi
