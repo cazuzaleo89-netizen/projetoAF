@@ -2783,6 +2783,15 @@ function wqPickedSkip(){
   st.pickedItems={};sSt();renderWeeklyQuestionGoals();
   nfy(ids.length+' questao(oes) ficaram fora desta semana','ok');
 }
+function wqSkipOne(id){
+  const st=wqState();
+  if(!id)return;
+  if(!st.planDays)st.planDays={};
+  st.planDays[id]='skip';
+  if(st.pickedItems)delete st.pickedItems[id];
+  sSt();renderWeeklyQuestionGoals();
+  nfy('Questao removida deste lote semanal','ok');
+}
 function wqSetPlanning(){
   const st=wqState();
   const h=document.getElementById('wq-hours-day'),m=document.getElementById('wq-min-question'),d=document.getElementById('wq-days-week'),q=document.getElementById('wq-min-q-day'),x=document.getElementById('wq-max-disc-day'),t=document.getElementById('wq-total-weeks'),r=document.getElementById('wq-review-weeks');
@@ -3522,7 +3531,7 @@ function renderWeeklyQuestionGoals(){
       const kind=x.kind==='erro'?'Erro':x.kind==='similar'?'Similar':x.kind==='revisao'?'Revisao':x.kind==='inedita'?'Inedita':'Assunto';
       const open=x.url?'<button class="btn bg2 xs" onclick="wqOpenMeta(\''+jsArg(x.id)+'\')">Ver aqui</button>':'';
       const picked=!!st.pickedItems?.[x.id];
-      return '<div class="rescue-item '+(picked?'picked':'')+'" style="'+(st.done[x.id]?'opacity:.48':'')+'"><label class="wq-pick" title="Selecionar para montar a meta"><input type="checkbox" '+(picked?'checked':'')+' onchange="wqTogglePick(\''+jsArg(x.id)+'\')"><span>'+(win.start+i+1)+'</span></label><div style="min-width:0"><div class="rescue-name">'+escapeHtml(x.title||x.assunto||x.materia)+'</div><div class="rescue-meta">'+escapeHtml(kind)+' · '+escapeHtml(x.materia||'')+(x.assunto?' · '+escapeHtml(x.assunto):'')+' · '+escapeHtml(x.reason||'')+'</div></div><div class="rescue-actions">'+wqPlanDaySelect(x.id)+open+'<button class="btn '+(st.done[x.id]?'bp':'bg2')+' xs" onclick="wqToggle(\''+jsArg(x.id)+'\')">'+(st.done[x.id]?'Feita':'Marcar')+'</button></div></div>';
+      return '<div class="rescue-item '+(picked?'picked':'')+'" style="'+(st.done[x.id]?'opacity:.48':'')+'"><label class="wq-pick" title="Selecionar para montar a meta"><input type="checkbox" '+(picked?'checked':'')+' onchange="wqTogglePick(\''+jsArg(x.id)+'\')"><span>'+(win.start+i+1)+'</span></label><div style="min-width:0"><div class="rescue-name">'+escapeHtml(x.title||x.assunto||x.materia)+'</div><div class="rescue-meta">'+escapeHtml(kind)+' · '+escapeHtml(x.materia||'')+(x.assunto?' · '+escapeHtml(x.assunto):'')+' · '+escapeHtml(x.reason||'')+'</div></div><div class="rescue-actions">'+wqPlanDaySelect(x.id)+open+'<button class="btn br xs" title="Remover somente deste lote semanal" onclick="wqSkipOne(\''+jsArg(x.id)+'\')">Remover</button><button class="btn '+(st.done[x.id]?'bp':'bg2')+' xs" onclick="wqToggle(\''+jsArg(x.id)+'\')">'+(st.done[x.id]?'Feita':'Marcar')+'</button></div></div>';
     }).join('')+'</div>'+pager;
   }catch(err){
     console.error('weekly question goals failed',err);
