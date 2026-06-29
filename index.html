@@ -2542,7 +2542,7 @@ function wqState(reset=false){
   if(reset||!ST.weeklyQuestionGoals||ST.weeklyQuestionGoals.week!==wk.key){
     const hours=Math.max(.25,Number(cfg().dh)||4),mpq=2.5,days=5;
     const daily=Math.max(1,Math.round(hours*60/mpq));
-    ST.weeklyQuestionGoals={week:wk.key,hoursPerDay:hours,minutesPerQuestion:mpq,daysPerWeek:days,revisionWeeks:2,dailyTarget:daily,target:daily*days,done:{},items:[],updatedAt:0};
+    ST.weeklyQuestionGoals={week:wk.key,hoursPerDay:hours,minutesPerQuestion:mpq,daysPerWeek:days,totalWeeksTarget:10,revisionWeeks:2,dailyTarget:daily,target:daily*days,done:{},items:[],updatedAt:0};
   }
   if(!ST.weeklyQuestionGoals.done)ST.weeklyQuestionGoals.done={};
   if(!ST.weeklyQuestionGoals.planDays)ST.weeklyQuestionGoals.planDays={};
@@ -2550,6 +2550,7 @@ function wqState(reset=false){
   if(!ST.weeklyQuestionGoals.hoursPerDay)ST.weeklyQuestionGoals.hoursPerDay=Number(cfg().dh)||4;
   if(!ST.weeklyQuestionGoals.minutesPerQuestion)ST.weeklyQuestionGoals.minutesPerQuestion=2.5;
   if(!ST.weeklyQuestionGoals.daysPerWeek)ST.weeklyQuestionGoals.daysPerWeek=5;
+  if(!ST.weeklyQuestionGoals.totalWeeksTarget)ST.weeklyQuestionGoals.totalWeeksTarget=10;
   if(!ST.weeklyQuestionGoals.revisionWeeks&&ST.weeklyQuestionGoals.revisionWeeks!==0)ST.weeklyQuestionGoals.revisionWeeks=2;
   wqRecalcTargets(ST.weeklyQuestionGoals);
   return ST.weeklyQuestionGoals;
@@ -2558,8 +2559,9 @@ function wqRecalcTargets(st=wqState()){
   const hours=Math.max(.25,Number(st.hoursPerDay)||4);
   const mpq=Math.max(1,Number(st.minutesPerQuestion)||2.5);
   const days=Math.max(1,Math.min(7,Math.round(Number(st.daysPerWeek)||5)));
-  const rev=Math.max(0,Math.min(8,Math.round(Number(st.revisionWeeks)||0)));
-  st.hoursPerDay=hours;st.minutesPerQuestion=mpq;st.daysPerWeek=days;st.revisionWeeks=rev;
+  const totalWeeks=Math.max(1,Math.min(52,Math.round(Number(st.totalWeeksTarget)||10)));
+  const rev=Math.max(0,Math.min(Math.max(0,totalWeeks-1),Math.round(Number(st.revisionWeeks)||0)));
+  st.hoursPerDay=hours;st.minutesPerQuestion=mpq;st.daysPerWeek=days;st.totalWeeksTarget=totalWeeks;st.revisionWeeks=rev;
   st.dailyTarget=Math.max(1,Math.round((hours*60)/mpq));
   st.target=Math.max(1,st.dailyTarget*days);
   return st;
@@ -2583,11 +2585,12 @@ function wqApplyFilters(){
 function wqClearFilters(){const f=wqFilters();f.disc='all';f.discText='Todas as disciplinas';f.period='all';sSt();renderWeeklyQuestionGoals();}
 function wqSetPlanning(){
   const st=wqState();
-  const h=document.getElementById('wq-hours-day'),m=document.getElementById('wq-min-question'),d=document.getElementById('wq-days-week'),r=document.getElementById('wq-review-weeks');
+  const h=document.getElementById('wq-hours-day'),m=document.getElementById('wq-min-question'),d=document.getElementById('wq-days-week'),t=document.getElementById('wq-total-weeks'),r=document.getElementById('wq-review-weeks');
   st.hoursPerDay=Math.max(.25,Number(h?.value)||4);
   st.minutesPerQuestion=Math.max(1,Number(m?.value)||2.5);
   st.daysPerWeek=Math.max(1,Math.min(7,Math.round(Number(d?.value)||5)));
-  st.revisionWeeks=Math.max(0,Math.min(8,Math.round(Number(r?.value)||0)));
+  st.totalWeeksTarget=Math.max(1,Math.min(52,Math.round(Number(t?.value)||10)));
+  st.revisionWeeks=Math.max(0,Math.min(Math.max(0,st.totalWeeksTarget-1),Math.round(Number(r?.value)||0)));
   wqRecalcTargets(st);st.updatedAt=0;sSt();wqRefresh(false,false);
 }
 function wqDiscKeys(x){
@@ -2670,6 +2673,7 @@ function wqFilterBar(allItems,shownItems){
     '<label style="display:grid;gap:5px"><span class="slbl">Horas/dia</span><input id="wq-hours-day" type="number" min="0.25" step="0.25" value="'+escapeHtml(st.hoursPerDay)+'" onchange="wqSetPlanning()"></label>'+
     '<label style="display:grid;gap:5px"><span class="slbl">Min/questao</span><input id="wq-min-question" type="number" min="1" step="0.5" value="'+escapeHtml(st.minutesPerQuestion)+'" onchange="wqSetPlanning()"></label>'+
     '<label style="display:grid;gap:5px"><span class="slbl">Dias/semana</span><input id="wq-days-week" type="number" min="1" max="7" step="1" value="'+escapeHtml(st.daysPerWeek)+'" onchange="wqSetPlanning()"></label>'+
+    '<label style="display:grid;gap:5px"><span class="slbl">Sem. totais</span><input id="wq-total-weeks" type="number" min="1" max="52" step="1" value="'+escapeHtml(st.totalWeeksTarget)+'" onchange="wqSetPlanning()"></label>'+
     '<label style="display:grid;gap:5px"><span class="slbl">Sem. revisao</span><input id="wq-review-weeks" type="number" min="0" max="8" step="1" value="'+escapeHtml(st.revisionWeeks)+'" onchange="wqSetPlanning()"></label>'+
     '<button class="btn bp xs" onclick="wqApplyFilters()">Filtrar</button>'+
     '<button class="btn bg2 xs" onclick="wqClearFilters()">Limpar</button>'+
@@ -2940,13 +2944,19 @@ function wqKindLabel(kind){
   return kind==='erro'?'erros':kind==='revisao'?'revisoes':kind==='similar'?'similares':kind==='inedita'?'ineditas':'assuntos';
 }
 function wqBuildCampaign(items){
-  const st=wqState(),daily=Math.max(1,Number(st.dailyTarget)||96),days=Math.max(1,Number(st.daysPerWeek)||5);
-  const weekCap=Math.max(1,daily*days),revWeeks=Math.max(0,Number(st.revisionWeeks)||0);
+  const st=wqState(),capacityDaily=Math.max(1,Number(st.dailyTarget)||96),days=Math.max(1,Number(st.daysPerWeek)||5);
+  const totalTarget=Math.max(1,Number(st.totalWeeksTarget)||10),revWeeks=Math.max(0,Math.min(totalTarget-1,Number(st.revisionWeeks)||0));
+  const contentWindow=Math.max(1,totalTarget-revWeeks);
   const planDays=st.planDays||{};
   const pending=safeList(items).filter(x=>!st.done?.[x.id]&&planDays[x.id]!=='skip');
   const totalQ=pending.reduce((a,x)=>a+wqItemLoad(x),0);
+  const recommendedDaily=totalQ?Math.max(1,Math.ceil(totalQ/(contentWindow*days))):0;
+  const daily=totalQ?Math.min(capacityDaily,recommendedDaily):capacityDaily;
+  const weekCap=Math.max(1,daily*days);
   const contentWeeks=Math.max(1,Math.ceil(totalQ/weekCap));
-  const totalWeeks=contentWeeks+revWeeks;
+  const totalWeeks=totalTarget;
+  const feasible=!totalQ||recommendedDaily<=capacityDaily;
+  const overloadDaily=Math.max(0,recommendedDaily-capacityDaily);
   const names=['Seg','Ter','Qua','Qui','Sex','Sab','Dom'];
   const addToSlot=(slot,item,qty)=>{
     slot.count+=qty;
@@ -2979,14 +2989,17 @@ function wqBuildCampaign(items){
     return slot;
   });
   const skipped=safeList(items).filter(x=>!st.done?.[x.id]&&planDays[x.id]==='skip').length;
-  return {pending,totalQ,daily,days,weekCap,revWeeks,contentWeeks,totalWeeks,daysPlan,skipped};
+  return {pending,totalQ,daily,capacityDaily,recommendedDaily,days,weekCap,revWeeks,contentWeeks,contentWindow,totalWeeks,feasible,overloadDaily,daysPlan,skipped};
 }
 function wqCampaignPlanHtml(items){
   const c=wqBuildCampaign(items);
   const finishLabel=c.totalQ?('Semana '+c.contentWeeks):'Sem pendencias';
-  const reviewLabel=c.revWeeks?('Semanas '+(c.contentWeeks+1)+' a '+c.totalWeeks):'sem bloco final';
+  const reviewLabel=c.revWeeks?('Semanas '+(c.contentWindow+1)+' a '+c.totalWeeks):'sem bloco final';
   const finishText=c.totalQ
-    ? 'Com '+c.weekCap+' questoes/semana, o conteudo do filtro termina na semana '+c.contentWeeks+'. Depois ficam '+c.revWeeks+' semana(s) para revisao forte.'+(c.skipped?' '+c.skipped+' meta(s) ficaram fora do plano.':'')
+    ? (c.feasible
+      ? 'Plano de '+c.totalWeeks+' semanas: '+c.contentWindow+' para conteudo e '+c.revWeeks+' para revisao forte. Para fechar, o ritmo recomendado e '+c.recommendedDaily+' questoes/dia.'
+      : 'Com as horas atuais, o filtro nao cabe em '+c.totalWeeks+' semanas. Seriam '+c.recommendedDaily+' questoes/dia, mas sua capacidade esta em '+c.capacityDaily+'. Ajuste horas, dias ou reduza o filtro.')
+      +(c.skipped?' '+c.skipped+' meta(s) ficaram fora do plano.':'')
     : 'Tudo que esta no filtro ja foi marcado como feito.';
   const dayCards=c.daysPlan.map(d=>{
     const kindTxt=Object.entries(d.kinds).map(([k,v])=>v+' '+wqKindLabel(k)).join(' · ');
@@ -2997,7 +3010,7 @@ function wqCampaignPlanHtml(items){
     '<div class="wq-plan-head"><div><h4>Plano diario e previsao de fechamento</h4><p>'+escapeHtml(finishText)+' Use o seletor em cada meta para escolher o dia, deixar no automatico ou tirar do plano desta semana.</p></div><button class="btn bg2 xs" onclick="wqCopyTec()">Copiar TEC</button></div>'+
     '<div class="wq-plan-summary">'+
       '<div class="wq-plan-kpi"><strong>'+c.totalQ+'</strong><span>questoes pendentes no filtro</span></div>'+
-      '<div class="wq-plan-kpi"><strong>'+c.daily+'/dia</strong><span>'+c.days+' dia(s), '+c.weekCap+'/semana</span></div>'+
+      '<div class="wq-plan-kpi"><strong>'+c.daily+'/dia</strong><span>'+c.days+' dia(s), '+c.weekCap+'/semana'+(c.overloadDaily?' - faltam '+c.overloadDaily+'/dia':'')+'</span></div>'+
       '<div class="wq-plan-kpi"><strong>'+finishLabel+'</strong><span>termino do conteudo</span></div>'+
       '<div class="wq-plan-kpi"><strong>'+reviewLabel+'</strong><span>reserva final de revisao</span></div>'+
     '</div><div class="wq-day-grid">'+dayCards+'</div>'+
@@ -3005,7 +3018,8 @@ function wqCampaignPlanHtml(items){
 }
 function wqGoalCockpit(allItems,items,done,codes,topics,pct){
   const st=wqState(),pending=items.filter(x=>!st.done?.[x.id]),next=pending[0]||items[0]||null;
-  const daily=Math.max(1,Number(st.dailyTarget)||Math.round((Number(st.hoursPerDay)||4)*60/(Number(st.minutesPerQuestion)||2.5)));
+  const campaign=wqBuildCampaign(items);
+  const daily=Math.max(1,Number(campaign.daily)||Number(st.dailyTarget)||Math.round((Number(st.hoursPerDay)||4)*60/(Number(st.minutesPerQuestion)||2.5)));
   const dailyPct=Math.min(100,Math.round(done/daily*100));
   const rest=Math.max(0,daily-done),unseen=items.filter(x=>x.kind==='inedita'&&!st.done?.[x.id]).length;
   const urgent=items.filter(x=>!st.done?.[x.id]&&['erro','revisao'].includes(x.kind)).length;
@@ -3014,11 +3028,11 @@ function wqGoalCockpit(allItems,items,done,codes,topics,pct){
   return '<div class="wq-cockpit">'+
     '<div class="wq-focus-card">'+
       '<div class="wq-ring" style="--p:'+dailyPct+'%"><div class="wq-ring-inner"><b>'+dailyPct+'%</b><span>hoje</span></div></div>'+
-      '<div style="min-width:0"><div class="wq-kicker">Modo foco diario</div><div class="wq-title">Missao: '+daily+' questoes no ritmo de '+escapeHtml(st.minutesPerQuestion)+' min</div><div class="wq-note">Restam '+rest+' para bater a meta do dia. O lote abaixo prioriza erros, revisoes, similares e questoes ineditas da biblioteca.</div><div class="wq-next"><span>Proxima boa acao</span><b>'+escapeHtml(nextTitle)+'</b>'+(nextMeta?'<span>'+escapeHtml(nextMeta)+'</span>':'')+'</div></div>'+
+      '<div style="min-width:0"><div class="wq-kicker">Modo foco diario - ciclo de '+campaign.totalWeeks+' semanas</div><div class="wq-title">Missao: '+daily+' questoes no ritmo de '+escapeHtml(st.minutesPerQuestion)+' min</div><div class="wq-note">Restam '+rest+' para bater a meta do dia. '+(campaign.feasible?'Esse ritmo fecha o filtro dentro do ciclo planejado.':'O volume atual passa da sua capacidade diaria; reduza o filtro ou aumente horas/dias.')+'</div><div class="wq-next"><span>Proxima boa acao</span><b>'+escapeHtml(nextTitle)+'</b>'+(nextMeta?'<span>'+escapeHtml(nextMeta)+'</span>':'')+'</div></div>'+
     '</div>'+
     '<div class="wq-panel">'+
       '<div class="wq-kpis"><div class="wq-kpi"><strong>'+items.length+'</strong><span>no filtro</span></div><div class="wq-kpi"><strong>'+done+'</strong><span>feitas</span></div><div class="wq-kpi"><strong>'+codes+'</strong><span>codigos TEC</span></div><div class="wq-kpi"><strong>'+unseen+'</strong><span>ineditas</span></div></div>'+
-      '<div class="wq-progress"><div style="width:'+pct+'%"></div></div><div class="wq-filter-note">Criticas/revisoes pendentes: '+urgent+' - metas por assunto: '+topics+' - semana: '+st.target+' questoes</div>'+
+      '<div class="wq-progress"><div style="width:'+pct+'%"></div></div><div class="wq-filter-note">Criticas/revisoes pendentes: '+urgent+' - metas por assunto: '+topics+' - ciclo: '+campaign.contentWindow+' semana(s) conteudo + '+campaign.revWeeks+' revisao</div>'+
     '</div>'+
   '</div>';
 }
