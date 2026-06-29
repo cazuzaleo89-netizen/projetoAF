@@ -2885,20 +2885,30 @@ function wqLoadPdfJs(){
     document.head.appendChild(s);
   }));
 }
-async function wqPdfText(file){
-  if(/\.txt$/i.test(file.name)||file.type==='text/plain')return await file.text();
+async function wqPdfPayload(file){
+  if(/\.txt$/i.test(file.name)||file.type==='text/plain')return {text:await file.text(),links:[]};
   const pdfjs=await wqLoadPdfJs();
   if(pdfjs.GlobalWorkerOptions&&!pdfjs.GlobalWorkerOptions.workerSrc){
     pdfjs.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
   }
   const buf=await file.arrayBuffer();
   const pdf=await pdfjs.getDocument({data:buf}).promise;
-  const parts=[];
+  const parts=[],links=[];
   for(let p=1;p<=pdf.numPages;p++){
     const page=await pdf.getPage(p),txt=await page.getTextContent();
     parts.push(txt.items.map(i=>i.str||'').join(' '));
+    try{
+      const anns=await page.getAnnotations({intent:'display'});
+      safeList(anns).forEach(a=>{
+        const url=a?.url||a?.unsafeUrl||a?.URI||a?.uri;
+        if(url&&/tecconcursos\.com\.br/i.test(url))links.push(String(url));
+      });
+    }catch{}
   }
-  return parts.join('\n');
+  return {text:parts.join('\n'),links:[...new Set(links)]};
+}
+async function wqPdfText(file){
+  return (await wqPdfPayload(file)).text;
 }
 function wqPdfAssuntoNear(text,index){
   const start=Math.max(0,index-900),chunk=text.slice(start,index+220);
@@ -2906,6 +2916,19 @@ function wqPdfAssuntoNear(text,index){
   if(matches.length)return matches[matches.length-1][1].replace(/\s+/g,' ').trim();
   const lines=chunk.split(/\n|\r/).map(x=>x.trim()).filter(Boolean);
   return (lines.reverse().find(l=>l.length>=8&&l.length<=110&&!/\d{5,8}/.test(l))||'PDF TEC').slice(0,120);
+}
+function wqPdfTecMetaNear(text,index,fileName){
+  const src=String(text||''),baseMateria=wqPdfDisciplinaFallback(fileName),pos=Math.max(0,Number(index)||0);
+  const chunk=src.slice(Math.max(0,pos-120),Math.min(src.length,pos+900)).replace(/\s+/g,' ');
+  let banca='',ano='',materia=baseMateria,assunto=wqPdfAssuntoNear(src,pos);
+  const header=chunk.match(/\b(FCC|FGV|CEBRASPE|CESPE|VUNESP|AOCP|IBFC|IADES|IDECAN|CONSULPLAN|QUADRIX|ESAF)\s*-\s*([^|]{0,180}?)(20\d{2}|19\d{2})\b/i);
+  if(header){banca=header[1].toUpperCase();ano=header[3];}
+  const subj=chunk.match(/\b(Contabilidade Geral|Direito Tribut[aá]rio|Auditoria|Direito Constitucional|Direito Administrativo|Tecnologia da Informa[cç][aã]o|TI\s*-\s*[^|]+|Administra[cç][aã]o Financeira e Or[cç]ament[aá]ria|AFO)\s*-\s*([^|]{4,160})/i);
+  if(subj){
+    materia=subj[1].replace(/\s+/g,' ').trim();
+    assunto=subj[2].replace(/\s+/g,' ').trim();
+  }
+  return {materia,assunto,banca,ano};
 }
 function wqPdfDisciplinaFallback(fileName){
   const f=wqFilters();
@@ -2934,6 +2957,28 @@ function wqExtractTecCodes(text,fileName){
   }
   return [...found.values()];
 }
+function wqExtractTecPdfItems(payload,fileName){
+  const data=typeof payload==='string'?{text:payload,links:[]}:payload||{},text=String(data.text||''),links=safeList(data.links),now=Date.now();
+  const found=new Map();
+  const put=(qid,url,index)=>{
+    qid=String(qid||'').replace(/\D/g,'');
+    if(!qid)return;
+    const meta=wqPdfTecMetaNear(text,index||text.indexOf(qid),fileName),prev=found.get(qid)||{};
+    found.set(qid,{...prev,qid,url:url||prev.url||tecURL(qid),materia:meta.materia||prev.materia||wqPdfDisciplinaFallback(fileName),assunto:meta.assunto||prev.assunto||'',banca:meta.banca||prev.banca||'',ano:meta.ano||prev.ano||'',desc:'Questao nao resolvida importada do PDF TEC #'+qid,importedFrom:fileName,importedAt:now,src:'pdf-tec'});
+  };
+  links.forEach(url=>{
+    const m=String(url).match(/tecconcursos\.com\.br\/questoes\/(\d{5,8})/i);
+    if(m)put(m[1],String(url),text.indexOf(m[1]));
+  });
+  [
+    /(?:#|quest[aÃ£]o\s*(?:n[Âºo.]*)?|c[oÃ³]digo\s*)\s*(\d{5,8})/gi,
+    /(?:(?:https?:\/\/)?(?:www\.)?tecconcursos\.com\.br\/questoes\/)(\d{5,8})/gi
+  ].forEach(re=>{
+    let m;while((m=re.exec(text)))put(m[1],tecURL(m[1]),m.index);
+  });
+  if(!found.size)safeList(wqExtractTecCodes(text,fileName)).forEach(x=>put(x.qid,x.url,text.indexOf(String(x.qid||''))));
+  return [...found.values()];
+}
 async function wqImportPdf(event){
   const files=[...(event?.target?.files||[])];
   if(!files.length)return;
@@ -2942,10 +2987,12 @@ async function wqImportPdf(event){
   try{
     nfy('Lendo PDF(s) do TEC...', 'info');
     for(const file of files){
-      const text=await wqPdfText(file);read++;
-      const items=wqExtractTecCodes(text,file.name);
+      const payload=await wqPdfPayload(file);read++;
+      const items=wqExtractTecPdfItems(payload,file.name);
       items.forEach(item=>{
-        if(!existing.has(String(item.qid))){added++;existing.set(String(item.qid),item);}
+        const key=String(item.qid),prev=existing.get(key);
+        if(!prev){added++;existing.set(key,item);}
+        else existing.set(key,{...prev,...Object.fromEntries(Object.entries(item).filter(([_,v])=>v!==''&&v!=null)),importedAt:Math.max(Number(prev.importedAt)||0,Number(item.importedAt)||0)});
       });
     }
     meta.libraryPending=[...existing.values()].sort((a,b)=>(Number(b.importedAt)||0)-(Number(a.importedAt)||0));
