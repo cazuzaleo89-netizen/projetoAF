@@ -1907,6 +1907,20 @@ function nfy(msg,t='ok'){const n=document.getElementById('noti');n.className='no
 const PF_SYNC_ORIGIN='https://cazuzaleo89-netizen.github.io';
 let pfPublishTimer=null;
 function pfNorm(v){return String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase()}
+function pfLibraryLooksNoise(v){
+  const s=String(v||'').trim();
+  if(!s)return true;
+  if(/\/URI|https?:|tecconcursos\.com\.br|\/Type|\/Annot|obj\b|endobj|stream|xref|FlateDecode|font|CID|BaseFont/i.test(s))return true;
+  if(/[^\x09\x0A\x0D\x20-\x7EÀ-ÿ–—ºª§çÇ]{2,}/.test(s))return true;
+  const letters=(s.match(/[A-Za-zÀ-ÿ]/g)||[]).length;
+  return s.length>8&&letters/Math.max(1,s.length)<.35;
+}
+function pfLibraryCleanText(v,max=160){
+  let s=String(v||'').replace(/\s+/g,' ').trim();
+  s=s.replace(/^(?:\/URI|URI|https?):?.*$/i,'').replace(/[<>()[\]{}]+$/g,'').trim();
+  if(pfLibraryLooksNoise(s))return '';
+  return s.slice(0,max).trim();
+}
 function pfSyncMeta(){
   if(!ST.extSync) ST.extSync={events:{},questions:{},reviewQueue:[],similarEvents:[],similarItems:[],libraryPending:[],libraryStats:{},lastSync:0};
   if(!ST.extSync.events) ST.extSync.events={};
@@ -1985,16 +1999,20 @@ function pfLibraryIsUnresolved(q,trusted=false){
 function pfNormalizeLibraryQuestion(q,source,trusted=false){
   const qid=pfLibraryQid(q);
   if(!qid||!pfLibraryIsUnresolved(q,trusted))return null;
-  const materia=q.materia||q.disciplina||q.disc||q.subject||q.subjectName||q.area||'Sem disciplina';
-  const assunto=q.assunto||q.topic||q.tema||q.topicName||q.subtopic||q.subassunto||'';
+  const materia=pfLibraryCleanText(q.materia||q.disciplina||q.disc||q.subject||q.subjectName||q.area,120)||'Sem disciplina';
+  const assunto=pfLibraryCleanText(q.assunto||q.topic||q.tema||q.topicName||q.subtopic||q.subassunto,180);
+  const concurso=pfLibraryCleanText(q.concurso||q.cargo||q.orgao||q.exam||q.certame,160);
   return {
     qid,
     url:q.url||q.link||q.href||tecURL(qid),
-    materia:String(materia||'Sem disciplina').trim()||'Sem disciplina',
-    assunto:String(assunto||'').trim(),
-    banca:q.banca||q.board||q.instituicao||'',
+    materia,
+    assunto,
+    banca:pfLibraryCleanText(q.banca||q.board||q.instituicao,40),
     ano:q.ano||q.year||'',
-    desc:q.desc||q.title||q.enunciado||q.text||('Questao inedita #'+qid),
+    concurso,
+    cargo:pfLibraryCleanText(q.cargo,120),
+    orgao:pfLibraryCleanText(q.orgao,120),
+    desc:pfLibraryCleanText(q.desc||q.title||q.enunciado||q.text,220)||('Questao inedita #'+qid),
     importedFrom:q.importedFrom||source||'biblioteca da extensao',
     importedAt:Number(q.importedAt)||Number(q.ts)||Date.parse(q.lastSeen||q.updatedAt||q.createdAt||'')||0,
     src:q.src||source||'extension-library'
@@ -2660,17 +2678,19 @@ function wqDiscName(id,fallback='Sem disciplina'){
 }
 function wqFilters(){
   const st=wqState();
-  if(!st.filters)st.filters={disc:'all',discText:'Todas as disciplinas',period:'all'};
+  if(!st.filters)st.filters={disc:'all',discText:'Todas as disciplinas',period:'all',year:'all'};
+  if(!st.filters.year)st.filters.year='all';
   return st.filters;
 }
 function wqApplyFilters(){
-  const f=wqFilters(),discEl=document.getElementById('wq-disc-filter'),periodEl=document.getElementById('wq-period-filter');
+  const f=wqFilters(),discEl=document.getElementById('wq-disc-filter'),periodEl=document.getElementById('wq-period-filter'),yearEl=document.getElementById('wq-year-filter');
   f.disc=discEl?discEl.value:'all';
   f.discText=discEl&&discEl.selectedOptions[0]?discEl.selectedOptions[0].textContent:'Todas as disciplinas';
   f.period=periodEl?periodEl.value:'all';
+  f.year=yearEl?yearEl.value:'all';
   sSt();renderWeeklyQuestionGoals();
 }
-function wqClearFilters(){const f=wqFilters();f.disc='all';f.discText='Todas as disciplinas';f.period='all';sSt();renderWeeklyQuestionGoals();}
+function wqClearFilters(){const f=wqFilters();f.disc='all';f.discText='Todas as disciplinas';f.period='all';f.year='all';sSt();renderWeeklyQuestionGoals();}
 function wqTodayPlanDay(){const d=new Date().getDay();return d===0?6:d-1;}
 function wqSetActivePlanDay(day){
   const st=wqState();
@@ -2795,24 +2815,38 @@ function wqPeriodMatch(x,period){
   if(period==='base')return x.period==='base'||String(x.id||'').startsWith('seed:');
   return true;
 }
+function wqYearValue(x){
+  const raw=String(x?.ano||x?.year||x?.bancaAno||'').match(/\b(20\d{2}|19\d{2})\b/);
+  if(raw)return raw[1];
+  const text=String([x?.title,x?.reason,x?.concurso].filter(Boolean).join(' '));
+  const m=text.match(/\b(20\d{2}|19\d{2})\b/);
+  return m?m[1]:'';
+}
+function wqYearMatch(x,year){
+  if(!year||year==='all')return true;
+  if(year==='recent')return Number(wqYearValue(x))>=new Date().getFullYear()-2;
+  return wqYearValue(x)===String(year);
+}
 function wqFilteredItems(items=safeList(wqState().items)){
   const f=wqFilters();
-  const discEl=document.getElementById('wq-disc-filter'),periodEl=document.getElementById('wq-period-filter');
+  const discEl=document.getElementById('wq-disc-filter'),periodEl=document.getElementById('wq-period-filter'),yearEl=document.getElementById('wq-year-filter');
   if(discEl){
     f.disc=discEl.value||'all';
     f.discText=discEl.selectedOptions[0]?discEl.selectedOptions[0].textContent:'Todas as disciplinas';
   }
   if(periodEl)f.period=periodEl.value||'all';
+  if(yearEl)f.year=yearEl.value||'all';
   return safeList(items).filter(x=>{
-    return wqDiscMatch(x,f)&&wqPeriodMatch(x,f.period);
+    return wqDiscMatch(x,f)&&wqPeriodMatch(x,f.period)&&wqYearMatch(x,f.year);
   });
 }
 function wqFilterBar(allItems,shownItems){
-  const st=wqState(),f=wqFilters(),discMap=new Map();
+  const st=wqState(),f=wqFilters(),discMap=new Map(),yearSet=new Set();
   safeList(allItems).forEach(x=>{
     const label=x.materia||wqDiscName(x.discId,'Sem disciplina');
     const key=pfNorm(label);
     if(key&&!discMap.has(key))discMap.set(key,label||'Sem disciplina');
+    const y=wqYearValue(x);if(y)yearSet.add(y);
   });
   const activeDisc=pfNorm(f.disc||'all'),activeText=pfNorm(f.discText||'');
   const discOpts=['<option value="all" '+(activeDisc==='all'?'selected':'')+'>Todas as disciplinas</option>'].concat([...discMap.entries()].sort((a,b)=>a[1].localeCompare(b[1])).map(([k,v])=>'<option value="'+escapeHtml(k)+'" '+((activeDisc===k||activeText===k)?'selected':'')+'>'+escapeHtml(v)+'</option>')).join('');
@@ -2824,9 +2858,11 @@ function wqFilterBar(allItems,shownItems){
     ['overdue','Vencidas ou antigas'],
     ['base','Metas-base']
   ].map(([k,v])=>'<option value="'+k+'" '+(f.period===k?'selected':'')+'>'+v+'</option>').join('');
+  const yearOpts=['<option value="all" '+((f.year||'all')==='all'?'selected':'')+'>Todos os anos</option>','<option value="recent" '+(f.year==='recent'?'selected':'')+'>Mais recentes</option>'].concat([...yearSet].sort((a,b)=>Number(b)-Number(a)).map(y=>'<option value="'+escapeHtml(y)+'" '+(String(f.year)===String(y)?'selected':'')+'>'+escapeHtml(y)+'</option>')).join('');
   return '<div class="wq-toolbar">'+
     '<label style="display:grid;gap:5px"><span class="slbl">Disciplina</span><select id="wq-disc-filter" onchange="wqApplyFilters()" oninput="wqApplyFilters()">'+discOpts+'</select></label>'+
     '<label style="display:grid;gap:5px"><span class="slbl">Periodo</span><select id="wq-period-filter" onchange="wqApplyFilters()" oninput="wqApplyFilters()">'+periodOpts+'</select></label>'+
+    '<label style="display:grid;gap:5px"><span class="slbl">Ano</span><select id="wq-year-filter" onchange="wqApplyFilters()" oninput="wqApplyFilters()">'+yearOpts+'</select></label>'+
     '<label style="display:grid;gap:5px"><span class="slbl">Horas/dia</span><input id="wq-hours-day" type="number" min="0.25" step="0.25" value="'+escapeHtml(st.hoursPerDay)+'" onchange="wqSetPlanning()"></label>'+
     '<label style="display:grid;gap:5px"><span class="slbl">Min/questao</span><input id="wq-min-question" type="number" min="1" step="0.5" value="'+escapeHtml(st.minutesPerQuestion)+'" onchange="wqSetPlanning()"></label>'+
     '<label style="display:grid;gap:5px"><span class="slbl">Dias/semana</span><input id="wq-days-week" type="number" min="1" max="7" step="1" value="'+escapeHtml(st.daysPerWeek)+'" onchange="wqSetPlanning()"></label>'+
@@ -2918,7 +2954,9 @@ function wqBuildCandidates(){
     const qid=String(q.qid||'').replace(/\D/g,'');if(!qid)return;
     const imported=wqDateFromAny(q.importedAt),def=wqLibraryDeficiency(q,weak);
     const src=q.importedFrom||'biblioteca TEC',why=def.reasons.length?' - '+def.reasons.join(', '):'';
-    add({kind:'inedita',id:'q:'+qid,qid,url:q.url||tecURL(qid),discId:'',materia:q.materia||'Sem disciplina',assunto:q.assunto||'',date:imported,period:'unseen',title:'#'+qid+' - '+(q.assunto||'questao inedita'),reason:'Nao resolvida do banco PDF/TEC; '+def.label+why+(q.banca?' - '+q.banca:'')+(q.ano?' - '+q.ano:'')+' - '+src,priority:62+def.score+Math.max(0,18-Math.floor(i/10))});
+    const assunto=pfLibraryCleanText(q.assunto,180),concurso=pfLibraryCleanText(q.concurso||q.cargo||q.orgao,170);
+    const metaLine=[q.banca,q.ano,concurso].map(x=>pfLibraryCleanText(x,170)).filter(Boolean).join(' - ');
+    add({kind:'inedita',id:'q:'+qid,qid,url:q.url||tecURL(qid),discId:'',materia:q.materia||'Sem disciplina',assunto,date:imported,period:'unseen',title:'#'+qid+' - '+(assunto||concurso||'questao inedita'),reason:'Nao resolvida do banco PDF/TEC; '+def.label+why+(metaLine?' - '+metaLine:'')+' - '+src,priority:62+def.score+Math.max(0,18-Math.floor(i/10)),banca:q.banca||'',ano:q.ano||'',concurso});
   });
   const byTopic={};
   qs().forEach(q=>{
@@ -3009,10 +3047,10 @@ function wqFetchLibraryPending(){
   setTimeout(()=>{
     const count=safeList(pfSyncMeta().libraryPending).length;
     if(count){
-      const st=wqState();st.updatedAt=0;st.activePlanDay='all';st.activePlanDisc='all';st.filters={...(st.filters||{}),disc:'all',discText:'Todas as disciplinas',period:'unseen'};sSt();wqRefresh(true,false);renderWeeklyQuestionGoals();
+      const st=wqState();st.updatedAt=0;st.activePlanDay='all';st.activePlanDisc='all';st.filters={...(st.filters||{}),disc:'all',discText:'Todas as disciplinas',period:'unseen',year:'all'};sSt();wqRefresh(true,false);renderWeeklyQuestionGoals();
       nfy(count+' questao(oes) inedita(s) salvas. Filtro de ineditas aplicado.','ok');
     }else if(before){
-      const st=wqState();st.updatedAt=0;st.activePlanDay='all';st.activePlanDisc='all';st.filters={...(st.filters||{}),disc:'all',discText:'Todas as disciplinas',period:'unseen'};sSt();wqRefresh(true,false);renderWeeklyQuestionGoals();
+      const st=wqState();st.updatedAt=0;st.activePlanDay='all';st.activePlanDisc='all';st.filters={...(st.filters||{}),disc:'all',discText:'Todas as disciplinas',period:'unseen',year:'all'};sSt();wqRefresh(true,false);renderWeeklyQuestionGoals();
       nfy(before+' questao(oes) inedita(s) ja estavam salvas. Filtro aplicado.','ok');
     }else{
       nfy('Nao encontrei ineditas ainda. Verifique se a extensao esta conectada e com a biblioteca carregada.','err');
@@ -3069,9 +3107,6 @@ async function wqPdfPayload(file){
   if(/\.txt$/i.test(file.name)||file.type==='text/plain')return {text:await file.text(),links:[]};
   const buf=await file.arrayBuffer();
   const raw=wqPdfRawTextFromBuffer(buf),rawLinks=wqExtractTecLinksFromRaw(raw);
-  if(rawLinks.length){
-    return {text:raw,links:rawLinks,fallback:true,fastLinks:true,rawLinks:rawLinks.length};
-  }
   try{
     const pdfjs=await wqLoadPdfJs();
     if(pdfjs.GlobalWorkerOptions&&!pdfjs.GlobalWorkerOptions.workerSrc){
@@ -3090,7 +3125,7 @@ async function wqPdfPayload(file){
         });
       }catch{}
     }
-    return {text:parts.join('\n')||raw,links:[...new Set(links)],rawLinks:rawLinks.length};
+    return {text:parts.join('\n')||'',links:[...new Set(links)],rawLinks:rawLinks.length,fastLinks:rawLinks.length};
   }catch(err){
     console.warn('PDF.js falhou, usando leitura direta dos links do PDF',err);
     return {text:raw,links:rawLinks,fallback:true,error:String(err?.message||err||'PDF.js indisponivel')};
@@ -3124,6 +3159,28 @@ function wqPdfDisciplinaFallback(fileName){
   if(f.disc&&f.disc!=='all'&&f.discText&&f.discText!=='Todas as disciplinas')return f.discText.replace(/\s*\(\d+\)\s*$/,'');
   return String(fileName||'PDF TEC').replace(/\.[^.]+$/,'').replace(/[_-]+/g,' ').trim()||'PDF TEC';
 }
+function wqPdfMetaCleanNear(text,index,fileName){
+  const src=String(text||''),pos=Math.max(0,Number(index)||0),baseMateria=wqPdfDisciplinaFallback(fileName);
+  const chunk=src.slice(Math.max(0,pos-1400),Math.min(src.length,pos+1200)).replace(/\s+/g,' ');
+  let materia=baseMateria,assunto='',banca='',ano='',concurso='';
+  const header=chunk.match(/\b(FCC|FGV|CEBRASPE|CESPE|VUNESP|AOCP|IBFC|IADES|IDECAN|CONSULPLAN|QUADRIX|ESAF)\s*-\s*([^#\n\r]{0,220}?)(20\d{2}|19\d{2})\b/i);
+  if(header){
+    banca=header[1].toUpperCase();
+    ano=header[3];
+    concurso=pfLibraryCleanText(header[2].replace(/[\/\-\s]+$/,''),170);
+  }
+  const subj=chunk.match(/\b(Contabilidade Geral|Direito Tributario|Direito Tribut[aÃ¡]rio|Auditoria|Direito Constitucional|Direito Administrativo|Tecnologia da Informacao|Tecnologia da Informa[cÃ§][aÃ£]o|TI\s*-\s*[^|]+|Administracao Financeira e Orcamentaria|Administra[cÃ§][aÃ£]o Financeira e Or[cÃ§]ament[aÃ¡]ria|AFO)\s*-\s*([^#]{4,180})/i);
+  if(subj){
+    materia=pfLibraryCleanText(subj[1],120)||materia;
+    assunto=pfLibraryCleanText(subj[2],180);
+  }
+  if(!assunto){
+    const before=src.slice(Math.max(0,pos-900),pos+220);
+    const lines=before.split(/\n|\r/).map(x=>pfLibraryCleanText(x,160)).filter(Boolean);
+    assunto=lines.reverse().find(l=>l.length>=8&&l.length<=150&&!/\d{5,8}/.test(l)&&pfNorm(l)!==pfNorm(materia))||'';
+  }
+  return {materia,assunto,banca,ano,concurso};
+}
 function wqExtractTecCodes(text,fileName){
   const found=new Map(),materia=wqPdfDisciplinaFallback(fileName),now=Date.now();
   const patterns=[
@@ -3134,14 +3191,18 @@ function wqExtractTecCodes(text,fileName){
     let m;while((m=re.exec(text))){
       const qid=String(m[1]).replace(/\D/g,'');
       if(!qid||found.has(qid))continue;
-      found.set(qid,{qid,url:tecURL(qid),materia,assunto:wqPdfAssuntoNear(text,m.index),desc:'Questao importada do PDF TEC #'+qid,importedFrom:fileName,importedAt:now});
+      const meta=wqPdfMetaCleanNear(text,m.index,fileName);
+      found.set(qid,{qid,url:tecURL(qid),materia:meta.materia||materia,assunto:meta.assunto||'',banca:meta.banca||'',ano:meta.ano||'',concurso:meta.concurso||'',desc:'Questao importada do PDF TEC #'+qid,importedFrom:fileName,importedAt:now});
     }
   });
   if(!found.size){
     let m;const re=/#\s*(\d{5,8})/g;
     while((m=re.exec(text))){
       const qid=String(m[1]);
-      if(!found.has(qid))found.set(qid,{qid,url:tecURL(qid),materia,assunto:wqPdfAssuntoNear(text,m.index),desc:'Questao importada do PDF TEC #'+qid,importedFrom:fileName,importedAt:now});
+      if(!found.has(qid)){
+        const meta=wqPdfMetaCleanNear(text,m.index,fileName);
+        found.set(qid,{qid,url:tecURL(qid),materia:meta.materia||materia,assunto:meta.assunto||'',banca:meta.banca||'',ano:meta.ano||'',concurso:meta.concurso||'',desc:'Questao importada do PDF TEC #'+qid,importedFrom:fileName,importedAt:now});
+      }
     }
   }
   return [...found.values()];
@@ -3152,8 +3213,8 @@ function wqExtractTecPdfItems(payload,fileName){
   const put=(qid,url,index)=>{
     qid=String(qid||'').replace(/\D/g,'');
     if(!qid)return;
-    const meta=wqPdfTecMetaNear(text,index||text.indexOf(qid),fileName),prev=found.get(qid)||{};
-    found.set(qid,{...prev,qid,url:url||prev.url||tecURL(qid),materia:meta.materia||prev.materia||wqPdfDisciplinaFallback(fileName),assunto:meta.assunto||prev.assunto||'',banca:meta.banca||prev.banca||'',ano:meta.ano||prev.ano||'',desc:'Questao nao resolvida importada do PDF TEC #'+qid,importedFrom:fileName,importedAt:now,src:'pdf-tec'});
+    const meta=wqPdfMetaCleanNear(text,index||text.indexOf(qid),fileName),prev=found.get(qid)||{};
+    found.set(qid,{...prev,qid,url:url||prev.url||tecURL(qid),materia:meta.materia||prev.materia||wqPdfDisciplinaFallback(fileName),assunto:meta.assunto||prev.assunto||'',banca:meta.banca||prev.banca||'',ano:meta.ano||prev.ano||'',concurso:meta.concurso||prev.concurso||'',desc:'Questao nao resolvida importada do PDF TEC #'+qid,importedFrom:fileName,importedAt:now,src:'pdf-tec'});
   };
   links.forEach(url=>{
     const m=String(url).match(/tecconcursos\.com\.br\/questoes\/(\d{5,8})/i);
@@ -3191,7 +3252,7 @@ async function wqImportPdf(event){
     meta.libraryPending=[...existing.values()].sort((a,b)=>(Number(b.importedAt)||0)-(Number(a.importedAt)||0));
     meta.libraryStats={...(meta.libraryStats||{}),pending:meta.libraryPending.length,total:Math.max(Number(meta.libraryStats?.total)||0,meta.libraryPending.length),sitePdfImportedAt:Date.now(),sitePdfLastFound:found,sitePdfLastAdded:added,sitePdfLastUpdated:updated,sitePdfLastLinks:linkCount};
     meta.lastSync=Date.now();
-    const st=wqState();st.updatedAt=0;st.activePlanDay='all';st.activePlanDisc='all';st.filters={disc:'all',discText:'Todas as disciplinas',period:'all'};sSt();wqRefresh(true,false);renderWeeklyQuestionGoals();
+    const st=wqState();st.updatedAt=0;st.activePlanDay='all';st.activePlanDisc='all';st.filters={disc:'all',discText:'Todas as disciplinas',period:'all',year:'all'};sSt();wqRefresh(true,false);renderWeeklyQuestionGoals();
     if(found)nfy(found+' questao(oes) encontrada(s) no PDF: '+added+' nova(s), '+updated+' atualizada(s)'+(fastLinks?' por leitura rapida dos links':fallbacks?' por leitura direta dos links':'')+'. Filtros limpos para exibir nas metas.','ok');
     else nfy('PDF lido, mas nao encontrei links/codigos do TEC. Links detectados: '+linkCount,'err');
   }catch(err){
