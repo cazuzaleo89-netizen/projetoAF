@@ -2885,27 +2885,62 @@ function wqLoadPdfJs(){
     document.head.appendChild(s);
   }));
 }
+function wqPdfRawTextFromBuffer(buf){
+  try{return new TextDecoder('latin1').decode(new Uint8Array(buf));}
+  catch{
+    try{return new TextDecoder('utf-8',{fatal:false}).decode(new Uint8Array(buf));}
+    catch{
+      const u8=new Uint8Array(buf),parts=[];
+      for(let i=0;i<u8.length;i+=8192){
+        let s='';for(let j=i;j<Math.min(u8.length,i+8192);j++)s+=String.fromCharCode(u8[j]);
+        parts.push(s);
+      }
+      return parts.join('');
+    }
+  }
+}
+function wqExtractTecLinksFromRaw(raw){
+  const out=new Set(),txt=String(raw||'');
+  const patterns=[
+    /https?:\/\/(?:www\.)?tecconcursos\.com\.br\/questoes\/\d{5,8}/gi,
+    /(?:www\.)?tecconcursos\.com\.br\/questoes\/\d{5,8}/gi
+  ];
+  patterns.forEach(re=>{
+    let m;while((m=re.exec(txt))){
+      let url=String(m[0]).replace(/[\\)\]\s<>"']+$/g,'');
+      if(!/^https?:\/\//i.test(url))url='https://'+url.replace(/^www\./i,'www.');
+      out.add(url);
+    }
+  });
+  return [...out];
+}
 async function wqPdfPayload(file){
   if(/\.txt$/i.test(file.name)||file.type==='text/plain')return {text:await file.text(),links:[]};
-  const pdfjs=await wqLoadPdfJs();
-  if(pdfjs.GlobalWorkerOptions&&!pdfjs.GlobalWorkerOptions.workerSrc){
-    pdfjs.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-  }
   const buf=await file.arrayBuffer();
-  const pdf=await pdfjs.getDocument({data:buf}).promise;
-  const parts=[],links=[];
-  for(let p=1;p<=pdf.numPages;p++){
-    const page=await pdf.getPage(p),txt=await page.getTextContent();
-    parts.push(txt.items.map(i=>i.str||'').join(' '));
-    try{
-      const anns=await page.getAnnotations({intent:'display'});
-      safeList(anns).forEach(a=>{
-        const url=a?.url||a?.unsafeUrl||a?.URI||a?.uri;
-        if(url&&/tecconcursos\.com\.br/i.test(url))links.push(String(url));
-      });
-    }catch{}
+  const raw=wqPdfRawTextFromBuffer(buf),rawLinks=wqExtractTecLinksFromRaw(raw);
+  try{
+    const pdfjs=await wqLoadPdfJs();
+    if(pdfjs.GlobalWorkerOptions&&!pdfjs.GlobalWorkerOptions.workerSrc){
+      pdfjs.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+    const pdf=await pdfjs.getDocument({data:buf}).promise;
+    const parts=[],links=[...rawLinks];
+    for(let p=1;p<=pdf.numPages;p++){
+      const page=await pdf.getPage(p),txt=await page.getTextContent();
+      parts.push(txt.items.map(i=>i.str||'').join(' '));
+      try{
+        const anns=await page.getAnnotations({intent:'display'});
+        safeList(anns).forEach(a=>{
+          const url=a?.url||a?.unsafeUrl||a?.URI||a?.uri;
+          if(url&&/tecconcursos\.com\.br/i.test(url))links.push(String(url));
+        });
+      }catch{}
+    }
+    return {text:parts.join('\n')||raw,links:[...new Set(links)],rawLinks:rawLinks.length};
+  }catch(err){
+    console.warn('PDF.js falhou, usando leitura direta dos links do PDF',err);
+    return {text:raw,links:rawLinks,fallback:true,error:String(err?.message||err||'PDF.js indisponivel')};
   }
-  return {text:parts.join('\n'),links:[...new Set(links)]};
 }
 async function wqPdfText(file){
   return (await wqPdfPayload(file)).text;
@@ -2983,11 +3018,12 @@ async function wqImportPdf(event){
   const files=[...(event?.target?.files||[])];
   if(!files.length)return;
   const meta=pfSyncMeta(),existing=new Map(safeList(meta.libraryPending).map(q=>[String(q.qid),q]));
-  let added=0,read=0;
+  let added=0,read=0,fallbacks=0;
   try{
     nfy('Lendo PDF(s) do TEC...', 'info');
     for(const file of files){
       const payload=await wqPdfPayload(file);read++;
+      if(payload.fallback)fallbacks++;
       const items=wqExtractTecPdfItems(payload,file.name);
       items.forEach(item=>{
         const key=String(item.qid),prev=existing.get(key);
@@ -2999,7 +3035,7 @@ async function wqImportPdf(event){
     meta.libraryStats={...(meta.libraryStats||{}),pending:meta.libraryPending.length,total:Math.max(Number(meta.libraryStats?.total)||0,meta.libraryPending.length),sitePdfImportedAt:Date.now()};
     meta.lastSync=Date.now();
     const st=wqState();st.updatedAt=0;sSt();wqRefresh(true,false);renderWeeklyQuestionGoals();
-    nfy(added?added+' questao(oes) importada(s) do PDF':'PDF lido, mas nao encontrei codigos novos do TEC','ok');
+    nfy(added?added+' questao(oes) importada(s) do PDF'+(fallbacks?' por leitura direta dos links':''):'PDF lido, mas nao encontrei codigos novos do TEC','ok');
   }catch(err){
     console.error('PDF TEC import failed',err);
     nfy('Nao consegui ler o PDF. Se puder, tente exportar/colar como TXT ou use PDF com texto selecionavel.','err');
