@@ -2698,20 +2698,22 @@ function wqDiscName(id,fallback='Sem disciplina'){
 }
 function wqFilters(){
   const st=wqState();
-  if(!st.filters)st.filters={disc:'all',discText:'Todas as disciplinas',period:'all',year:'all'};
+  if(!st.filters)st.filters={disc:'all',discText:'Todas as disciplinas',subject:'all',period:'all',year:'all'};
+  if(!st.filters.subject)st.filters.subject='all';
   if(!st.filters.year)st.filters.year='all';
   return st.filters;
 }
-function wqApplyFilters(){
-  const f=wqFilters(),discEl=document.getElementById('wq-disc-filter'),periodEl=document.getElementById('wq-period-filter'),yearEl=document.getElementById('wq-year-filter');
+function wqApplyFilters(resetSubject=false){
+  const f=wqFilters(),discEl=document.getElementById('wq-disc-filter'),subjectEl=document.getElementById('wq-subject-filter'),periodEl=document.getElementById('wq-period-filter'),yearEl=document.getElementById('wq-year-filter');
   f.disc=discEl?discEl.value:'all';
   f.discText=discEl&&discEl.selectedOptions[0]?discEl.selectedOptions[0].textContent:'Todas as disciplinas';
+  f.subject=resetSubject?'all':subjectEl?subjectEl.value:'all';
   f.period=periodEl?periodEl.value:'all';
   f.year=yearEl?yearEl.value:'all';
   wqState().listPage=1;
   sSt();renderWeeklyQuestionGoals();
 }
-function wqClearFilters(){const f=wqFilters();f.disc='all';f.discText='Todas as disciplinas';f.period='all';f.year='all';wqState().listPage=1;sSt();renderWeeklyQuestionGoals();}
+function wqClearFilters(){const f=wqFilters();f.disc='all';f.discText='Todas as disciplinas';f.subject='all';f.period='all';f.year='all';wqState().listPage=1;sSt();renderWeeklyQuestionGoals();}
 function wqTodayPlanDay(){const d=new Date().getDay();return d===0?6:d-1;}
 function wqSetActivePlanDay(day){
   const st=wqState();
@@ -2811,6 +2813,14 @@ function wqDiscMatch(x,f){
   const keys=wqDiscKeys(x);
   return keys.some(k=>k===selected||(selectedText&&k===selectedText));
 }
+function wqSubjectKey(x){
+  return pfNorm(x?.assunto||x?.ass||x?.originAssunto||'');
+}
+function wqSubjectMatch(x,f){
+  const selected=pfNorm(f?.subject||'all');
+  if(!selected||selected==='all')return true;
+  return wqSubjectKey(x)===selected;
+}
 function wqSearchText(x){
   return pfNorm([x?.materia,x?.discId?wqDiscName(x.discId,''):null,x?.assunto,x?.title,x?.reason].filter(Boolean).join(' '));
 }
@@ -2852,27 +2862,39 @@ function wqYearMatch(x,year){
 }
 function wqFilteredItems(items=safeList(wqState().items)){
   const f=wqFilters();
-  const discEl=document.getElementById('wq-disc-filter'),periodEl=document.getElementById('wq-period-filter'),yearEl=document.getElementById('wq-year-filter');
+  const discEl=document.getElementById('wq-disc-filter'),subjectEl=document.getElementById('wq-subject-filter'),periodEl=document.getElementById('wq-period-filter'),yearEl=document.getElementById('wq-year-filter');
   if(discEl){
     f.disc=discEl.value||'all';
     f.discText=discEl.selectedOptions[0]?discEl.selectedOptions[0].textContent:'Todas as disciplinas';
   }
+  if(subjectEl)f.subject=subjectEl.value||'all';
   if(periodEl)f.period=periodEl.value||'all';
   if(yearEl)f.year=yearEl.value||'all';
+  if(pfNorm(f.subject||'all')!=='all'&&!safeList(items).some(x=>wqDiscMatch(x,f)&&wqSubjectKey(x)===pfNorm(f.subject))){
+    f.subject='all';
+  }
   return safeList(items).filter(x=>{
-    return wqDiscMatch(x,f)&&wqPeriodMatch(x,f.period)&&wqYearMatch(x,f.year);
+    return wqDiscMatch(x,f)&&wqSubjectMatch(x,f)&&wqPeriodMatch(x,f.period)&&wqYearMatch(x,f.year);
   });
 }
 function wqFilterBar(allItems,shownItems){
-  const st=wqState(),f=wqFilters(),discMap=new Map(),yearSet=new Set();
+  const st=wqState(),f=wqFilters(),discMap=new Map(),subjectMap=new Map(),yearSet=new Set();
   safeList(allItems).forEach(x=>{
     const label=x.materia||wqDiscName(x.discId,'Sem disciplina');
     const key=pfNorm(label);
     if(key&&!discMap.has(key))discMap.set(key,label||'Sem disciplina');
     const y=wqYearValue(x);if(y)yearSet.add(y);
   });
+  safeList(allItems).filter(x=>wqDiscMatch(x,f)).forEach(x=>{
+    const label=pfLibraryCleanText(x.assunto||x.ass||x.originAssunto||'',160);
+    const key=pfNorm(label);
+    if(key&&key!=='sem assunto'&&!subjectMap.has(key))subjectMap.set(key,label);
+  });
   const activeDisc=pfNorm(f.disc||'all'),activeText=pfNorm(f.discText||'');
+  let activeSubject=pfNorm(f.subject||'all');
+  if(activeSubject!=='all'&&!subjectMap.has(activeSubject)){activeSubject='all';f.subject='all';}
   const discOpts=['<option value="all" '+(activeDisc==='all'?'selected':'')+'>Todas as disciplinas</option>'].concat([...discMap.entries()].sort((a,b)=>a[1].localeCompare(b[1])).map(([k,v])=>'<option value="'+escapeHtml(k)+'" '+((activeDisc===k||activeText===k)?'selected':'')+'>'+escapeHtml(v)+'</option>')).join('');
+  const subjectOpts=['<option value="all" '+(activeSubject==='all'?'selected':'')+'>Todos os assuntos</option>'].concat([...subjectMap.entries()].sort((a,b)=>a[1].localeCompare(b[1])).map(([k,v])=>'<option value="'+escapeHtml(k)+'" '+(activeSubject===k?'selected':'')+'>'+escapeHtml(v)+'</option>')).join('');
   const periodOpts=[
     ['all','Todos os periodos'],
     ['week','Desta semana'],
@@ -2883,7 +2905,8 @@ function wqFilterBar(allItems,shownItems){
   ].map(([k,v])=>'<option value="'+k+'" '+(f.period===k?'selected':'')+'>'+v+'</option>').join('');
   const yearOpts=['<option value="all" '+((f.year||'all')==='all'?'selected':'')+'>Todos os anos</option>','<option value="recent" '+(f.year==='recent'?'selected':'')+'>Mais recentes</option>'].concat([...yearSet].sort((a,b)=>Number(b)-Number(a)).map(y=>'<option value="'+escapeHtml(y)+'" '+(String(f.year)===String(y)?'selected':'')+'>'+escapeHtml(y)+'</option>')).join('');
   return '<div class="wq-toolbar">'+
-    '<label style="display:grid;gap:5px"><span class="slbl">Disciplina</span><select id="wq-disc-filter" onchange="wqApplyFilters()" oninput="wqApplyFilters()">'+discOpts+'</select></label>'+
+    '<label style="display:grid;gap:5px"><span class="slbl">Disciplina</span><select id="wq-disc-filter" onchange="wqApplyFilters(true)" oninput="wqApplyFilters(true)">'+discOpts+'</select></label>'+
+    '<label style="display:grid;gap:5px"><span class="slbl">Assunto</span><select id="wq-subject-filter" onchange="wqApplyFilters()" oninput="wqApplyFilters()">'+subjectOpts+'</select></label>'+
     '<label style="display:grid;gap:5px"><span class="slbl">Periodo</span><select id="wq-period-filter" onchange="wqApplyFilters()" oninput="wqApplyFilters()">'+periodOpts+'</select></label>'+
     '<label style="display:grid;gap:5px"><span class="slbl">Ano</span><select id="wq-year-filter" onchange="wqApplyFilters()" oninput="wqApplyFilters()">'+yearOpts+'</select></label>'+
     '<label style="display:grid;gap:5px"><span class="slbl">Horas/dia</span><input id="wq-hours-day" type="number" min="0.25" step="0.25" value="'+escapeHtml(st.hoursPerDay)+'" onchange="wqSetPlanning()"></label>'+
@@ -3070,10 +3093,10 @@ function wqFetchLibraryPending(){
   setTimeout(()=>{
     const count=safeList(pfSyncMeta().libraryPending).length;
     if(count){
-      const st=wqState();st.updatedAt=0;st.activePlanDay='all';st.activePlanDisc='all';st.filters={...(st.filters||{}),disc:'all',discText:'Todas as disciplinas',period:'unseen',year:'all'};sSt();wqRefresh(true,false);renderWeeklyQuestionGoals();
+      const st=wqState();st.updatedAt=0;st.activePlanDay='all';st.activePlanDisc='all';st.filters={...(st.filters||{}),disc:'all',discText:'Todas as disciplinas',subject:'all',period:'unseen',year:'all'};sSt();wqRefresh(true,false);renderWeeklyQuestionGoals();
       nfy(count+' questao(oes) inedita(s) salvas. Filtro de ineditas aplicado.','ok');
     }else if(before){
-      const st=wqState();st.updatedAt=0;st.activePlanDay='all';st.activePlanDisc='all';st.filters={...(st.filters||{}),disc:'all',discText:'Todas as disciplinas',period:'unseen',year:'all'};sSt();wqRefresh(true,false);renderWeeklyQuestionGoals();
+      const st=wqState();st.updatedAt=0;st.activePlanDay='all';st.activePlanDisc='all';st.filters={...(st.filters||{}),disc:'all',discText:'Todas as disciplinas',subject:'all',period:'unseen',year:'all'};sSt();wqRefresh(true,false);renderWeeklyQuestionGoals();
       nfy(before+' questao(oes) inedita(s) ja estavam salvas. Filtro aplicado.','ok');
     }else{
       nfy('Nao encontrei ineditas ainda. Verifique se a extensao esta conectada e com a biblioteca carregada.','err');
@@ -3189,6 +3212,7 @@ function wqPdfMetaCleanNear(text,index,fileName){
   const src=String(text||''),pos=Math.max(0,Number(index)||0),baseMateria=wqPdfDisciplinaFallback(fileName);
   const rawChunk=src.slice(Math.max(0,pos-1400),Math.min(src.length,pos+1200));
   const rawLines=rawChunk.split(/\n|\r/).map(x=>pfLibraryCleanText(x,220)).filter(Boolean);
+  const forwardLines=src.slice(pos,Math.min(src.length,pos+1200)).split(/\n|\r/).map(x=>pfLibraryCleanText(x,220)).filter(Boolean);
   const chunk=rawChunk.replace(/\s+/g,' ');
   let materia=baseMateria,assunto='',banca='',ano='',concurso='';
   const headerLine=rawLines.find(l=>/\b(FCC|FGV|CEBRASPE|CESPE|VUNESP|AOCP|IBFC|IADES|IDECAN|CONSULPLAN|QUADRIX|ESAF)\s*-/i.test(l)&&/\b(20\d{2}|19\d{2})\b/.test(l))||'';
@@ -3211,7 +3235,12 @@ function wqPdfMetaCleanNear(text,index,fileName){
     materia=pfLibraryCleanText(subj[1],120)||materia;
     assunto=pfLibraryCleanText(subj[2],180);
   }
-  const subjectLine=rawLines.find(l=>/\s+-\s+/.test(l)&&/(Direito|Contabilidade|Auditoria|Tecnologia|Inform|Administra|AFO|TI\b|Portug|Racioc|Estat)/i.test(l)&&!/^(FCC|FGV|CEBRASPE|CESPE|VUNESP|AOCP|IBFC)\s*-/i.test(l))||'';
+  const subjectFromForward=(()=>{
+    const hi=forwardLines.findIndex(l=>/\b(FCC|FGV|CEBRASPE|CESPE|VUNESP|AOCP|IBFC|IADES|IDECAN|CONSULPLAN|QUADRIX|ESAF)\s*-/i.test(l)&&/\b(20\d{2}|19\d{2})\b/.test(l));
+    if(hi<0)return '';
+    return forwardLines.slice(hi+1,hi+5).find(l=>/\s+-\s+/.test(l)&&/(Direito|Contabilidade|Auditoria|Tecnologia|Inform|Administra|AFO|TI\b|Portug|Racioc|Estat)/i.test(l)&&!/^(FCC|FGV|CEBRASPE|CESPE|VUNESP|AOCP|IBFC)\s*-/i.test(l)&&!/^(\d+\)|[A-E]\)|Sobre\b|Acerca\b|Considere\b|No que\b|O regime\b)/i.test(l))||'';
+  })();
+  const subjectLine=subjectFromForward||rawLines.find(l=>/\s+-\s+/.test(l)&&/(Direito|Contabilidade|Auditoria|Tecnologia|Inform|Administra|AFO|TI\b|Portug|Racioc|Estat)/i.test(l)&&!/^(FCC|FGV|CEBRASPE|CESPE|VUNESP|AOCP|IBFC)\s*-/i.test(l))||'';
   if(subjectLine){
     const sm=subjectLine.match(/^(.+?)\s+-\s+(.+)$/);
     if(sm){
@@ -3222,7 +3251,7 @@ function wqPdfMetaCleanNear(text,index,fileName){
   if(!assunto){
     const before=src.slice(Math.max(0,pos-900),pos+220);
     const lines=before.split(/\n|\r/).map(x=>pfLibraryCleanText(x,160)).filter(Boolean);
-    assunto=lines.reverse().find(l=>l.length>=8&&l.length<=150&&!/\d{5,8}/.test(l)&&pfNorm(l)!==pfNorm(materia))||'';
+    assunto=lines.reverse().find(l=>/\s+-\s+/.test(l)&&l.length>=8&&l.length<=150&&!/\d{5,8}/.test(l)&&pfNorm(l)!==pfNorm(materia))||'';
   }
   return {materia,assunto,banca,ano,concurso};
 }
@@ -3299,7 +3328,7 @@ async function wqImportPdf(event){
     meta.libraryPending=[...existing.values()].sort((a,b)=>(Number(b.importedAt)||0)-(Number(a.importedAt)||0));
     meta.libraryStats={...(meta.libraryStats||{}),pending:meta.libraryPending.length,total:Math.max(Number(meta.libraryStats?.total)||0,meta.libraryPending.length),sitePdfImportedAt:Date.now(),sitePdfLastFound:found,sitePdfLastAdded:added,sitePdfLastUpdated:updated,sitePdfLastLinks:linkCount};
     meta.lastSync=Date.now();
-    const st=wqState();st.updatedAt=0;st.activePlanDay='all';st.activePlanDisc='all';st.filters={disc:'all',discText:'Todas as disciplinas',period:'all',year:'all'};sSt();wqRefresh(true,false);renderWeeklyQuestionGoals();
+    const st=wqState();st.updatedAt=0;st.activePlanDay='all';st.activePlanDisc='all';st.filters={disc:'all',discText:'Todas as disciplinas',subject:'all',period:'all',year:'all'};sSt();wqRefresh(true,false);renderWeeklyQuestionGoals();
     if(found)nfy(found+' questao(oes) encontrada(s) no PDF: '+added+' nova(s), '+updated+' atualizada(s)'+(fastLinks?' por leitura rapida dos links':fallbacks?' por leitura direta dos links':'')+'. Filtros limpos para exibir nas metas.','ok');
     else nfy('PDF lido, mas nao encontrei links/codigos do TEC. Links detectados: '+linkCount,'err');
   }catch(err){
