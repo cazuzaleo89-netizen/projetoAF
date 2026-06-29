@@ -1863,7 +1863,7 @@ function compactStateForStorage(state){
     if(Array.isArray(copy.extSync.reviewQueue))copy.extSync.reviewQueue=copy.extSync.reviewQueue.slice(0,500);
     if(Array.isArray(copy.extSync.similarEvents))copy.extSync.similarEvents=copy.extSync.similarEvents.slice(0,40);
     if(Array.isArray(copy.extSync.similarItems))copy.extSync.similarItems=copy.extSync.similarItems.slice(0,300);
-    if(Array.isArray(copy.extSync.libraryPending))copy.extSync.libraryPending=copy.extSync.libraryPending.slice(0,400);
+    if(Array.isArray(copy.extSync.libraryPending))copy.extSync.libraryPending=copy.extSync.libraryPending.slice(0,5000);
   }
   return copy;
 }
@@ -1958,6 +1958,74 @@ function pfMergeSimilarItems(items){
     });
   });
   meta.similarItems=[...map.values()].sort((a,b)=>(b.similarScheduledAt||0)-(a.similarScheduledAt||0)).slice(0,200);
+}
+function pfLibraryQid(q){
+  return String(q?.qid||q?.code||q?.codigo||q?.questionId||q?.id||'').replace(/\D/g,'');
+}
+function pfLibraryBool(v){
+  if(v===true||v===1)return true;
+  if(v===false||v===0)return false;
+  const s=pfNorm(v);
+  if(['true','sim','yes','feito','resolvida','respondida','done','resolved','answered'].includes(s))return true;
+  if(['false','nao','não','no','pendente','inedita','inédita','unresolved','unanswered','pending','unseen'].includes(s))return false;
+  return null;
+}
+function pfLibraryIsUnresolved(q,trusted=false){
+  if(!q||typeof q!=='object')return false;
+  const negative=[
+    q.resolved,q.done,q.answered,q.respondida,q.resolvida,q.feita,q.finalizada,
+    q.completed,q.solved,q.responded
+  ].map(pfLibraryBool);
+  if(negative.some(v=>v===false))return true;
+  if(negative.some(v=>v===true))return false;
+  const status=pfNorm([q.status,q.situacao,q.state,q.kind,q.period,q.tipo,q.bucket,q.flag].filter(Boolean).join(' '));
+  if(/pendente|inedit|nao resolv|nao respond|unresolved|unanswered|pending|unseen|not answered|not solved/.test(status))return true;
+  return trusted;
+}
+function pfNormalizeLibraryQuestion(q,source,trusted=false){
+  const qid=pfLibraryQid(q);
+  if(!qid||!pfLibraryIsUnresolved(q,trusted))return null;
+  const materia=q.materia||q.disciplina||q.disc||q.subject||q.subjectName||q.area||'Sem disciplina';
+  const assunto=q.assunto||q.topic||q.tema||q.topicName||q.subtopic||q.subassunto||'';
+  return {
+    qid,
+    url:q.url||q.link||q.href||tecURL(qid),
+    materia:String(materia||'Sem disciplina').trim()||'Sem disciplina',
+    assunto:String(assunto||'').trim(),
+    banca:q.banca||q.board||q.instituicao||'',
+    ano:q.ano||q.year||'',
+    desc:q.desc||q.title||q.enunciado||q.text||('Questao inedita #'+qid),
+    importedFrom:q.importedFrom||source||'biblioteca da extensao',
+    importedAt:Number(q.importedAt)||Number(q.ts)||Date.parse(q.lastSeen||q.updatedAt||q.createdAt||'')||0,
+    src:q.src||source||'extension-library'
+  };
+}
+function pfCollectLibraryPending(snapshot){
+  const out=[];
+  const addMany=(items,source,trusted=false)=>{
+    safeList(items).forEach(q=>{
+      const clean=pfNormalizeLibraryQuestion(q,source,trusted);
+      if(clean)out.push(clean);
+    });
+  };
+  const lib=snapshot?.libraryPending||{};
+  addMany(Array.isArray(lib)?lib:lib.items,'biblioteca da extensao',true);
+  addMany(lib.pending||lib.pendingItems||lib.unresolved||lib.unresolvedItems||lib.naoResolvidas||lib.notAnswered||lib.unanswered,'biblioteca da extensao',true);
+  addMany(snapshot?.libraryUnresolved,'biblioteca da extensao',true);
+  addMany(snapshot?.unresolvedQuestions,'biblioteca da extensao',true);
+  addMany(snapshot?.pendingQuestions,'biblioteca da extensao',true);
+  addMany(snapshot?.naoResolvidas,'biblioteca da extensao',true);
+  addMany(snapshot?.notAnswered,'biblioteca da extensao',true);
+  addMany(snapshot?.unanswered,'biblioteca da extensao',true);
+  addMany(snapshot?.library?.pending||snapshot?.library?.unresolved||snapshot?.library?.naoResolvidas,'biblioteca da extensao',true);
+  addMany(snapshot?.library?.items,'biblioteca geral da extensao',false);
+  addMany(snapshot?.questionBank,'banco da extensao',false);
+  const map=new Map();
+  out.forEach(q=>{
+    const prev=map.get(q.qid)||{};
+    map.set(q.qid,{...prev,...q,importedAt:Math.max(Number(prev.importedAt)||0,Number(q.importedAt)||0)});
+  });
+  return [...map.values()].sort((a,b)=>(Number(b.importedAt)||0)-(Number(a.importedAt)||0));
 }
 function pfApplySimilarReinforcement(payload){
   if(!payload)return;
@@ -2061,20 +2129,28 @@ function pfApplySnapshot(snapshot){
   pfMergeSimilarItems(relatedItems);
   if(prevSimilar!==JSON.stringify(meta.similarItems||[]))changed=true;
   const lib= snapshot.libraryPending || {};
-  const pendingLibrary=safeList(lib.items).map(q=>({
-    qid:String(q.qid||'').replace(/\D/g,''),
-    url:q.url||tecURL(q.qid),
-    materia:q.materia||'Sem disciplina',
-    assunto:q.assunto||'',
-    banca:q.banca||'',
-    ano:q.ano||'',
-    desc:q.desc||('Questao inedita #'+(q.qid||'')),
-    importedFrom:q.importedFrom||'',
-    importedAt:Number(q.importedAt)||0,
-  })).filter(q=>q.qid);
+  const incomingLibrary=pfCollectLibraryPending(snapshot);
+  const libraryMap=new Map(safeList(meta.libraryPending).map(q=>[String(q.qid||'').replace(/\D/g,''),q]).filter(([k])=>k));
+  incomingLibrary.forEach(q=>{
+    const prev=libraryMap.get(q.qid)||{};
+    libraryMap.set(q.qid,{
+      ...prev,
+      ...q,
+      importedAt:Math.max(Number(prev.importedAt)||0,Number(q.importedAt)||0)||Date.now(),
+      importedFrom:q.importedFrom||prev.importedFrom||'biblioteca da extensao'
+    });
+  });
+  const pendingLibrary=[...libraryMap.values()].filter(q=>q.qid).sort((a,b)=>(Number(b.importedAt)||0)-(Number(a.importedAt)||0));
   const prevLibrary=JSON.stringify(meta.libraryPending||[]);
   meta.libraryPending=pendingLibrary;
-  meta.libraryStats={total:Number(lib.total)||0,pending:Number(lib.pending)||pendingLibrary.length,resolved:Number(lib.resolved)||0};
+  meta.libraryStats={
+    ...(meta.libraryStats||{}),
+    total:Math.max(Number(lib.total)||0,Number(meta.libraryStats?.total)||0,pendingLibrary.length),
+    pending:Math.max(Number(lib.pending)||0,pendingLibrary.length),
+    resolved:Number(lib.resolved)||Number(meta.libraryStats?.resolved)||0,
+    lastIncoming:incomingLibrary.length,
+    mergedAt:Date.now()
+  };
   if(prevLibrary!==JSON.stringify(meta.libraryPending||[])){
     changed=true;
     if(ST.weeklyQuestionGoals)ST.weeklyQuestionGoals.updatedAt=0;
@@ -2872,20 +2948,16 @@ function wqRefresh(silent=false,reset=false){
   try{
     const st=wqState(reset),oldDone=st.done||{},candidates=wqBuildCandidates();
     const existing=new Map(safeList(st.items).map(x=>[x.id,x]));
-    const limit=Math.max(st.target||24,24);
-    const selected=candidates.slice(0,limit);
-    const selectedIds=new Set(selected.map(x=>x.id));
-    const unseen=candidates.filter(x=>x.kind==='inedita');
-    const minUnseen=Math.min(unseen.length,Math.max(4,Math.round(limit*.2)));
-    unseen.slice(0,minUnseen).forEach(item=>{
-      if(selectedIds.has(item.id))return;
-      let idx=selected.map((x,i)=>({x,i})).reverse().find(p=>!['erro','revisao','inedita'].includes(p.x.kind))?.i;
-      if(idx==null)idx=selected.length-1;
-      if(idx>=0){selectedIds.delete(selected[idx].id);selected[idx]=item;selectedIds.add(item.id);}
-    });
+    const limit=Math.max(st.target||24,24),poolLimit=5000,selectedMap=new Map();
+    const addSelected=item=>{if(item&&item.id&&!selectedMap.has(item.id))selectedMap.set(item.id,item);};
+    candidates.slice(0,limit).forEach(addSelected);
+    candidates.filter(x=>x.kind==='inedita').slice(0,poolLimit).forEach(addSelected);
+    candidates.filter(x=>['erro','revisao','similar'].includes(x.kind)).slice(0,1200).forEach(addSelected);
+    const selected=[...selectedMap.values()];
     const merged=[];
     selected.sort((a,b)=>(b.priority||0)-(a.priority||0)).forEach(c=>merged.push({...existing.get(c.id),...c,done:oldDone[c.id]===true}));
     st.items=merged;
+    st.poolStats={totalCandidates:candidates.length,shownPool:merged.length,unseen:merged.filter(x=>x.kind==='inedita').length,updatedAt:Date.now()};
     st.updatedAt=Date.now();sSt();renderWeeklyQuestionGoals();
     if(!silent)nfy('Metas semanais de questoes atualizadas','ok');
   }catch(err){
@@ -2937,15 +3009,15 @@ function wqFetchLibraryPending(){
   setTimeout(()=>{
     const count=safeList(pfSyncMeta().libraryPending).length;
     if(count){
-      const st=wqState();st.updatedAt=0;sSt();wqRefresh(true,false);renderWeeklyQuestionGoals();
-      nfy(count+' questao(oes) inedita(s) disponiveis nas metas','ok');
+      const st=wqState();st.updatedAt=0;st.activePlanDay='all';st.activePlanDisc='all';st.filters={...(st.filters||{}),disc:'all',discText:'Todas as disciplinas',period:'unseen'};sSt();wqRefresh(true,false);renderWeeklyQuestionGoals();
+      nfy(count+' questao(oes) inedita(s) salvas. Filtro de ineditas aplicado.','ok');
     }else if(before){
-      const st=wqState();st.updatedAt=0;sSt();wqRefresh(true,false);renderWeeklyQuestionGoals();
-      nfy(before+' questao(oes) inedita(s) ja estavam salvas','ok');
+      const st=wqState();st.updatedAt=0;st.activePlanDay='all';st.activePlanDisc='all';st.filters={...(st.filters||{}),disc:'all',discText:'Todas as disciplinas',period:'unseen'};sSt();wqRefresh(true,false);renderWeeklyQuestionGoals();
+      nfy(before+' questao(oes) inedita(s) ja estavam salvas. Filtro aplicado.','ok');
     }else{
       nfy('Nao encontrei ineditas ainda. Verifique se a extensao esta conectada e com a biblioteca carregada.','err');
     }
-  },2600);
+  },3200);
 }
 function wqLoadPdfJs(){
   if(window.pdfjsLib)return Promise.resolve(window.pdfjsLib);
