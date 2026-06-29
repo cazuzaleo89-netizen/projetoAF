@@ -3018,24 +3018,27 @@ async function wqImportPdf(event){
   const files=[...(event?.target?.files||[])];
   if(!files.length)return;
   const meta=pfSyncMeta(),existing=new Map(safeList(meta.libraryPending).map(q=>[String(q.qid),q]));
-  let added=0,read=0,fallbacks=0;
+  let added=0,updated=0,found=0,linkCount=0,read=0,fallbacks=0;
   try{
     nfy('Lendo PDF(s) do TEC...', 'info');
     for(const file of files){
       const payload=await wqPdfPayload(file);read++;
       if(payload.fallback)fallbacks++;
+      linkCount+=safeList(payload.links).length;
       const items=wqExtractTecPdfItems(payload,file.name);
+      found+=items.length;
       items.forEach(item=>{
         const key=String(item.qid),prev=existing.get(key);
         if(!prev){added++;existing.set(key,item);}
-        else existing.set(key,{...prev,...Object.fromEntries(Object.entries(item).filter(([_,v])=>v!==''&&v!=null)),importedAt:Math.max(Number(prev.importedAt)||0,Number(item.importedAt)||0)});
+        else {updated++;existing.set(key,{...prev,...Object.fromEntries(Object.entries(item).filter(([_,v])=>v!==''&&v!=null)),importedAt:Math.max(Number(prev.importedAt)||0,Number(item.importedAt)||0)});}
       });
     }
     meta.libraryPending=[...existing.values()].sort((a,b)=>(Number(b.importedAt)||0)-(Number(a.importedAt)||0));
-    meta.libraryStats={...(meta.libraryStats||{}),pending:meta.libraryPending.length,total:Math.max(Number(meta.libraryStats?.total)||0,meta.libraryPending.length),sitePdfImportedAt:Date.now()};
+    meta.libraryStats={...(meta.libraryStats||{}),pending:meta.libraryPending.length,total:Math.max(Number(meta.libraryStats?.total)||0,meta.libraryPending.length),sitePdfImportedAt:Date.now(),sitePdfLastFound:found,sitePdfLastAdded:added,sitePdfLastUpdated:updated,sitePdfLastLinks:linkCount};
     meta.lastSync=Date.now();
-    const st=wqState();st.updatedAt=0;sSt();wqRefresh(true,false);renderWeeklyQuestionGoals();
-    nfy(added?added+' questao(oes) importada(s) do PDF'+(fallbacks?' por leitura direta dos links':''):'PDF lido, mas nao encontrei codigos novos do TEC','ok');
+    const st=wqState();st.updatedAt=0;st.activePlanDay='all';st.activePlanDisc='all';st.filters={disc:'all',discText:'Todas as disciplinas',period:'all'};sSt();wqRefresh(true,false);renderWeeklyQuestionGoals();
+    if(found)nfy(found+' questao(oes) encontrada(s) no PDF: '+added+' nova(s), '+updated+' atualizada(s)'+(fallbacks?' por leitura direta dos links':'')+'. Filtros limpos para exibir nas metas.','ok');
+    else nfy('PDF lido, mas nao encontrei links/codigos do TEC. Links detectados: '+linkCount,'err');
   }catch(err){
     console.error('PDF TEC import failed',err);
     nfy('Nao consegui ler o PDF. Se puder, tente exportar/colar como TXT ou use PDF com texto selecionavel.','err');
