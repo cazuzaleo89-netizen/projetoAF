@@ -334,7 +334,7 @@ input,select,textarea{font-family:inherit;outline:none}
 .wq-plan{background:linear-gradient(145deg,rgba(14,165,233,.08),var(--s2));border:1px solid rgba(96,165,250,.22);border-radius:var(--r2);padding:14px;margin:0 0 12px}
 .wq-plan-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px}.wq-plan-head h4{font-family:var(--fh);font-size:15px;margin:0;color:var(--t1)}.wq-plan-head p{font-size:11px;color:var(--t3);margin:4px 0 0;line-height:1.35}
 .wq-plan-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}.wq-plan-kpi{background:rgba(15,23,42,.48);border:1px solid var(--border);border-radius:12px;padding:9px}.wq-plan-kpi strong{display:block;font-family:var(--fh);font-size:18px;color:var(--t1)}.wq-plan-kpi span{display:block;margin-top:4px;font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);font-weight:800}
-.wq-day-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}.wq-day{background:var(--s3);border:1px solid var(--border);border-radius:12px;padding:9px;min-height:116px}.wq-day.off{opacity:.48}.wq-day-name{font-size:10px;font-weight:900;color:#67e8f9;text-transform:uppercase;letter-spacing:.08em}.wq-day-main{font-family:var(--fh);font-size:18px;color:var(--t1);margin-top:5px}.wq-day-sub{font-size:10px;color:var(--t3);line-height:1.35;margin-top:4px}.wq-day-top{font-size:10px;color:var(--t2);line-height:1.35;margin-top:7px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.wq-day-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}.wq-day{background:var(--s3);border:1px solid var(--border);border-radius:12px;padding:9px;min-height:116px;cursor:pointer;transition:.16s ease}.wq-day:hover{border-color:rgba(34,211,238,.72);transform:translateY(-1px)}.wq-day.active{border-color:#22d3ee;box-shadow:0 0 0 1px rgba(34,211,238,.28),0 0 24px rgba(34,211,238,.14)}.wq-day.off{opacity:.48}.wq-day-name{font-size:10px;font-weight:900;color:#67e8f9;text-transform:uppercase;letter-spacing:.08em}.wq-day-main{font-family:var(--fh);font-size:18px;color:var(--t1);margin-top:5px}.wq-day-sub{font-size:10px;color:var(--t3);line-height:1.35;margin-top:4px}.wq-day-top{font-size:10px;color:var(--t2);line-height:1.35;margin-top:7px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .wq-plan-select{background:rgba(15,23,42,.72);border:1px solid var(--border);border-radius:9px;color:var(--t1);font-size:11px;font-weight:700;padding:6px 8px;max-width:112px}
 @media(max-width:1050px){.wq-cockpit{grid-template-columns:1fr}.wq-toolbar{grid-template-columns:1fr 1fr 1fr}.wq-filter-note{grid-column:1/-1}}
 @media(max-width:1050px){.wq-plan-summary{grid-template-columns:repeat(2,1fr)}.wq-day-grid{grid-template-columns:repeat(4,1fr)}}
@@ -2546,6 +2546,7 @@ function wqState(reset=false){
   }
   if(!ST.weeklyQuestionGoals.done)ST.weeklyQuestionGoals.done={};
   if(!ST.weeklyQuestionGoals.planDays)ST.weeklyQuestionGoals.planDays={};
+  if(!ST.weeklyQuestionGoals.activePlanDay)ST.weeklyQuestionGoals.activePlanDay='all';
   if(!Array.isArray(ST.weeklyQuestionGoals.items))ST.weeklyQuestionGoals.items=[];
   if(!ST.weeklyQuestionGoals.hoursPerDay)ST.weeklyQuestionGoals.hoursPerDay=Number(cfg().dh)||4;
   if(!ST.weeklyQuestionGoals.minutesPerQuestion)ST.weeklyQuestionGoals.minutesPerQuestion=2.5;
@@ -2583,6 +2584,12 @@ function wqApplyFilters(){
   sSt();renderWeeklyQuestionGoals();
 }
 function wqClearFilters(){const f=wqFilters();f.disc='all';f.discText='Todas as disciplinas';f.period='all';sSt();renderWeeklyQuestionGoals();}
+function wqTodayPlanDay(){const d=new Date().getDay();return d===0?6:d-1;}
+function wqSetActivePlanDay(day){
+  const st=wqState();
+  st.activePlanDay=(day===null||day===undefined||day==='all')?'all':String(day);
+  sSt();renderWeeklyQuestionGoals();
+}
 function wqSetPlanning(){
   const st=wqState();
   const h=document.getElementById('wq-hours-day'),m=document.getElementById('wq-min-question'),d=document.getElementById('wq-days-week'),t=document.getElementById('wq-total-weeks'),r=document.getElementById('wq-review-weeks');
@@ -2943,6 +2950,21 @@ function wqItemLoad(x){
 function wqKindLabel(kind){
   return kind==='erro'?'erros':kind==='revisao'?'revisoes':kind==='similar'?'similares':kind==='inedita'?'ineditas':'assuntos';
 }
+function wqPlanItemsForDay(items,day){
+  if(day===null||day===undefined||day==='all')return safeList(items);
+  const idx=Number(day);
+  if(!Number.isFinite(idx))return safeList(items);
+  const c=wqBuildCampaign(items),slot=c.daysPlan[idx];
+  if(!slot)return [];
+  const ids=new Set(safeList(slot.items).map(String));
+  return safeList(items).filter(x=>ids.has(String(x.id)));
+}
+function wqStartPlanDay(day){
+  const st=wqState(),base=wqFilteredItems(st.items),items=wqPlanItemsForDay(base,day??st.activePlanDay).filter(x=>!st.done?.[x.id]&&x.url);
+  if(!items.length){nfy('Nenhuma questao TEC pendente nesse dia','err');return;}
+  const links=items.map(x=>({url:x.url,title:x.title||x.assunto||'Meta do dia',id:x.id}));
+  pfOpenReviewBatch(links,0,'TEC nas metas do dia');
+}
 function wqBuildCampaign(items){
   const st=wqState(),capacityDaily=Math.max(1,Number(st.dailyTarget)||96),days=Math.max(1,Number(st.daysPerWeek)||5);
   const totalTarget=Math.max(1,Number(st.totalWeeksTarget)||10),revWeeks=Math.max(0,Math.min(totalTarget-1,Number(st.revisionWeeks)||0));
@@ -2961,10 +2983,11 @@ function wqBuildCampaign(items){
   const addToSlot=(slot,item,qty)=>{
     slot.count+=qty;
     slot.kinds[item.kind]=(slot.kinds[item.kind]||0)+qty;
+    if(item?.id&&!slot.items.includes(item.id))slot.items.push(item.id);
     const title=item.assunto||item.title||item.materia||'Meta';
     if(slot.titles.length<4&&!slot.titles.includes(title))slot.titles.push(title);
   };
-  const daysPlan=names.map((name,idx)=>({name,active:idx<days,count:0,kinds:{},titles:[],manual:0}));
+  const daysPlan=names.map((name,idx)=>({name,active:idx<days,count:0,kinds:{},titles:[],items:[],manual:0}));
   pending.forEach(item=>{
     const day=planDays[item.id];
     if(day!=null&&day!==''&&day!=='auto'&&day!=='skip'){
@@ -2992,7 +3015,7 @@ function wqBuildCampaign(items){
   return {pending,totalQ,daily,capacityDaily,recommendedDaily,days,weekCap,revWeeks,contentWeeks,contentWindow,totalWeeks,feasible,overloadDaily,daysPlan,skipped};
 }
 function wqCampaignPlanHtml(items){
-  const c=wqBuildCampaign(items);
+  const st=wqState(),activeDay=st.activePlanDay||'all',today=String(wqTodayPlanDay()),c=wqBuildCampaign(items);
   const finishLabel=c.totalQ?('Semana '+c.contentWeeks):'Sem pendencias';
   const reviewLabel=c.revWeeks?('Semanas '+(c.contentWindow+1)+' a '+c.totalWeeks):'sem bloco final';
   const finishText=c.totalQ
@@ -3001,13 +3024,14 @@ function wqCampaignPlanHtml(items){
       : 'Com as horas atuais, o filtro nao cabe em '+c.totalWeeks+' semanas. Seriam '+c.recommendedDaily+' questoes/dia, mas sua capacidade esta em '+c.capacityDaily+'. Ajuste horas, dias ou reduza o filtro.')
       +(c.skipped?' '+c.skipped+' meta(s) ficaram fora do plano.':'')
     : 'Tudo que esta no filtro ja foi marcado como feito.';
-  const dayCards=c.daysPlan.map(d=>{
+  const dayCards=c.daysPlan.map((d,idx)=>{
+    const isActive=String(idx)===String(activeDay);
     const kindTxt=Object.entries(d.kinds).map(([k,v])=>v+' '+wqKindLabel(k)).join(' · ');
     const top=d.titles.length?d.titles.map(t=>'• '+escapeHtml(t)).join('<br>'):'Sem meta atribuida';
-    return '<div class="wq-day '+(d.active?'':'off')+'"><div class="wq-day-name">'+d.name+(d.manual?' - escolhido':'')+'</div><div class="wq-day-main">'+(d.active?d.count:'Pausa')+'</div><div class="wq-day-sub">'+(d.active?(kindTxt||'reserva / revisao leve'):'dia fora da meta')+'</div><div class="wq-day-top">'+top+'</div></div>';
+    return '<div class="wq-day '+(d.active?'':'off')+' '+(isActive?'active':'')+'" onclick="wqSetActivePlanDay(\''+idx+'\')"><div class="wq-day-name">'+d.name+(String(idx)===today?' - hoje':'')+(d.manual?' - escolhido':'')+'</div><div class="wq-day-main">'+(d.active?d.count:'Pausa')+'</div><div class="wq-day-sub">'+(d.active?(kindTxt||'reserva / revisao leve'):'dia fora da meta')+'</div><div class="wq-day-top">'+top+'</div></div>';
   }).join('');
   return '<section class="wq-plan">'+
-    '<div class="wq-plan-head"><div><h4>Plano diario e previsao de fechamento</h4><p>'+escapeHtml(finishText)+' Use o seletor em cada meta para escolher o dia, deixar no automatico ou tirar do plano desta semana.</p></div><button class="btn bg2 xs" onclick="wqCopyTec()">Copiar TEC</button></div>'+
+    '<div class="wq-plan-head"><div><h4>Plano diario e previsao de fechamento</h4><p>'+escapeHtml(finishText)+' Clique em um dia para ver so as metas dele, ou deixe em Todas.</p></div><div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end"><button class="btn bg2 xs" onclick="wqSetActivePlanDay(\'all\')">Todas</button><button class="btn bg2 xs" onclick="wqSetActivePlanDay(\''+today+'\')">Hoje</button><button class="btn bp xs" onclick="wqStartPlanDay()">Comecar dia</button><button class="btn bg2 xs" onclick="wqCopyTec()">Copiar TEC</button></div></div>'+
     '<div class="wq-plan-summary">'+
       '<div class="wq-plan-kpi"><strong>'+c.totalQ+'</strong><span>questoes pendentes no filtro</span></div>'+
       '<div class="wq-plan-kpi"><strong>'+c.daily+'/dia</strong><span>'+c.days+' dia(s), '+c.weekCap+'/semana'+(c.overloadDaily?' - faltam '+c.overloadDaily+'/dia':'')+'</span></div>'+
@@ -3040,13 +3064,14 @@ function renderWeeklyQuestionGoals(){
   const host=document.getElementById('wqgoals');if(!host)return;
   try{
     const st=wqState();if(!st.updatedAt)wqRefresh(true,false);
-    const allItems=safeList(st.items),items=wqFilteredItems(allItems),done=items.filter(x=>st.done?.[x.id]).length,target=st.target||24,pct=Math.min(100,Math.round(done/Math.max(1,items.length)*100));
-    const codes=items.filter(x=>x.qid&&!st.done?.[x.id]).length,topics=items.filter(x=>!x.qid&&!st.done?.[x.id]).length;
+    const allItems=safeList(st.items),items=wqFilteredItems(allItems),dayItems=wqPlanItemsForDay(items,st.activePlanDay||'all'),done=dayItems.filter(x=>st.done?.[x.id]).length,target=st.target||24,pct=Math.min(100,Math.round(done/Math.max(1,dayItems.length)*100));
+    const codes=dayItems.filter(x=>x.qid&&!st.done?.[x.id]).length,topics=dayItems.filter(x=>!x.qid&&!st.done?.[x.id]).length;
     const jsArg=v=>escapeHtml(String(v??'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/[\r\n]+/g,' '));
-    const head=wqGoalCockpit(allItems,items,done,codes,topics,pct),campaign=wqCampaignPlanHtml(items);
+    const head=wqGoalCockpit(allItems,dayItems,done,codes,topics,pct),campaign=wqCampaignPlanHtml(items);
     if(!allItems.length){host.innerHTML=wqFilterBar(allItems,items)+head+campaign+'<div class="empty"><div class="eico">🎯</div><div class="etxt">Sem dados suficientes. Sincronize a extensao, importe um PDF TEC ou registre questoes.</div></div>';return;}
     if(!items.length){host.innerHTML=wqFilterBar(allItems,items)+head+campaign+'<div class="empty"><div class="eico">🔎</div><div class="etxt">Nenhuma meta encontrada nesse filtro.</div></div>';return;}
-    host.innerHTML=wqFilterBar(allItems,items)+head+campaign+'<div class="slist">'+items.map((x,i)=>{
+    if(!dayItems.length){host.innerHTML=wqFilterBar(allItems,dayItems)+head+campaign+'<div class="empty"><div class="eico">📅</div><div class="etxt">Nenhuma meta neste dia. Clique em outro dia ou em Todas.</div></div>';return;}
+    host.innerHTML=wqFilterBar(allItems,dayItems)+head+campaign+'<div class="slist">'+dayItems.map((x,i)=>{
       const kind=x.kind==='erro'?'Erro':x.kind==='similar'?'Similar':x.kind==='revisao'?'Revisao':x.kind==='inedita'?'Inedita':'Assunto';
       const open=x.url?'<button class="btn bg2 xs" onclick="wqOpenMeta(\''+jsArg(x.id)+'\')">Ver aqui</button>':'';
       return '<div class="rescue-item" style="'+(st.done[x.id]?'opacity:.48':'')+'"><div class="rescue-rank">'+(i+1)+'</div><div style="min-width:0"><div class="rescue-name">'+escapeHtml(x.title||x.assunto||x.materia)+'</div><div class="rescue-meta">'+escapeHtml(kind)+' · '+escapeHtml(x.materia||'')+(x.assunto?' · '+escapeHtml(x.assunto):'')+' · '+escapeHtml(x.reason||'')+'</div></div><div class="rescue-actions">'+wqPlanDaySelect(x.id)+open+'<button class="btn '+(st.done[x.id]?'bp':'bg2')+' xs" onclick="wqToggle(\''+jsArg(x.id)+'\')">'+(st.done[x.id]?'Feita':'Marcar')+'</button></div></div>';
