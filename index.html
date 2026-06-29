@@ -336,6 +336,7 @@ input,select,textarea{font-family:inherit;outline:none}
 .wq-plan-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}.wq-plan-kpi{background:rgba(15,23,42,.48);border:1px solid var(--border);border-radius:12px;padding:9px}.wq-plan-kpi strong{display:block;font-family:var(--fh);font-size:18px;color:var(--t1)}.wq-plan-kpi span{display:block;margin-top:4px;font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);font-weight:800}
 .wq-day-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}.wq-day{background:var(--s3);border:1px solid var(--border);border-radius:12px;padding:9px;min-height:116px;cursor:pointer;transition:.16s ease}.wq-day:hover{border-color:rgba(34,211,238,.72);transform:translateY(-1px)}.wq-day.active{border-color:#22d3ee;box-shadow:0 0 0 1px rgba(34,211,238,.28),0 0 24px rgba(34,211,238,.14)}.wq-day.off{opacity:.48}.wq-day-name{font-size:10px;font-weight:900;color:#67e8f9;text-transform:uppercase;letter-spacing:.08em}.wq-day-main{font-family:var(--fh);font-size:18px;color:var(--t1);margin-top:5px}.wq-day-sub{font-size:10px;color:var(--t3);line-height:1.35;margin-top:4px}.wq-day-top{font-size:10px;color:var(--t2);line-height:1.35;margin-top:7px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .wq-plan-select{background:rgba(15,23,42,.72);border:1px solid var(--border);border-radius:9px;color:var(--t1);font-size:11px;font-weight:700;padding:6px 8px;max-width:112px}
+.wq-day-planner{background:linear-gradient(145deg,rgba(79,70,229,.12),var(--s2));border:1px solid rgba(129,140,248,.24);border-radius:var(--r2);padding:12px;margin:0 0 12px;display:grid;grid-template-columns:1.1fr 1fr auto;gap:10px;align-items:end}.wq-day-planner h4{font-family:var(--fh);font-size:14px;margin:0 0 4px;color:var(--t1)}.wq-day-planner p{font-size:11px;color:var(--t3);margin:0;line-height:1.35}.wq-day-planner select{background:var(--s3);border:1px solid var(--border);border-radius:10px;color:var(--t1);padding:9px 10px;font-weight:700;min-width:190px}
 @media(max-width:1050px){.wq-cockpit{grid-template-columns:1fr}.wq-toolbar{grid-template-columns:1fr 1fr 1fr}.wq-filter-note{grid-column:1/-1}}
 @media(max-width:1050px){.wq-plan-summary{grid-template-columns:repeat(2,1fr)}.wq-day-grid{grid-template-columns:repeat(4,1fr)}}
 @media(max-width:640px){.rescue-summary{grid-template-columns:repeat(2,1fr)}.rescue-item{grid-template-columns:28px minmax(0,1fr)}.rescue-actions{grid-column:1/-1;justify-content:flex-start}.wq-focus-card{grid-template-columns:1fr;text-align:center}.wq-ring{margin:auto}.wq-toolbar,.wq-kpis,.wq-plan-summary{grid-template-columns:1fr 1fr}.wq-toolbar label:first-child{grid-column:1/-1}.wq-day-grid{grid-template-columns:1fr 1fr}}
@@ -2547,6 +2548,7 @@ function wqState(reset=false){
   if(!ST.weeklyQuestionGoals.done)ST.weeklyQuestionGoals.done={};
   if(!ST.weeklyQuestionGoals.planDays)ST.weeklyQuestionGoals.planDays={};
   if(!ST.weeklyQuestionGoals.activePlanDay)ST.weeklyQuestionGoals.activePlanDay='all';
+  if(!ST.weeklyQuestionGoals.activePlanDisc)ST.weeklyQuestionGoals.activePlanDisc='all';
   if(!Array.isArray(ST.weeklyQuestionGoals.items))ST.weeklyQuestionGoals.items=[];
   if(!ST.weeklyQuestionGoals.hoursPerDay)ST.weeklyQuestionGoals.hoursPerDay=Number(cfg().dh)||4;
   if(!ST.weeklyQuestionGoals.minutesPerQuestion)ST.weeklyQuestionGoals.minutesPerQuestion=2.5;
@@ -2592,6 +2594,12 @@ function wqTodayPlanDay(){const d=new Date().getDay();return d===0?6:d-1;}
 function wqSetActivePlanDay(day){
   const st=wqState();
   st.activePlanDay=(day===null||day===undefined||day==='all')?'all':String(day);
+  st.activePlanDisc='all';
+  sSt();renderWeeklyQuestionGoals();
+}
+function wqSetActivePlanDisc(value){
+  const st=wqState();
+  st.activePlanDisc=value||'all';
   sSt();renderWeeklyQuestionGoals();
 }
 function wqSetPlanning(){
@@ -2974,6 +2982,23 @@ function wqStartPlanDay(day){
   const links=items.map(x=>({url:x.url,title:x.title||x.assunto||'Meta do dia',id:x.id}));
   pfOpenReviewBatch(links,0,'TEC nas metas do dia');
 }
+function wqDayPlannerHtml(dayItems,visibleItems){
+  const st=wqState(),names=['Segunda','Terca','Quarta','Quinta','Sexta','Sabado','Domingo'];
+  const dayLabel=st.activePlanDay==='all'?'Todos os dias':(names[Number(st.activePlanDay)]||'Dia selecionado');
+  const discMap=new Map();
+  safeList(dayItems).forEach(x=>{
+    const label=x.materia||wqDiscName(x.discId,'Sem disciplina'),key=wqItemDiscPlanKey(x);
+    if(key&&!discMap.has(key))discMap.set(key,label||'Sem disciplina');
+  });
+  const active=st.activePlanDisc||'all';
+  const opts=['<option value="all" '+(active==='all'?'selected':'')+'>Todas as disciplinas do dia</option>'].concat([...discMap.entries()].sort((a,b)=>a[1].localeCompare(b[1])).map(([k,v])=>'<option value="'+escapeHtml(k)+'" '+(active===k?'selected':'')+'>'+escapeHtml(v)+'</option>')).join('');
+  return '<section class="wq-day-planner">'+
+    '<div><h4>Planejar este dia</h4><p>Escolha o dia nos cards acima. Depois escolha a disciplina aqui. As questoes exibidas abaixo sao o lote que voce vai fazer.</p></div>'+
+    '<label style="display:grid;gap:5px"><span class="slbl">'+escapeHtml(dayLabel)+' - disciplina</span><select onchange="wqSetActivePlanDisc(this.value)">'+opts+'</select></label>'+
+    '<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end"><button class="btn bp xs" onclick="wqStartPlanDay()">Comecar lote</button><button class="btn bg2 xs" onclick="wqSetActivePlanDisc(\'all\')">Todas disciplinas</button></div>'+
+    '<div style="grid-column:1/-1;font-size:11px;color:var(--t3)">'+safeList(visibleItems).length+' questao(oes) exibida(s) de '+safeList(dayItems).length+' planejada(s) para este recorte.</div>'+
+  '</section>';
+}
 function wqBuildCampaign(items){
   const st=wqState(),capacityDaily=Math.max(1,Number(st.dailyTarget)||96),days=Math.max(1,Number(st.daysPerWeek)||5);
   const minDaily=Math.max(1,Number(st.minQuestionsPerDay)||50),maxDisc=Math.max(1,Math.min(4,Number(st.maxDisciplinesPerDay)||4));
@@ -3087,14 +3112,15 @@ function renderWeeklyQuestionGoals(){
   const host=document.getElementById('wqgoals');if(!host)return;
   try{
     const st=wqState();if(!st.updatedAt)wqRefresh(true,false);
-    const allItems=safeList(st.items),items=wqFilteredItems(allItems),dayItems=wqPlanItemsForDay(items,st.activePlanDay||'all'),done=dayItems.filter(x=>st.done?.[x.id]).length,target=st.target||24,pct=Math.min(100,Math.round(done/Math.max(1,dayItems.length)*100));
-    const codes=dayItems.filter(x=>x.qid&&!st.done?.[x.id]).length,topics=dayItems.filter(x=>!x.qid&&!st.done?.[x.id]).length;
+    const allItems=safeList(st.items),items=wqFilteredItems(allItems),dayItems=wqPlanItemsForDay(items,st.activePlanDay||'all'),visibleItems=(st.activePlanDisc&&st.activePlanDisc!=='all')?dayItems.filter(x=>wqItemDiscPlanKey(x)===st.activePlanDisc):dayItems,done=visibleItems.filter(x=>st.done?.[x.id]).length,target=st.target||24,pct=Math.min(100,Math.round(done/Math.max(1,visibleItems.length)*100));
+    const codes=visibleItems.filter(x=>x.qid&&!st.done?.[x.id]).length,topics=visibleItems.filter(x=>!x.qid&&!st.done?.[x.id]).length;
     const jsArg=v=>escapeHtml(String(v??'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/[\r\n]+/g,' '));
-    const head=wqGoalCockpit(allItems,dayItems,done,codes,topics,pct),campaign=wqCampaignPlanHtml(items);
-    if(!allItems.length){host.innerHTML=wqFilterBar(allItems,items)+head+campaign+'<div class="empty"><div class="eico">🎯</div><div class="etxt">Sem dados suficientes. Sincronize a extensao, importe um PDF TEC ou registre questoes.</div></div>';return;}
-    if(!items.length){host.innerHTML=wqFilterBar(allItems,items)+head+campaign+'<div class="empty"><div class="eico">🔎</div><div class="etxt">Nenhuma meta encontrada nesse filtro.</div></div>';return;}
-    if(!dayItems.length){host.innerHTML=wqFilterBar(allItems,dayItems)+head+campaign+'<div class="empty"><div class="eico">📅</div><div class="etxt">Nenhuma meta neste dia. Clique em outro dia ou em Todas.</div></div>';return;}
-    host.innerHTML=wqFilterBar(allItems,dayItems)+head+campaign+'<div class="slist">'+dayItems.map((x,i)=>{
+    const head=wqGoalCockpit(allItems,visibleItems,done,codes,topics,pct),campaign=wqCampaignPlanHtml(items),planner=wqDayPlannerHtml(dayItems,visibleItems);
+    if(!allItems.length){host.innerHTML=wqFilterBar(allItems,items)+head+campaign+planner+'<div class="empty"><div class="eico">🎯</div><div class="etxt">Sem dados suficientes. Sincronize a extensao, importe um PDF TEC ou registre questoes.</div></div>';return;}
+    if(!items.length){host.innerHTML=wqFilterBar(allItems,items)+head+campaign+planner+'<div class="empty"><div class="eico">🔎</div><div class="etxt">Nenhuma meta encontrada nesse filtro.</div></div>';return;}
+    if(!dayItems.length){host.innerHTML=wqFilterBar(allItems,dayItems)+head+campaign+planner+'<div class="empty"><div class="eico">📅</div><div class="etxt">Nenhuma meta neste dia. Clique em outro dia ou em Todas.</div></div>';return;}
+    if(!visibleItems.length){host.innerHTML=wqFilterBar(allItems,visibleItems)+head+campaign+planner+'<div class="empty"><div class="eico">📚</div><div class="etxt">Nenhuma questao dessa disciplina neste dia. Escolha outra disciplina ou volte para Todas disciplinas.</div></div>';return;}
+    host.innerHTML=wqFilterBar(allItems,visibleItems)+head+campaign+planner+'<div class="slist">'+visibleItems.map((x,i)=>{
       const kind=x.kind==='erro'?'Erro':x.kind==='similar'?'Similar':x.kind==='revisao'?'Revisao':x.kind==='inedita'?'Inedita':'Assunto';
       const open=x.url?'<button class="btn bg2 xs" onclick="wqOpenMeta(\''+jsArg(x.id)+'\')">Ver aqui</button>':'';
       return '<div class="rescue-item" style="'+(st.done[x.id]?'opacity:.48':'')+'"><div class="rescue-rank">'+(i+1)+'</div><div style="min-width:0"><div class="rescue-name">'+escapeHtml(x.title||x.assunto||x.materia)+'</div><div class="rescue-meta">'+escapeHtml(kind)+' · '+escapeHtml(x.materia||'')+(x.assunto?' · '+escapeHtml(x.assunto):'')+' · '+escapeHtml(x.reason||'')+'</div></div><div class="rescue-actions">'+wqPlanDaySelect(x.id)+open+'<button class="btn '+(st.done[x.id]?'bp':'bg2')+' xs" onclick="wqToggle(\''+jsArg(x.id)+'\')">'+(st.done[x.id]?'Feita':'Marcar')+'</button></div></div>';
