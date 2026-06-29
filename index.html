@@ -2764,8 +2764,7 @@ function wqClearDayDiscSelection(){
 }
 function wqCurrentVisibleItems(){
   const st=wqState(),items=wqFilteredItems(st.items),dayItems=wqPlanItemsForDay(items,st.activePlanDay||'all');
-  const discSet=wqActiveDiscSet(st);
-  return discSet.size?dayItems.filter(x=>discSet.has(wqItemDiscPlanKey(x))):dayItems;
+  return wqVisibleItemsForDay(items,dayItems,st);
 }
 function wqPickedIds(){
   const st=wqState();
@@ -2979,9 +2978,9 @@ function wqImportStatusHtml(){
 function wqLoteHeadHtml(items){
   const st=wqState(),names=['Segunda','Terca','Quarta','Quinta','Sexta','Sabado','Domingo'];
   const day=st.activePlanDay==='all'?'Todos os dias':(names[Number(st.activePlanDay)]||'Dia selecionado');
-  const disc=st.activePlanDisc&&st.activePlanDisc!=='all'
-    ? (safeList(items).find(x=>wqItemDiscPlanKey(x)===st.activePlanDisc)?.materia||'Disciplina selecionada')
-    : 'Todas as disciplinas';
+  const activeSet=wqActiveDiscSet(st);
+  const labels=[...activeSet].map(k=>safeList(items).find(x=>wqItemDiscPlanKey(x)===k)?.materia||'Disciplina selecionada').filter(Boolean);
+  const disc=labels.length?labels.slice(0,4).join(', '):'Todas as disciplinas';
   return '<section class="wq-lote-head"><div><h4>Questoes do lote selecionado</h4><p>'+escapeHtml(day)+' · '+escapeHtml(disc)+' · use "Comecar lote" para abrir no TEC.</p></div><div class="pill">'+safeList(items).length+' questoes</div></section>';
 }
 function wqWeaknessModel(){
@@ -3398,6 +3397,15 @@ function wqPlanItemsForDay(items,day,campaign=null){
   const ids=new Set(safeList(slot.items).map(String));
   return safeList(items).filter(x=>ids.has(String(x.id)));
 }
+function wqVisibleItemsForDay(items,dayItems,st=wqState()){
+  const discSet=wqActiveDiscSet(st);
+  if(!discSet.size)return safeList(dayItems);
+  const dayIds=new Set(safeList(dayItems).map(x=>String(x.id)));
+  const selected=safeList(items).filter(x=>discSet.has(wqItemDiscPlanKey(x)));
+  const selectedDay=selected.filter(x=>dayIds.has(String(x.id)));
+  const selectedExtra=selected.filter(x=>!dayIds.has(String(x.id)));
+  return selectedDay.concat(selectedExtra);
+}
 function wqPageSize(){return 120;}
 function wqSetListPage(page){
   const st=wqState();
@@ -3416,38 +3424,44 @@ function wqPagerHtml(win){
   return '<div class="wq-list-head"><b>Exibindo '+(win.start+1)+'-'+win.end+' de '+win.total+' questoes</b><div style="display:flex;gap:6px;align-items:center"><button class="btn bg2 xs" '+(win.page<=1?'disabled':'')+' onclick="wqSetListPage('+(win.page-1)+')">Anterior</button><span class="pill">'+win.page+'/'+win.pages+'</span><button class="btn bg2 xs" '+(win.page>=win.pages?'disabled':'')+' onclick="wqSetListPage('+(win.page+1)+')">Proxima</button></div></div>';
 }
 function wqStartPlanDay(day){
-  const st=wqState(),base=wqFilteredItems(st.items),discSet=wqActiveDiscSet(st);
-  let items=wqPlanItemsForDay(base,day??st.activePlanDay);
-  if(discSet.size)items=items.filter(x=>discSet.has(wqItemDiscPlanKey(x)));
+  const st=wqState(),oldDay=st.activePlanDay;
+  if(day!==null&&day!==undefined)st.activePlanDay=day;
+  let items=wqCurrentVisibleItems();
+  st.activePlanDay=oldDay;
   items=items.filter(x=>!st.done?.[x.id]&&x.url);
   if(!items.length){nfy('Nenhuma questao TEC pendente nesse dia','err');return;}
   const links=items.map(x=>({url:x.url,title:x.title||x.assunto||'Meta do dia',id:x.id}));
   pfOpenReviewBatch(links,0,'TEC nas metas do dia');
 }
-function wqDayPlannerHtml(dayItems,visibleItems){
+function wqDayPlannerHtml(dayItems,visibleItems,allFilteredItems){
   const st=wqState(),names=['Segunda','Terca','Quarta','Quinta','Sexta','Sabado','Domingo'];
   const dayLabel=st.activePlanDay==='all'?'Todos os dias':(names[Number(st.activePlanDay)]||'Dia selecionado');
   const dayOpts=['<option value="all" '+(st.activePlanDay==='all'?'selected':'')+'>Todos os dias</option>'].concat(names.map((n,i)=>'<option value="'+i+'" '+(String(st.activePlanDay)===String(i)?'selected':'')+'>'+n+'</option>')).join('');
-  const discMap=new Map();
-  safeList(dayItems).forEach(x=>{
+  const discMap=new Map(),dayCount=new Map(),totalCount=new Map();
+  safeList(allFilteredItems).forEach(x=>{
     const label=x.materia||wqDiscName(x.discId,'Sem disciplina'),key=wqItemDiscPlanKey(x);
     if(key&&!discMap.has(key))discMap.set(key,label||'Sem disciplina');
+    if(key)totalCount.set(key,(totalCount.get(key)||0)+1);
+  });
+  safeList(dayItems).forEach(x=>{
+    const key=wqItemDiscPlanKey(x);
+    if(key)dayCount.set(key,(dayCount.get(key)||0)+1);
   });
   const activeSet=wqActiveDiscSet(st),maxDisc=Math.max(1,Math.min(4,Number(st.maxDisciplinesPerDay)||4));
   const discCards=[...discMap.entries()].sort((a,b)=>a[1].localeCompare(b[1])).map(([k,v])=>{
-    const count=safeList(dayItems).filter(x=>wqItemDiscPlanKey(x)===k).length,checked=activeSet.has(k);
+    const total=totalCount.get(k)||0,planned=dayCount.get(k)||0,checked=activeSet.has(k);
+    const countLabel=planned?planned+' no dia - '+total+' no filtro':total+' no filtro';
     const safeKey=String(k).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/[\r\n]+/g,' ');
-    return '<button type="button" class="wq-disc-card '+(checked?'on':'')+'" onclick="wqToggleDayDisc(\''+safeKey+'\')"><span class="check">'+(checked?'OK':'')+'</span><b>'+escapeHtml(v)+'</b><small>'+count+' questoes</small></button>';
-    return '<button type="button" class="wq-disc-card '+(checked?'on':'')+'" onclick="wqToggleDayDisc(\''+escapeHtml(k).replace(/'/g,"\\'")+'\')"><span class="check">'+(checked?'✓':'')+'</span><b>'+escapeHtml(v)+'</b><small>'+count+' questoes</small></button>';
+    return '<button type="button" class="wq-disc-card '+(checked?'on':'')+'" onclick="wqToggleDayDisc(\''+safeKey+'\')"><span class="check">'+(checked?'OK':'')+'</span><b>'+escapeHtml(v)+'</b><small>'+escapeHtml(countLabel)+'</small></button>';
   }).join('');
-  const discHelp=activeSet.size?activeSet.size+' de '+maxDisc+' disciplinas escolhidas para visualizar neste dia':'Nenhuma disciplina fixada: mostrando todas as disciplinas do dia';
+  const discHelp=activeSet.size?activeSet.size+' de '+maxDisc+' disciplinas escolhidas para montar este dia':'Sem disciplina fixada: mostrando o lote automatico do dia. Marque ate '+maxDisc+' para personalizar.';
   const picked=wqPickedIds().length;
   return '<section class="wq-day-planner">'+
     '<div><h4>Montador simples do dia</h4><p>Escolha o dia e marque ate '+maxDisc+' disciplinas. A lista abaixo muda automaticamente; depois use Comecar lote.</p></div>'+
     '<label style="display:grid;gap:5px"><span class="slbl">Dia da meta</span><select onchange="wqSetActivePlanDay(this.value)">'+dayOpts+'</select></label>'+
     '<div class="wq-disc-picker"><div class="wq-disc-picker-head"><span>'+escapeHtml(dayLabel)+' - disciplinas</span><button class="btn bg2 xs" onclick="wqClearDayDiscSelection()">Mostrar todas</button></div><div class="wq-disc-grid">'+(discCards||'<div class="wq-disc-empty">Nenhuma disciplina neste dia.</div>')+'</div><p>'+escapeHtml(discHelp)+'</p></div>'+
     '<div class="wq-builder-actions"><div class="left"><span class="count">'+picked+' selecionada(s)</span><button class="btn bg2 xs" onclick="wqPickVisible()">Selecionar visiveis</button><button class="btn bg2 xs" onclick="wqClearPicks()">Limpar selecao</button></div><div class="right"><button class="btn bp xs" onclick="wqAssignPickedToDay()">Enviar para este dia</button><button class="btn bg2 xs" onclick="wqPickedAuto()">Voltar automatico</button><button class="btn br xs" onclick="wqPickedSkip()">Fora da semana</button><button class="btn bg2 xs" onclick="wqStartPlanDay()">Comecar lote</button></div></div>'+
-    '<div style="grid-column:1/-1;font-size:11px;color:var(--t3)">'+safeList(visibleItems).length+' questao(oes) exibida(s) de '+safeList(dayItems).length+' planejada(s) para este recorte.</div>'+
+    '<div style="grid-column:1/-1;font-size:11px;color:var(--t3)">'+safeList(visibleItems).length+' questao(oes) exibida(s) - '+safeList(dayItems).length+' no lote automatico do dia - '+safeList(allFilteredItems).length+' no filtro atual.</div>'+
   '</section>';
 }
 function wqBuildCampaign(items){
@@ -3576,10 +3590,10 @@ function renderWeeklyQuestionGoals(){
   const host=document.getElementById('wqgoals');if(!host)return;
   try{
     const st=wqState();if(!st.updatedAt)wqRefresh(true,false);
-    const allItems=safeList(st.items),items=wqFilteredItems(allItems),campaignObj=wqBuildCampaign(items),dayItems=wqPlanItemsForDay(items,st.activePlanDay||'all',campaignObj),activeDiscSet=wqActiveDiscSet(st),visibleItems=activeDiscSet.size?dayItems.filter(x=>activeDiscSet.has(wqItemDiscPlanKey(x))):dayItems,done=visibleItems.filter(x=>st.done?.[x.id]).length,target=st.target||24,pct=Math.min(100,Math.round(done/Math.max(1,visibleItems.length)*100));
+    const allItems=safeList(st.items),items=wqFilteredItems(allItems),campaignObj=wqBuildCampaign(items),dayItems=wqPlanItemsForDay(items,st.activePlanDay||'all',campaignObj),visibleItems=wqVisibleItemsForDay(items,dayItems,st),done=visibleItems.filter(x=>st.done?.[x.id]).length,target=st.target||24,pct=Math.min(100,Math.round(done/Math.max(1,visibleItems.length)*100));
     const codes=visibleItems.filter(x=>x.qid&&!st.done?.[x.id]).length,topics=visibleItems.filter(x=>!x.qid&&!st.done?.[x.id]).length;
     const jsArg=v=>escapeHtml(String(v??'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/[\r\n]+/g,' '));
-    const head=wqGoalCockpit(allItems,visibleItems,done,codes,topics,pct,campaignObj),campaign=wqCampaignPlanHtml(items,campaignObj),planner=wqDayPlannerHtml(dayItems,visibleItems),importStatus=wqImportStatusHtml(),lote=wqLoteHeadHtml(visibleItems),win=wqListWindow(visibleItems),pager=wqPagerHtml(win);
+    const head=wqGoalCockpit(allItems,visibleItems,done,codes,topics,pct,campaignObj),campaign=wqCampaignPlanHtml(items,campaignObj),planner=wqDayPlannerHtml(dayItems,visibleItems,items),importStatus=wqImportStatusHtml(),lote=wqLoteHeadHtml(visibleItems),win=wqListWindow(visibleItems),pager=wqPagerHtml(win);
     if(!allItems.length){host.innerHTML=wqFilterBar(allItems,items)+importStatus+head+campaign+planner+'<div class="empty"><div class="eico">🎯</div><div class="etxt">Sem dados suficientes. Sincronize a extensao, importe um PDF TEC ou registre questoes.</div></div>';return;}
     if(!items.length){host.innerHTML=wqFilterBar(allItems,items)+importStatus+head+campaign+planner+'<div class="empty"><div class="eico">🔎</div><div class="etxt">Nenhuma meta encontrada nesse filtro.</div></div>';return;}
     if(!dayItems.length){host.innerHTML=wqFilterBar(allItems,dayItems)+importStatus+head+campaign+planner+'<div class="empty"><div class="eico">📅</div><div class="etxt">Nenhuma meta neste dia. Clique em outro dia ou em Todas.</div></div>';return;}
