@@ -1119,8 +1119,12 @@
     const myResM = myTx.match(/Total de resolu[çc][õo]es[:\s]+(\d+)/i);
     const myTotal = myResM ? parseInt(myResM[1]) : 0;
     const difM = globalTx.match(/Dificuldade:\s*([^\n\r]+)/i);
+    const accM = globalTx.match(/Acertos:\s*([\d,.]+)\s*%/i);
+    const totalM = globalTx.match(/Total de resolu\S+[:\s]+([\d.]+)/i);
     const dificuldade = difM ? difM[1].trim() : '';
     qi.myErrors = myErrors; qi.myTotal = myTotal; qi.dificuldade = dificuldade;
+    qi.tecAcertoGeral = accM ? accM[1].replace(',','.') : '';
+    qi.tecResolucaoTotal = totalM ? totalM[1].replace(/\D/g,'') : '';
     if (dificuldade && S.stats.dificuldade !== dificuldade) { S.stats.dificuldade = dificuldade; renderWidget(); }
     send('desempenho_detail', qi);
   }

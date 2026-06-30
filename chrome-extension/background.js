@@ -349,6 +349,9 @@ async function updateQuestionBank(payload, result) {
   if (payload.assunto) existing.assunto = payload.assunto;
   if (payload.url) existing.url = payload.url;
   if (payload.desc) existing.desc = payload.desc;
+  if (payload.dificuldade) existing.dificuldade = payload.dificuldade;
+  if (payload.tecAcertoGeral) existing.tecAcertoGeral = payload.tecAcertoGeral;
+  if (payload.tecResolucaoTotal) existing.tecResolucaoTotal = payload.tecResolucaoTotal;
 
   if (result === 'correct') existing.acertos++;
   else existing.erros++;
@@ -357,6 +360,41 @@ async function updateQuestionBank(payload, result) {
   existing.importance = existing.erros === 0 ? 1 : existing.erros === 1 ? 2 : 3;
 
   questionBank[qid] = existing;
+  await setStorage({ questionBank });
+}
+
+async function updateQuestionTecDifficulty(payload) {
+  if (!payload || !payload.qid) return;
+  const qid = String(payload.qid);
+  const hasTecData = payload.dificuldade || payload.tecAcertoGeral || payload.tecResolucaoTotal;
+  if (!hasTecData) return;
+  const { questionBank } = await getStorage({ questionBank: {} });
+  const today = todayKey();
+  const existing = questionBank[qid] || {
+    qid,
+    url: payload.url || '',
+    materia: payload.materia || '',
+    assunto: payload.assunto || '',
+    desc: payload.desc || ('Questao #' + qid),
+    acertos: 0, erros: 0,
+    firstSeen: today, lastSeen: today, importance: 1,
+  };
+  existing.lastSeen = today;
+  if (payload.url) existing.url = payload.url;
+  if (payload.materia) existing.materia = payload.materia;
+  if (payload.assunto) existing.assunto = payload.assunto;
+  if (payload.desc) existing.desc = payload.desc;
+  if (payload.dificuldade) existing.dificuldade = payload.dificuldade;
+  if (payload.tecAcertoGeral) existing.tecAcertoGeral = payload.tecAcertoGeral;
+  if (payload.tecResolucaoTotal) existing.tecResolucaoTotal = payload.tecResolucaoTotal;
+  questionBank[qid] = existing;
+  const wrongBank = await loadWrongBank();
+  if (wrongBank[qid]) {
+    if (payload.dificuldade) wrongBank[qid].dificuldade = payload.dificuldade;
+    if (payload.tecAcertoGeral) wrongBank[qid].tecAcertoGeral = payload.tecAcertoGeral;
+    if (payload.tecResolucaoTotal) wrongBank[qid].tecResolucaoTotal = payload.tecResolucaoTotal;
+    await setStorage({ wrongBank });
+  }
   await setStorage({ questionBank });
 }
 
@@ -743,6 +781,9 @@ async function findTecTab() {
 }
 
 async function relayToPanel(payload) {
+  if (payload?.type === 'TEC_QUESTION' && payload.result === 'desempenho_detail') {
+    await updateQuestionTecDifficulty(payload);
+  }
   const tab = await findPanelTab();
   if (!tab) return;
   panelTabId = tab.id;
