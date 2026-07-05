@@ -26,7 +26,10 @@
  * adicionadas.
  */
 
-const PANEL_URL_PATTERN = 'https://cazuzaleo89-netizen.github.io/projetofiscal/*';
+const PANEL_URL_PATTERNS = [
+  'https://cazuzaleo89-netizen.github.io/projetoAF/*',
+  'https://cazuzaleo89-netizen.github.io/projetofiscal/*'
+];
 const SCHEMA_VERSION    = 3;
 const STATE_KEY         = 'pf_persistent_state';
 const SESSION_IDLE_MIN  = 30;   // minutos de inatividade → encerra sessão
@@ -2674,7 +2677,7 @@ async function checkDailyGoal(todayStats) {
 // ══════════════════════════════════════════════════════════════════════════
 
 async function findPanelTab() {
-  const tabs = await chrome.tabs.query({ url: PANEL_URL_PATTERN });
+  const tabs = (await Promise.all(PANEL_URL_PATTERNS.map(url=>chrome.tabs.query({ url })))).flat();
   return tabs.length ? tabs[0] : null;
 }
 async function findTecTab() {
@@ -2960,6 +2963,28 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
       case 'RELAY_TO_PANEL': await relayToPanel(msg.payload); break;
       case 'RELAY_TO_TEC':   await relayToTec(msg.payload); break;
+
+      case 'GET_PANEL_SNAPSHOT': {
+        const [globalStats, wrongBank, questionBank, sessions, subjectStats, settings] = await Promise.all([
+          loadStats(),
+          loadWrongBank(),
+          loadQuestionBank(),
+          getSessions(50),
+          getSubjectStats(),
+          getSettings(),
+        ]);
+        sendResponse({
+          ok: true,
+          generatedAt: Date.now(),
+          globalStats,
+          wrongBank,
+          questionBank,
+          sessions,
+          subjectStats,
+          settings,
+        });
+        return;
+      }
 
       case 'SHOW_NOTIFICATION':
         showNotification(msg.title, msg.message, msg.id);

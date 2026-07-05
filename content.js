@@ -32,13 +32,53 @@ var PFLog = {
     gabarito:      '[class*="gabarito" i],[class*="comentario" i],[class*="resposta" i]',
   };
 
-  const PANEL_URL = 'https://cazuzaleo89-netizen.github.io/projetofiscal/';
+  const PANEL_URL = 'https://cazuzaleo89-netizen.github.io/projetoAF/';
 
   // Heartbeat para o painel detectar extensão ativa
   if (location.hostname === 'cazuzaleo89-netizen.github.io') {
+    const postToPanel = (type, payload) => {
+      try { window.postMessage({ source: 'PF_EXTENSION', type, payload }, location.origin); } catch (x) {}
+    };
+    const requestPanelSnapshot = () => {
+      try {
+        chrome.runtime.sendMessage({ type: 'GET_PANEL_SNAPSHOT' }, res => {
+          if (chrome.runtime.lastError || !res || !res.ok) {
+            postToPanel('PF_SYNC_STATUS', { connected: false });
+            return;
+          }
+          postToPanel('PF_SYNC_SNAPSHOT', res);
+          postToPanel('PF_SYNC_STATUS', { connected: true });
+        });
+      } catch (x) {
+        postToPanel('PF_SYNC_STATUS', { connected: false });
+      }
+    };
+    window.addEventListener('message', ev => {
+      const msg = ev.data || {};
+      if (ev.source !== window || msg.source !== 'PF_PANEL') return;
+      if (msg.type === 'PF_REQUEST_SYNC' || msg.type === 'PF_PANEL_READY') requestPanelSnapshot();
+      if (msg.type === 'PF_REVIEW_RESULT' && msg.payload?.qid) {
+        try {
+          chrome.runtime.sendMessage({ type: 'REVIEW_QUESTION', qid: String(msg.payload.qid), quality: Number(msg.payload.quality) || 4 }, res => {
+            postToPanel('PF_REVIEW_RESULT_ACK', { ok: !chrome.runtime.lastError && !!res?.ok });
+            requestPanelSnapshot();
+          });
+        } catch (x) {
+          postToPanel('PF_REVIEW_RESULT_ACK', { ok: false });
+        }
+      }
+    });
+    chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+      if (msg?.type === 'FROM_TEC') {
+        setTimeout(requestPanelSnapshot, 500);
+        sendResponse && sendResponse({ ok: true });
+      }
+    });
     const beat = () => localStorage.setItem('_pf_ext_heartbeat', Date.now());
     beat();
     setInterval(beat, 8000);
+    postToPanel('PF_SYNC_STATUS', { connected: true });
+    setTimeout(requestPanelSnapshot, 800);
     const syncRanking = () => {
       try {
         chrome.runtime.sendMessage({ type: 'GET_TEC_RANKING' }, r => {

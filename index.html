@@ -5921,16 +5921,42 @@ function rxRenderKPIs() {
   el.innerHTML='<div class="rx-kpi total"><div class="rx-num">'+n+'</div><div class="rx-lbl">Assuntos</div></div><div class="rx-kpi crit"><div class="rx-num">'+c.crit+'</div><div class="rx-lbl">\ud83d\udea8 Cr\u00edticos</div></div><div class="rx-kpi warn"><div class="rx-num">'+c.warn+'</div><div class="rx-lbl">\u26a0\ufe0f Aten\u00e7\u00e3o</div></div><div class="rx-kpi good"><div class="rx-num">'+c.good+'</div><div class="rx-lbl">\u2705 Bom</div></div><div class="rx-kpi great"><div class="rx-num">'+c.great+'</div><div class="rx-lbl">\ud83c\udfc6 Excelente</div></div><div class="rx-kpi total"><div class="rx-num">'+avg.toFixed(0)+'%</div><div class="rx-lbl">Acerto m\u00e9dio</div></div><div class="rx-kpi total"><div class="rx-num">'+(tecAvg===null?'\u2014':tecAvg.toFixed(0))+'</div><div class="rx-lbl">Erro TEC</div></div><div class="rx-kpi total"><div class="rx-num">'+tQ.toLocaleString("pt-BR")+'</div><div class="rx-lbl">Quest\u00f5es</div></div>';
 }
 
+function rxExtensionQuestionPool(){
+  var meta=pfSyncMeta(),out=[];
+  function add(q,src,origin){
+    if(!q)return;
+    var qid=String(q.qid||q.code||q.codigo||q.questionId||q.id||'').replace(/\D/g,'');
+    if(!qid)return;
+    out.push({
+      ...q,
+      qid:qid,
+      url:q.url||q.link||q.href||tecURL(qid),
+      materia:q.materia||q.disciplina||q.disc||origin?.materia||'',
+      assunto:q.assunto||q.topic||q.tema||origin?.assunto||'',
+      originAssunto:q.originAssunto||origin?.assunto||q.originSubject||'',
+      relatedOriginDesc:q.relatedOriginDesc||origin?.desc||origin?.assunto||'',
+      rxSource:src
+    });
+  }
+  safeList(meta.similarItems).forEach(q=>add(q,'similar'));
+  safeList(meta.reviewQueue).forEach(q=>{
+    add(q,'revisao');
+    safeList(q.relatedQuestions).forEach(r=>add(r,'relacionada',q));
+  });
+  safeList(meta.libraryPending).forEach(q=>add(q,'biblioteca'));
+  return out;
+}
 function rxSimilarFor(disc,subject){
-  var nd=pfNorm(disc),ns=pfNorm(subject),items=(pfSyncMeta().similarItems||[]),seen={};
+  var nd=pfNorm(disc),ns=pfNorm(subject),items=rxExtensionQuestionPool(),seen={};
   return items.map(function(q){
-    var qd=pfNorm(q.materia),origin=q.originAssunto||q.relatedOriginDesc||'',no=pfNorm(origin),nt=pfNorm(q.assunto);
-    var discScore=!nd||!qd?0.35:(qd===nd?1:((qd.indexOf(nd)>=0||nd.indexOf(qd)>=0)?0.75:0));
-    var subjectScore=no===ns?1:(nt===ns?.82:(typeof simOverlap==='function'?Math.max(simOverlap(origin,subject),simOverlap(q.assunto,subject)):0));
-    return {q:q,score:discScore*.35+subjectScore*.65};
-  }).filter(function(x){return x.score>=.45&&x.q.qid&&!seen[x.q.qid]&&(seen[x.q.qid]=true)})
-    .sort(function(a,b){return b.score-a.score||(Number(b.q.similarScore)||0)-(Number(a.q.similarScore)||0)})
-    .map(function(x){return x.q});
+    var qd=pfNorm(q.materia),origin=q.originAssunto||q.relatedOriginDesc||'',no=pfNorm(origin),nt=pfNorm(q.assunto),text=pfNorm([q.materia,q.assunto,origin,q.desc,q.title,q.concurso,q.cargo,q.orgao].filter(Boolean).join(' '));
+    var discScore=!nd||!qd?0.35:(qd===nd?1:((qd.indexOf(nd)>=0||nd.indexOf(qd)>=0||text.indexOf(nd)>=0)?0.75:0));
+    var subjectScore=no===ns?1:(nt===ns?.88:(text.indexOf(ns)>=0?.72:(typeof simOverlap==='function'?Math.max(simOverlap(origin,subject),simOverlap(q.assunto,subject),simOverlap(text,subject)):0)));
+    var srcBoost=q.rxSource==='relacionada'?0.12:q.rxSource==='similar'?0.08:q.rxSource==='revisao'?0.04:0;
+    return {q:q,score:discScore*.3+subjectScore*.7+srcBoost};
+  }).filter(function(x){return x.score>=.32&&x.q.qid&&!seen[x.q.qid]&&(seen[x.q.qid]=true)})
+    .sort(function(a,b){return b.score-a.score||(Number(b.q.similarScore)||0)-(Number(a.q.similarScore)||0)||(Number(b.q.errorCount)||Number(b.q.erros)||0)-(Number(a.q.errorCount)||Number(a.q.erros)||0)})
+    .map(function(x){return {...x.q,rxMatchScore:x.score}});
 }
 function rxSimilarLinks(disc,subject,limit){
   var all=rxSimilarFor(disc,subject),items=all.slice(0,limit||3);

@@ -4,7 +4,10 @@
  * relay de mensagens TEC↔Painel, badge e notificações.
  */
 
-const PANEL_URL_PATTERN = 'https://cazuzaleo89-netizen.github.io/projetofiscal/*';
+const PANEL_URL_PATTERNS = [
+  'https://cazuzaleo89-netizen.github.io/projetoAF/*',
+  'https://cazuzaleo89-netizen.github.io/projetofiscal/*'
+];
 
 // ════════════════════════════════════════════════════════
 // ESTADO EM MEMÓRIA
@@ -772,7 +775,7 @@ async function checkDailyGoal(todayStats) {
 // ════════════════════════════════════════════════════════
 
 async function findPanelTab() {
-  const tabs = await chrome.tabs.query({ url: PANEL_URL_PATTERN });
+  const tabs = (await Promise.all(PANEL_URL_PATTERNS.map(url=>chrome.tabs.query({ url })))).flat();
   return tabs.length ? tabs[0] : null;
 }
 async function findTecTab() {
@@ -1050,6 +1053,28 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         break;
 
       // ── Notificação desktop ────────────────────────────────────────────────
+      case 'GET_PANEL_SNAPSHOT': {
+        const [globalStats, wrongBank, questionBank, sessions, subjectStats, settings] = await Promise.all([
+          loadStats(),
+          loadWrongBank(),
+          loadQuestionBank(),
+          getSessions(50),
+          getSubjectStats(),
+          getSettings(),
+        ]);
+        sendResponse({
+          ok: true,
+          generatedAt: Date.now(),
+          globalStats,
+          wrongBank,
+          questionBank,
+          sessions,
+          subjectStats,
+          settings,
+        });
+        return;
+      }
+
       case 'SHOW_NOTIFICATION':
         showNotification(msg.title, msg.message, msg.id);
         break;

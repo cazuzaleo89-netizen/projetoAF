@@ -5,7 +5,7 @@
 
 document.addEventListener('DOMContentLoaded', () => {
 
-  const PANEL_URL   = 'https://cazuzaleo89-netizen.github.io/projetofiscal/';
+  const PANEL_URL   = 'https://cazuzaleo89-netizen.github.io/projetoAF/';
   const TEC_ORIGIN  = 'tecconcursos.com.br';
 
   // ═══════════════════════════════════════════════════════════════════════════
