@@ -358,20 +358,35 @@ input,select,textarea{font-family:inherit;outline:none}
 .smeta{font-size:11px;color:var(--t3);margin-top:1px}
 .sright{display:flex;align-items:center;gap:8px}
 .ttag{font-size:12px;font-weight:600;color:var(--t2)}
-.ts-periods{display:flex;gap:4px;background:var(--s3);border:1px solid var(--border);border-radius:9px;padding:3px}
+.ts-head{display:flex;flex-direction:column;align-items:flex-start;gap:10px;margin-bottom:12px}
+.ts-periods{display:flex;gap:4px;background:var(--s3);border:1px solid var(--border);border-radius:9px;padding:3px;flex-wrap:wrap;justify-content:flex-start}
 .ts-period{border:0;background:transparent;color:var(--t3);padding:5px 10px;border-radius:7px;font-size:11px;font-weight:800;cursor:pointer}
 .ts-period.on{background:var(--abg2);color:var(--accent2)}
-.ts-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
-.ts-kpi{background:var(--s3);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px}
+.ts-custom{display:none;gap:8px;align-items:end;justify-content:flex-end;flex-wrap:wrap;margin:-4px 0 12px}
+.ts-custom.on{display:flex}
+.ts-custom .fi{width:150px;padding:7px 9px;font-size:12px}
+.ts-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+.ts-kpi{background:var(--s3);border:1px solid var(--border);border-radius:8px;padding:10px 12px}
 .ts-kpi strong{display:block;font-size:19px;line-height:1;color:var(--t1);font-family:var(--fh)}
 .ts-kpi span{display:block;margin-top:5px;color:var(--t3);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
-.ts-chart{display:flex;align-items:flex-end;gap:9px;height:154px;padding:20px 10px 27px;margin-bottom:12px;background:linear-gradient(180deg,rgba(79,114,255,.035),transparent);border:1px solid var(--border);border-radius:var(--r);overflow-x:auto}
+.ts-legend{display:flex;align-items:center;gap:12px;color:var(--t3);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;margin:0 0 8px}
+.ts-legend i{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:5px}
+.ts-chart{display:flex;align-items:flex-end;gap:10px;height:190px;padding:22px 12px 31px;margin-bottom:12px;background:var(--s1);border:1px solid var(--border);border-radius:8px;overflow-x:auto}
 .ts-col{height:100%;min-width:62px;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;position:relative}
-.ts-value{font-size:9px;color:var(--t2);font-weight:800;margin-bottom:5px;white-space:nowrap}
-.ts-bar{width:min(42px,70%);min-height:4px;border-radius:7px 7px 2px 2px;background:var(--bar);box-shadow:0 0 16px color-mix(in srgb,var(--bar) 24%,transparent);transition:.25s}
+.ts-bars{height:calc(100% - 18px);display:flex;align-items:flex-end;justify-content:center;gap:5px;width:100%}
+.ts-bar{width:min(18px,36%);min-height:3px;border-radius:6px 6px 2px 2px;background:var(--bar);transition:.25s}
+.ts-bar.hours{background:#60a5fa}.ts-bar.questions{background:#34d399}
+.ts-value{font-size:9px;color:var(--t2);font-weight:800;white-space:nowrap;opacity:.88;margin-bottom:5px}
 .ts-label{position:absolute;top:calc(100% + 7px);max-width:82px;color:var(--t3);font-size:8px;line-height:1.15;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ts-date{font-size:9px;color:var(--t3);font-weight:700;min-width:42px}
-@media(max-width:640px){.ts-kpis{grid-template-columns:1fr}.ts-chart{height:140px}.ts-col{min-width:54px}.ts-label{max-width:62px}}
+.ts-split{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ts-mini-list{display:flex;flex-direction:column;gap:7px}
+.ts-mini-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:9px;align-items:center;padding:9px 11px;background:var(--s3);border:1px solid var(--border);border-radius:8px}
+.ts-mini-name{font-size:12px;font-weight:700;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ts-mini-meta{font-size:10px;color:var(--t3);margin-top:2px}
+.ts-mini-val{font-size:11px;font-weight:800;color:var(--t2);white-space:nowrap}
+@media(max-width:900px){.ts-head{flex-direction:column}.ts-periods{justify-content:flex-start}.ts-kpis{grid-template-columns:1fr 1fr}.ts-split{grid-template-columns:1fr}}
+@media(max-width:640px){.ts-kpis{grid-template-columns:1fr}.ts-chart{height:160px}.ts-col{min-width:54px}.ts-label{max-width:62px}.ts-custom{justify-content:flex-start}.ts-custom .fg{flex:1;min-width:135px}.ts-custom .fi{width:100%}}
 /* RECOVERY */
 .rc-hero{background:radial-gradient(circle at 86% 5%,rgba(139,92,246,.22),transparent 31%),linear-gradient(135deg,rgba(34,211,238,.09),rgba(79,70,229,.1));border:1px solid rgba(125,211,252,.2);border-radius:var(--r3);padding:20px;margin-bottom:14px}
 .rc-kicker{font-size:9px;color:#67e8f9;text-transform:uppercase;letter-spacing:.13em;font-weight:900}.rc-title{font-family:var(--fh);font-size:23px;font-weight:800;margin-top:3px}.rc-note{font-size:11px;color:var(--t3);margin-top:5px;max-width:720px}
@@ -412,17 +427,17 @@ input,select,textarea{font-family:inherit;outline:none}
 .pom-dot{width:8px;height:8px;border-radius:50%;background:var(--s4);transition:.3s}
 .pom-dot.done{background:var(--green)}
 .pom-dot.active{background:var(--gold)}
-.tface.xp-circular{position:relative;overflow:hidden;padding:28px 20px 26px;background:radial-gradient(circle at 50% 12%,rgba(34,211,238,.14),transparent 32%),linear-gradient(180deg,#101832 0%,#070b18 100%);border-color:rgba(96,165,250,.32);box-shadow:0 24px 70px rgba(2,6,23,.38),0 0 0 1px rgba(125,211,252,.08) inset}
-.tface.xp-circular::before{content:"XP Focus";position:absolute;top:14px;right:16px;padding:4px 9px;border-radius:99px;background:rgba(34,211,238,.11);border:1px solid rgba(34,211,238,.26);color:#67e8f9;font-size:9px;font-weight:900;letter-spacing:.09em;text-transform:uppercase}
-.xp-main-ring{width:188px;height:188px;margin:0 auto 18px;display:grid;place-items:center;position:relative}
-.xp-main-ring svg{position:absolute;inset:0;width:188px;height:188px;margin:0!important;filter:drop-shadow(0 0 18px rgba(34,211,238,.14))}
-.xp-main-ring .trk{stroke:rgba(30,41,59,.92);stroke-width:8}
-.xp-main-ring .tprog{stroke:url(#rg-xp);stroke-width:8;filter:drop-shadow(0 0 8px rgba(34,211,238,.35))}
-.xp-main-ring .tinner{position:relative;z-index:1;width:148px;height:148px;border-radius:50%;background:linear-gradient(180deg,#0d1328,#070b18);border:1px solid rgba(148,163,184,.12);box-shadow:inset 0 0 22px rgba(15,23,42,.92);display:flex;flex-direction:column;align-items:center;justify-content:center}
-.xp-main-ring .tbig{font-size:34px;text-shadow:0 0 18px rgba(125,211,252,.25)}
-.xp-main-ring .tsub{font-size:10px;color:#818cf8;font-weight:800;letter-spacing:.04em}
-.tface.xp-circular .tdtag{background:rgba(15,23,42,.78);border-color:rgba(34,211,238,.2);color:#bfdbfe}
-.tface.xp-circular .btn.bp{background:linear-gradient(135deg,#2563eb,#4f46e5,#7c3aed);border-color:rgba(165,180,252,.38);box-shadow:0 12px 30px rgba(79,70,229,.24);font-weight:900}
+.tface.xp-circular{position:relative;overflow:hidden;padding:24px 20px 22px;background:var(--s2);border-color:var(--border);box-shadow:none}
+.tface.xp-circular::before{content:"";display:none}
+.xp-main-ring{width:164px;height:164px;margin:0 auto 14px;display:grid;place-items:center;position:relative}
+.xp-main-ring svg{position:absolute;inset:0;width:164px;height:164px;margin:0!important;filter:none}
+.xp-main-ring .trk{stroke:var(--s4);stroke-width:7}
+.xp-main-ring .tprog{stroke:#60a5fa;stroke-width:7;filter:none}
+.xp-main-ring .tinner{position:relative;z-index:1;width:130px;height:130px;border-radius:50%;background:var(--s1);border:1px solid var(--border);box-shadow:none;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.xp-main-ring .tbig{font-size:31px;text-shadow:none}
+.xp-main-ring .tsub{font-size:10px;color:var(--t3);font-weight:800;letter-spacing:.04em}
+.tface.xp-circular .tdtag{background:var(--s3);border-color:var(--border);color:var(--t2)}
+.tface.xp-circular .btn.bp{background:var(--accent);border-color:var(--accent);box-shadow:none;font-weight:800}
 /* HOTKEYS */
 .kbd{display:inline-block;background:var(--s4);border:1px solid var(--border2);border-radius:5px;padding:2px 7px;font-size:11px;font-weight:600;color:var(--t2);font-family:monospace}
 /* LINE CHART */
@@ -577,6 +592,7 @@ option{background:var(--s3)}
 }
 #painelFlutuante.minimized { width: 210px; }
 #painelFlutuante.hidden    { opacity: 0; transform: scale(0.85) translateY(10px); pointer-events: none; }
+#painelFlutuante.tab-hidden { display: none !important; }
 
 #ftHeader {
   background: rgba(74, 108, 247, 0.12);
@@ -1385,15 +1401,21 @@ option{background:var(--s3)}
         </div>
       </div>
       <div class="card">
-        <div class="ch">
+        <div class="ts-head">
           <div>
-            <div class="ct" id="tsess-title">☀️ Sessões de Hoje</div>
-            <div style="font-size:10px;color:var(--t3);margin-top:2px" id="tsess-sub">desempenho diário por disciplina</div>
+            <div class="ct" id="tsess-title">Estatisticas do Cronometro</div>
+            <div style="font-size:10px;color:var(--t3);margin-top:2px" id="tsess-sub">horas estudadas e questoes feitas</div>
           </div>
           <div class="ts-periods">
-            <button class="ts-period on" id="ts-period-day" onclick="setTSessPeriod('day')">Diário</button>
+            <button class="ts-period on" id="ts-period-day" onclick="setTSessPeriod('day')">Diario</button>
             <button class="ts-period" id="ts-period-week" onclick="setTSessPeriod('week')">Semanal</button>
+            <button class="ts-period" id="ts-period-month" onclick="setTSessPeriod('month')">Mensal</button>
+            <button class="ts-period" id="ts-period-custom" onclick="setTSessPeriod('custom')">Customizado</button>
           </div>
+        </div>
+        <div class="ts-custom" id="ts-custom-range">
+          <div class="fg"><label class="fl">Inicio</label><input type="date" class="fi" id="ts-start" onchange="renderTSess()"></div>
+          <div class="fg"><label class="fl">Fim</label><input type="date" class="fi" id="ts-end" onchange="renderTSess()"></div>
         </div>
         <div id="tsess"></div>
       </div>
@@ -1840,7 +1862,7 @@ if(!ST.erros)  ST.erros=[];    // caderno de erros (TEC): [ {id,code,discId,assu
 let tSec=0,tRun=false,tPsd=false,tDur=0,tIv=null,cdIv=null,selC=COLS[0],tDiscId='';
 let pomMode=false,pomPhase='work',pomCycle=0,pomTotal=4;
 let pendingSess=null,pendingSessSaved=false,lastTimerSaveKey='';
-let tSessPeriod='day';
+let tSessPeriod='day',tSessCustomStart='',tSessCustomEnd='';
 let planDone=new Set();
 
 function safeList(v){return Array.isArray(v)?v:(v&&typeof v==='object'?Object.values(v):[])}
@@ -2241,6 +2263,7 @@ function pfApplyEvent(event){
 }
 function pfRenderAfterSync(){
   popSel();renderD();
+  if(curTab==='t')renderTSess();
   if(curTab==='q')renderQ();
   if(curTab==='m')renderM();
   if(curTab==='r')renderRev();
@@ -2313,7 +2336,9 @@ function go(id,el){
   if(el) el.classList.add('on');
   document.getElementById('ptitle').textContent=TIT[id]||id;
   curTab=id;
-  const rf={d:renderD,q:renderQ,m:renderM,a:atkRender,r:renderRev,p:rcRender,c:renderCfg};
+  const floatingTimer=document.getElementById('painelFlutuante');
+  if(floatingTimer)floatingTimer.classList.toggle('tab-hidden',id==='t');
+  const rf={d:renderD,t:renderTSess,q:renderQ,m:renderM,a:atkRender,r:renderRev,p:rcRender,c:renderCfg};
   if(rf[id]) rf[id]();
   if(id==='t'||id==='q'||id==='m'||id==='a') popSel();
 }
@@ -2510,79 +2535,128 @@ function saveMan(){
   renderTSess();renderD();
 }
 function setTSessPeriod(period){
-  tSessPeriod=period==='week'?'week':'day';
+  tSessPeriod=['day','week','month','custom'].includes(period)?period:'day';
+  if(tSessPeriod==='custom'){
+    const end=new Date(),start=new Date();start.setDate(end.getDate()-29);
+    const si=document.getElementById('ts-start'),ei=document.getElementById('ts-end');
+    if(si&&!si.value)si.value=tSessCustomStart||ymd(start);
+    if(ei&&!ei.value)ei.value=tSessCustomEnd||ymd(end);
+  }
   renderTSess();
 }
-function tSessWeekRange(){
+function tLocalDate(v){const d=new Date((v||td())+'T12:00:00');d.setHours(0,0,0,0);return d}
+function tAddDays(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x}
+function tRangeLabel(a,b){return a.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})+' a '+b.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}
+function tStatsRange(){
   const now=new Date();now.setHours(0,0,0,0);
-  const dow=now.getDay();
-  const start=new Date(now);start.setDate(now.getDate()-(dow===0?6:dow-1));
-  const end=new Date(start);end.setDate(start.getDate()+6);
-  return {start,end,d1:ymd(start),d2:ymd(end)};
-}
-function tSessChart(rows){
   if(tSessPeriod==='week'){
-    const {start}=tSessWeekRange(),labels=['SEG','TER','QUA','QUI','SEX','SÁB','DOM'];
-    return labels.map((label,i)=>{
-      const date=new Date(start);date.setDate(start.getDate()+i);
-      const key=ymd(date),sec=rows.filter(s=>s.date===key).reduce((sum,s)=>sum+(Number(s.sec)||0),0);
-      return {label:label+' '+String(date.getDate()).padStart(2,'0'),sec,color:key===td()?'var(--accent2)':'#4f72ff'};
-    });
+    const dow=now.getDay(),start=tAddDays(now,-(dow===0?6:dow-1)),end=tAddDays(start,6);
+    return {start,end,d1:ymd(start),d2:ymd(end),label:tRangeLabel(start,end),title:'Semana'};
   }
-  const map=new Map();
-  rows.forEach(s=>{
-    const d=discs().find(x=>x.id===s.discId);
-    const key=s.discId||'none',cur=map.get(key)||{label:d?.name||'Sem disciplina',sec:0,color:d?.color||'#4a6080'};
-    cur.sec+=Number(s.sec)||0;map.set(key,cur);
-  });
-  return [...map.values()].sort((a,b)=>b.sec-a.sec);
+  if(tSessPeriod==='month'){
+    const start=new Date(now.getFullYear(),now.getMonth(),1),end=new Date(now.getFullYear(),now.getMonth()+1,0);
+    return {start,end,d1:ymd(start),d2:ymd(end),label:now.toLocaleDateString('pt-BR',{month:'long',year:'numeric'}),title:'Mes'};
+  }
+  if(tSessPeriod==='custom'){
+    const si=document.getElementById('ts-start'),ei=document.getElementById('ts-end');
+    tSessCustomStart=si?.value||tSessCustomStart||ymd(tAddDays(now,-29));
+    tSessCustomEnd=ei?.value||tSessCustomEnd||td();
+    let start=tLocalDate(tSessCustomStart),end=tLocalDate(tSessCustomEnd);
+    if(start>end){const tmp=start;start=end;end=tmp;}
+    return {start,end,d1:ymd(start),d2:ymd(end),label:tRangeLabel(start,end),title:'Customizado'};
+  }
+  return {start:now,end:now,d1:td(),d2:td(),label:now.toLocaleDateString('pt-BR',{day:'2-digit',month:'long'}),title:'Hoje'};
+}
+function tBucketDateLabel(d){
+  const names=['DOM','SEG','TER','QUA','QUI','SEX','SAB'];
+  return (tSessPeriod==='week'?names[d.getDay()]+' ':'')+d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
+}
+function tStatsData(range){
+  const S=sess().filter(s=>s.date>=range.d1&&s.date<=range.d2);
+  const Q=qs().filter(q=>q.date>=range.d1&&q.date<=range.d2);
+  const byDisc=new Map();
+  function getDisc(id){
+    const d=discs().find(x=>x.id===id);
+    const key=id||'none';
+    if(!byDisc.has(key))byDisc.set(key,{id:key,label:d?.name||'Sem disciplina',color:d?.color||'#4a6080',sec:0,qtot:0,qcer:0,sess:0});
+    return byDisc.get(key);
+  }
+  S.forEach(s=>{const d=getDisc(s.discId);d.sec+=Number(s.sec)||0;d.sess++;});
+  Q.forEach(q=>{const d=getDisc(q.discId);d.qtot+=Number(q.tot)||0;d.qcer+=Number(q.cer)||0;});
+  let buckets=[];
+  if(tSessPeriod==='day'){
+    buckets=[...byDisc.values()].filter(x=>x.sec||x.qtot).sort((a,b)=>(b.sec+b.qtot*120)-(a.sec+a.qtot*120));
+  }else{
+    for(let d=new Date(range.start);d<=range.end;d=tAddDays(d,1)){
+      const key=ymd(d);
+      buckets.push({label:tBucketDateLabel(d),date:key,sec:0,qtot:0,qcer:0,sess:0});
+    }
+    const map=new Map(buckets.map(b=>[b.date,b]));
+    S.forEach(s=>{const b=map.get(s.date);if(b){b.sec+=Number(s.sec)||0;b.sess++;}});
+    Q.forEach(q=>{const b=map.get(q.date);if(b){b.qtot+=Number(q.tot)||0;b.qcer+=Number(q.cer)||0;}});
+  }
+  const totalSec=S.reduce((a,s)=>a+(Number(s.sec)||0),0);
+  const totalQ=Q.reduce((a,q)=>a+(Number(q.tot)||0),0);
+  const totalCer=Q.reduce((a,q)=>a+(Number(q.cer)||0),0);
+  const activeDays=new Set([...S.map(s=>s.date),...Q.map(q=>q.date)]).size;
+  const discRows=[...byDisc.values()].filter(x=>x.sec||x.qtot);
+  return {S,Q,buckets,totalSec,totalQ,totalCer,activeDays,discRows};
+}
+function tStatsMiniRows(items,kind){
+  const rows=items.slice(0,6);
+  if(!rows.length)return '<div class="empty-mini">Sem dados neste periodo.</div>';
+  return '<div class="ts-mini-list">'+rows.map(x=>{
+    const acc=x.qtot?Math.round(x.qcer/x.qtot*100)+'% acerto':'sem questoes';
+    const meta=kind==='hours'?x.sess+' sessao(oes) - '+(x.qtot?x.qtot+' questoes':'sem questoes'):fH(x.sec||0)+' - '+acc;
+    const value=kind==='hours'?fH(x.sec||0):x.qtot+' q';
+    return '<div class="ts-mini-row"><div><div class="ts-mini-name"><span class="sdot" style="display:inline-block;background:'+x.color+';margin-right:7px"></span>'+escapeHtml(x.label)+'</div><div class="ts-mini-meta">'+meta+'</div></div><div class="ts-mini-val">'+value+'</div></div>';
+  }).join('')+'</div>';
 }
 function renderTSess(){
   const w=document.getElementById('tsess');if(!w)return;
-  const title=document.getElementById('tsess-title'),sub=document.getElementById('tsess-sub');
-  const dayBtn=document.getElementById('ts-period-day'),weekBtn=document.getElementById('ts-period-week');
-  dayBtn?.classList.toggle('on',tSessPeriod==='day');
-  weekBtn?.classList.toggle('on',tSessPeriod==='week');
-  let rows,periodLabel;
-  if(tSessPeriod==='week'){
-    const range=tSessWeekRange();
-    rows=sess().filter(s=>s.date>=range.d1&&s.date<=range.d2);
-    periodLabel=range.start.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})+' a '+range.end.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
-    if(title)title.textContent='📊 Sessões da Semana';
-    if(sub)sub.textContent='desempenho semanal · '+periodLabel;
-  }else{
-    rows=sess().filter(s=>s.date===td());
-    periodLabel=new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'long'});
-    if(title)title.textContent='☀️ Sessões de Hoje';
-    if(sub)sub.textContent='desempenho diário · '+periodLabel;
-  }
-  rows.sort((a,b)=>(b.ts||0)-(a.ts||0));
-  const total=rows.reduce((sum,s)=>sum+(Number(s.sec)||0),0);
-  const avg=rows.length?Math.round(total/rows.length):0;
-  const activeDiscs=new Set(rows.map(s=>s.discId).filter(Boolean)).size;
+  const title=document.getElementById('tsess-title'),sub=document.getElementById('tsess-sub'),custom=document.getElementById('ts-custom-range');
+  ['day','week','month','custom'].forEach(p=>document.getElementById('ts-period-'+p)?.classList.toggle('on',tSessPeriod===p));
+  custom?.classList.toggle('on',tSessPeriod==='custom');
+  const range=tStatsRange(),data=tStatsData(range);
+  if(title)title.textContent='Estatisticas do Cronometro';
+  if(sub)sub.textContent=range.title+' - '+range.label+' - horas e questoes feitas';
+  const days=Math.max(1,Math.round((range.end-range.start)/86400000)+1);
+  const avgDay=Math.round(data.totalSec/days);
+  const acc=data.totalQ?Math.round(data.totalCer/data.totalQ*100)+'%':'-';
   const kpis='<div class="ts-kpis">'+
-    '<div class="ts-kpi"><strong>'+fH(total)+'</strong><span>Tempo estudado</span></div>'+
-    '<div class="ts-kpi"><strong>'+rows.length+'</strong><span>Sessões</span></div>'+
-    '<div class="ts-kpi"><strong>'+fH(avg)+'</strong><span>Média por sessão · '+activeDiscs+' disciplina(s)</span></div>'+
+    '<div class="ts-kpi"><strong>'+fH(data.totalSec)+'</strong><span>Horas estudadas</span></div>'+
+    '<div class="ts-kpi"><strong>'+data.totalQ+'</strong><span>Questoes feitas</span></div>'+
+    '<div class="ts-kpi"><strong>'+fH(avgDay)+'</strong><span>Media de horas/dia</span></div>'+
+    '<div class="ts-kpi"><strong>'+acc+'</strong><span>Acerto no periodo</span></div>'+
   '</div>';
-  if(!rows.length){
-    w.innerHTML=kpis+'<div class="empty"><div class="eico">'+(tSessPeriod==='week'?'📊':'☀️')+'</div><div class="etxt">Nenhuma sessão neste período</div></div>';
+  const legend='<div class="ts-legend"><span><i style="background:#60a5fa"></i>Horas</span><span><i style="background:#34d399"></i>Questoes</span></div>';
+  if(!data.totalSec&&!data.totalQ){
+    w.innerHTML=kpis+legend+'<div class="empty"><div class="eico">--</div><div class="etxt">Nenhum registro neste periodo</div></div>';
     return;
   }
-  const chart=tSessChart(rows),max=Math.max(1,...chart.map(x=>x.sec));
-  const chartHtml='<div class="ts-chart">'+chart.map(x=>
-    '<div class="ts-col" title="'+escapeHtml(x.label)+' · '+fH(x.sec)+'">'+
-      '<div class="ts-value">'+fH(x.sec)+'</div>'+
-      '<div class="ts-bar" style="height:'+Math.max(4,Math.round(x.sec/max*100))+'%;--bar:'+x.color+'"></div>'+
+  const maxSec=Math.max(1,...data.buckets.map(x=>x.sec));
+  const maxQ=Math.max(1,...data.buckets.map(x=>x.qtot));
+  const chart='<div class="ts-chart">'+data.buckets.map(x=>{
+    const h=x.sec?Math.max(4,Math.round(x.sec/maxSec*100)):0;
+    const q=x.qtot?Math.max(4,Math.round(x.qtot/maxQ*100)):0;
+    return '<div class="ts-col" title="'+escapeHtml(x.label)+' - '+fH(x.sec)+' - '+x.qtot+' questoes">'+
+      '<div class="ts-value">'+fH(x.sec)+' / '+x.qtot+'q</div>'+
+      '<div class="ts-bars"><div class="ts-bar hours" style="height:'+h+'%"></div><div class="ts-bar questions" style="height:'+q+'%"></div></div>'+
       '<div class="ts-label">'+escapeHtml(x.label)+'</div>'+
-    '</div>'
-  ).join('')+'</div>';
-  const list='<div class="slist">'+rows.map(s=>{
-    const d=discs().find(x=>x.id===s.discId);
-    const date=tSessPeriod==='week'?'<span class="ts-date">'+new Date(s.date+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})+'</span>':'';
-    return '<div class="srow2">'+date+'<div class="sdot" style="background:'+(d?.color||'#4a6080')+'"></div><div class="smain"><div class="sname">'+escapeHtml(d?.name||'—')+'</div><div class="smeta">'+escapeHtml(s.ass||'Sessão de estudo')+(s.nota?' · '+escapeHtml(s.nota):'')+'</div></div><div class="sright"><span class="ttag">'+fH(s.sec)+'</span><button class="btn bd xs" onclick="delS(\''+s.id+'\')">✕</button></div></div>';
+    '</div>';
   }).join('')+'</div>';
-  w.innerHTML=kpis+chartHtml+list;
+  const byHours=[...data.discRows].sort((a,b)=>b.sec-a.sec);
+  const byQuestions=[...data.discRows].sort((a,b)=>b.qtot-a.qtot);
+  const detail='<div class="ts-split">'+
+    '<div><div class="slbl">Horas por disciplina</div>'+tStatsMiniRows(byHours,'hours')+'</div>'+
+    '<div><div class="slbl">Questoes por disciplina</div>'+tStatsMiniRows(byQuestions,'questions')+'</div>'+
+  '</div>';
+  const recent=data.S.slice().sort((a,b)=>(b.ts||0)-(a.ts||0)).slice(0,6);
+  const list=recent.length?'<div class="slist" style="margin-top:12px">'+recent.map(s=>{
+    const d=discs().find(x=>x.id===s.discId);
+    return '<div class="srow2"><span class="ts-date">'+new Date(s.date+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})+'</span><div class="sdot" style="background:'+(d?.color||'#4a6080')+'"></div><div class="smain"><div class="sname">'+escapeHtml(d?.name||'-')+'</div><div class="smeta">'+escapeHtml(s.ass||'Sessao de estudo')+(s.nota?' - '+escapeHtml(s.nota):'')+'</div></div><div class="sright"><span class="ttag">'+fH(s.sec)+'</span><button class="btn bd xs" onclick="delS(\''+s.id+'\')">x</button></div></div>';
+  }).join('')+'</div>':'';
+  w.innerHTML=kpis+legend+chart+detail+list;
 }
 function delS(id){ST.sess=ensureSess().filter(s=>s.id!==id);sSt();renderTSess();renderD();}
 
@@ -2601,7 +2675,7 @@ function saveQ(){
   ST.qs.unshift({id:uid(),discId:disc,tot,cer,ass,date,fonte,ts:Date.now()});
   sSt();nfy(cer+'/'+tot+' = '+Math.round(cer/tot*100)+'%','ok');
   ['qtot','qcer','qass','qfonte'].forEach(id=>document.getElementById(id).value='');
-  renderQ();renderD();
+  renderQ();renderD();if(curTab==='t')renderTSess();
 }
 function renderQ(){
   const f=document.getElementById('qfdisc')?.value||'';
