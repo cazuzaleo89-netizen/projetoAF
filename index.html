@@ -2139,18 +2139,27 @@ function pfAddQuestion(result,payload,eventId,timestamp){
   ST.qs.unshift({
     id:'ext:'+eventId,discId,tot:1,cer:result==='correct'?1:0,
     ass:payload.assunto||'',date:ymd(new Date(ts)),
-    fonte:'Extensao TEC',ts,src:'extension',qid:String(payload.qid||'')
+    fonte:'Extensao TEC',ts,src:'extension',qid:String(payload.qid||''),
+    dificuldade:payload.dificuldade||payload.difficulty||payload.tecDifficulty||'',
+    tecAcertoGeral:payload.tecAcertoGeral||payload.acertoGeral||payload.percentualAcerto||payload.correctRate||payload.accuracy||'',
+    tecResolucaoTotal:payload.tecResolucaoTotal||payload.totalResolucao||payload.totalResolucoes||payload.resolutions||''
   });
   if(result==='wrong'&&payload.qid){
     ST.erros=ST.erros||[];
     let er=ST.erros.find(e=>String(e.code)===String(payload.qid));
     if(er){
       er.count=(er.count||1)+1;er.done=false;er.assunto=payload.assunto||er.assunto;er.discId=discId;
+      er.dificuldade=payload.dificuldade||payload.difficulty||payload.tecDifficulty||er.dificuldade||'';
+      er.tecAcertoGeral=payload.tecAcertoGeral||payload.acertoGeral||payload.percentualAcerto||payload.correctRate||payload.accuracy||er.tecAcertoGeral||'';
+      er.tecResolucaoTotal=payload.tecResolucaoTotal||payload.totalResolucao||payload.totalResolucoes||payload.resolutions||er.tecResolucaoTotal||'';
     }else{
       ST.erros.unshift({
         id:'ext-error:'+payload.qid,code:String(payload.qid),discId,
         assunto:payload.assunto||'',banca:'',date:ymd(new Date(ts)),
-        ts,count:1,done:false,src:'extension'
+        ts,count:1,done:false,src:'extension',
+        dificuldade:payload.dificuldade||payload.difficulty||payload.tecDifficulty||'',
+        tecAcertoGeral:payload.tecAcertoGeral||payload.acertoGeral||payload.percentualAcerto||payload.correctRate||payload.accuracy||'',
+        tecResolucaoTotal:payload.tecResolucaoTotal||payload.totalResolucao||payload.totalResolucoes||payload.resolutions||''
       });
     }
   }
@@ -5716,7 +5725,7 @@ document.head.appendChild(sty);
 var tab = document.createElement('div');
 tab.id = 'tab-rx';
 tab.className = 'tab';
-tab.innerHTML = '<div style="display:flex;align-items:center;gap:.5rem;margin-bottom:1rem;flex-wrap:wrap"><span style="font-size:.72rem;font-weight:700;color:var(--accent2);text-transform:uppercase;letter-spacing:.06em;background:var(--abg2);padding:.15rem .5rem;border-radius:99px">Diagn\u00f3stico</span><select class="rx-period" id="rx-period" onchange="rxRecompute()"><option value="all">Todo o per\u00edodo</option><option value="7">\u00daltimos 7 dias</option><option value="30">\u00daltimos 30 dias</option><option value="60">\u00daltimos 60 dias</option><option value="90">\u00daltimos 90 dias</option></select></div><div class="rx-kpi-row" id="rx-kpis"></div><div class="rx-sec">\ud83c\udfaf Recomenda\u00e7\u00f5es de Refor\u00e7o</div><div class="rx-recs" id="rx-recs"></div><div class="rx-sec">\ud83d\udccb Todos os Assuntos</div><div class="rx-controls"><input class="rx-search" id="rx-search" placeholder="Buscar disciplina ou assunto\u2026" oninput="rxRenderTable()"><div class="rx-pills" id="rx-pills"><button class="rx-pill on" data-f="all" onclick="rxSetFilter(this)">Todos</button><button class="rx-pill" data-f="crit" onclick="rxSetFilter(this)">Cr\u00edtico</button><button class="rx-pill" data-f="warn" onclick="rxSetFilter(this)">Aten\u00e7\u00e3o</button><button class="rx-pill" data-f="good" onclick="rxSetFilter(this)">Bom</button><button class="rx-pill" data-f="great" onclick="rxSetFilter(this)">Excelente</button></div><select class="rx-sel" id="rx-sort" onchange="rxRenderTable()"><option value="status-asc">Mais cr\u00edtico</option><option value="status-desc">Melhor primeiro</option><option value="acc-asc">Menor acerto</option><option value="acc-desc">Maior acerto</option><option value="vol-desc">Mais quest\u00f5es</option><option value="vol-asc">Menos quest\u00f5es</option><option value="date-asc">Mais antigo</option><option value="date-desc">Mais recente</option></select></div><div class="rx-tbl" id="rx-tbl"></div>';
+tab.innerHTML = '<div style="display:flex;align-items:center;gap:.5rem;margin-bottom:1rem;flex-wrap:wrap"><span style="font-size:.72rem;font-weight:700;color:var(--accent2);text-transform:uppercase;letter-spacing:.06em;background:var(--abg2);padding:.15rem .5rem;border-radius:99px">Diagn\u00f3stico</span><select class="rx-period" id="rx-period" onchange="rxRecompute()"><option value="all">Todo o per\u00edodo</option><option value="7">\u00daltimos 7 dias</option><option value="30">\u00daltimos 30 dias</option><option value="60">\u00daltimos 60 dias</option><option value="90">\u00daltimos 90 dias</option></select></div><div class="rx-kpi-row" id="rx-kpis"></div><div class="rx-sec">\ud83c\udfaf Recomenda\u00e7\u00f5es de Refor\u00e7o</div><div class="rx-recs" id="rx-recs"></div><div class="rx-sec">\ud83d\udccb Todos os Assuntos</div><div class="rx-controls"><input class="rx-search" id="rx-search" placeholder="Buscar disciplina ou assunto\u2026" oninput="rxRenderTable()"><div class="rx-pills" id="rx-pills"><button class="rx-pill on" data-f="all" onclick="rxSetFilter(this)">Todos</button><button class="rx-pill" data-f="crit" onclick="rxSetFilter(this)">Cr\u00edtico</button><button class="rx-pill" data-f="warn" onclick="rxSetFilter(this)">Aten\u00e7\u00e3o</button><button class="rx-pill" data-f="good" onclick="rxSetFilter(this)">Bom</button><button class="rx-pill" data-f="great" onclick="rxSetFilter(this)">Excelente</button></div><select class="rx-sel" id="rx-sort" onchange="rxRenderTable()"><option value="priority-desc">Prioridade TEC</option><option value="status-asc">Mais cr\u00edtico</option><option value="status-desc">Melhor primeiro</option><option value="acc-asc">Menor acerto</option><option value="acc-desc">Maior acerto</option><option value="tec-desc">Maior erro TEC</option><option value="tec-asc">Menor erro TEC</option><option value="vol-desc">Mais quest\u00f5es</option><option value="vol-asc">Menos quest\u00f5es</option><option value="date-asc">Mais antigo</option><option value="date-desc">Mais recente</option></select></div><div class="rx-tbl" id="rx-tbl"></div>';
 
 // Append to content area (after last .tab)
 var lastTab = document.querySelector('.content');
@@ -5770,11 +5779,74 @@ go = function(id, el) {
 /* --- ENGINE --- */
 var rxData = [], rxFilter = 'all';
 
-function rxClassify(acc, tot, days) {
+function rxNorm(s){return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();}
+function rxParsePct(v){
+  if(v===null||v===undefined||v==='')return null;
+  var n;
+  if(typeof v==='number')n=v;
+  else {
+    var m=String(v).replace(',','.').match(/(\d+(?:\.\d+)?)/);
+    if(!m)return null;
+    n=Number(m[1]);
+  }
+  if(!Number.isFinite(n))return null;
+  if(n>=0&&n<=1)n*=100;
+  if(n>100&&n<=10000)n/=100;
+  return Math.max(0,Math.min(100,n));
+}
+function rxEaseFromDifficulty(v){
+  var raw=rxNorm(v);
+  if(!raw)return null;
+  if(/muito\s+dificil|muito\s+dif/.test(raw))return 22;
+  if(/dificil|dif/.test(raw))return 38;
+  if(/medio|media|mediana/.test(raw))return 58;
+  if(/muito\s+facil/.test(raw))return 90;
+  if(/facil/.test(raw))return 76;
+  return null;
+}
+function rxTecLookup(){
+  var map={},meta={};
+  try{meta=typeof pfSyncMeta==='function'?pfSyncMeta():(ST.extSync||{});}catch(e){meta=ST.extSync||{};}
+  function put(q){
+    if(!q)return;
+    var qid=String(q.qid||q.code||q.codigo||q.questionId||q.id||'').replace(/\D/g,'');
+    if(!qid)return;
+    map[qid]={...(map[qid]||{}),...q};
+  }
+  var list=typeof safeList==='function'?safeList:function(v){return Array.isArray(v)?v:[];};
+  list(ST.erros).forEach(put);
+  list(meta.reviewQueue).forEach(put);
+  list(meta.similarItems).forEach(put);
+  list(meta.libraryPending).forEach(put);
+  return map;
+}
+function rxQuestionTec(q,lookup){
+  var qid=String(q.qid||q.code||'').replace(/\D/g,''),m=qid?(lookup[qid]||{}):{};
+  var ease=rxParsePct(q.tecAcertoGeral??q.acertoGeral??q.percentualAcerto??q.correctRate??q.accuracy??m.tecAcertoGeral??m.acertoGeral??m.percentualAcerto??m.correctRate??m.accuracy);
+  if(ease===null)ease=rxEaseFromDifficulty(q.dificuldade||q.difficulty||q.tecDifficulty||m.dificuldade||m.difficulty||m.tecDifficulty);
+  return {has:ease!==null,ease:ease};
+}
+function rxPriorityScore(acc,tot,days,tecLoss){
+  var score=(100-acc)+Math.min(16,Math.log(Math.max(1,tot))*5);
+  if(days>45)score+=Math.min(20,(days-45)/3);
+  if(tecLoss!==null)score+=tecLoss*.9;
+  return Math.round(score);
+}
+function rxTecCell(d){
+  if(d.tecLoss===null)return '<span style="color:var(--t4)">sem dados</span>';
+  var wrong=d.tecWrongEase!==null?(' · erradas '+d.tecWrongEase.toFixed(0)+'%'):'';
+  var easy=d.easyMisses?(' · '+d.easyMisses+' facil'+(d.easyMisses>1?'eis':'')+' errada'+(d.easyMisses>1?'s':'')):'';
+  return '<b style="color:'+(d.tecLoss>=45?'#ef4444':d.tecLoss>=25?'#f97316':'var(--t2)')+'">'+d.tecLoss.toFixed(0)+'</b><span style="color:var(--t3);font-size:.62rem"> pts'+wrong+easy+'</span>';
+}
+
+function rxClassify(acc, tot, days, tecLoss, tecWrongEase, easyMisses) {
+  if (tecLoss !== null && tecLoss >= 45 && tot >= 2) return {s:'crit',o:0,r:'Hemorragia TEC: erro ponderado '+tecLoss.toFixed(0)+' pts'};
+  if (tecWrongEase !== null && tecWrongEase >= 65 && easyMisses > 0 && acc < 85) return {s:'crit',o:0,r:'Erros em quest\u00f5es que '+tecWrongEase.toFixed(0)+'% da base acerta'};
   if (acc < 50 && tot >= 3)     return {s:'crit',o:0,r:'Acerto muito baixo ('+acc.toFixed(0)+'%)'};
   if (acc < 60 && tot >= 10)    return {s:'crit',o:0,r:'Acerto baixo em volume alto ('+tot+'q, '+acc.toFixed(0)+'%)'};
   if (tot < 5 && acc < 60)      return {s:'crit',o:0,r:'Poucas quest\u00f5es ('+tot+') e acerto baixo'};
   if (days > 60 && acc < 65)    return {s:'crit',o:0,r:'Sem praticar h\u00e1 '+days+'d e acerto fraco'};
+  if (tecLoss !== null && tecLoss >= 25 && acc < 78) return {s:'warn',o:1,r:'Erro TEC elevado ('+tecLoss.toFixed(0)+' pts)'};
   if (acc < 70)                 return {s:'warn',o:1,r:'Acerto abaixo de 70% ('+acc.toFixed(0)+'%)'};
   if (tot < 10)                 return {s:'warn',o:1,r:'Pouca pr\u00e1tica ('+tot+' quest\u00f5es)'};
   if (days > 45)                return {s:'warn',o:1,r:'Sem praticar h\u00e1 '+days+' dias'};
@@ -5791,6 +5863,7 @@ window.rxRecompute = function() {
   var dMap = {};
   D.forEach(function(d){ dMap[d.id] = d; });
   var Q = ST.qs || [];
+  var tecLookup = rxTecLookup();
   var agg = {};
   Q.forEach(function(q) {
     var discId = q.discId || 'unknown';
@@ -5800,18 +5873,36 @@ window.rxRecompute = function() {
     var key = discId + '||' + subject;
     if (!agg[key]) {
       var d = dMap[discId];
-      agg[key] = {discId:discId, disc:d?d.name:discId, discColor:d?d.color:'#4a6080', subject:subject, tot:0, cer:0, dates:[]};
+      agg[key] = {discId:discId, disc:d?d.name:discId, discColor:d?d.color:'#4a6080', subject:subject, tot:0, cer:0, dates:[], tecSamples:0, tecEaseSum:0, tecWeightedLoss:0, tecWrongSamples:0, tecWrongEaseSum:0, easyMisses:0};
     }
-    agg[key].tot += (q.tot || 0);
-    agg[key].cer += (q.cer || 0);
+    var tot = Math.max(0,Number(q.tot)||0);
+    var cer = Math.max(0,Math.min(tot,Number(q.cer)||0));
+    var wrong = Math.max(0,tot-cer);
+    agg[key].tot += tot;
+    agg[key].cer += cer;
     if (qDate && !isNaN(qDate)) agg[key].dates.push(qDate);
+    var tec = rxQuestionTec(q,tecLookup);
+    if(tec.has&&tot>0){
+      agg[key].tecSamples += tot;
+      agg[key].tecEaseSum += tec.ease*tot;
+      agg[key].tecWeightedLoss += wrong*(tec.ease/100);
+      if(wrong>0){
+        agg[key].tecWrongSamples += wrong;
+        agg[key].tecWrongEaseSum += tec.ease*wrong;
+        if(tec.ease>=65)agg[key].easyMisses += wrong;
+      }
+    }
   });
   rxData = Object.values(agg).map(function(a) {
     var acc = a.tot > 0 ? (a.cer / a.tot) * 100 : 0;
     var lastDate = a.dates.length ? new Date(Math.max.apply(null, a.dates.map(function(d){return d.getTime();}))) : null;
     var days = lastDate ? Math.floor((now - lastDate) / 86400000) : 999;
-    var c = rxClassify(acc, a.tot, days);
-    return {discId:a.discId,disc:a.disc,discColor:a.discColor,subject:a.subject,tot:a.tot,cer:a.cer,acc:acc,lastDate:lastDate,days:days,status:c.s,statusOrder:c.o,reason:c.r};
+    var tecLoss = a.tecSamples ? (a.tecWeightedLoss / Math.max(1,a.tot)) * 100 : null;
+    var tecAvgEase = a.tecSamples ? a.tecEaseSum/a.tecSamples : null;
+    var tecWrongEase = a.tecWrongSamples ? a.tecWrongEaseSum/a.tecWrongSamples : null;
+    var c = rxClassify(acc, a.tot, days, tecLoss, tecWrongEase, a.easyMisses);
+    var priority = rxPriorityScore(acc,a.tot,days,tecLoss);
+    return {discId:a.discId,disc:a.disc,discColor:a.discColor,subject:a.subject,tot:a.tot,cer:a.cer,acc:acc,lastDate:lastDate,days:days,status:c.s,statusOrder:c.o,reason:c.r,tecLoss:tecLoss,tecAvgEase:tecAvgEase,tecWrongEase:tecWrongEase,easyMisses:a.easyMisses,priority:priority};
   });
   rxRenderKPIs(); rxRenderRecs(); rxRenderTable();
 };
@@ -5822,9 +5913,12 @@ function rxRenderKPIs() {
   var n=rxData.length;
   var avg=n>0?rxData.reduce(function(s,d){return s+d.acc;},0)/n:0;
   var tQ=rxData.reduce(function(s,d){return s+d.tot;},0);
+  var tecItems=rxData.filter(function(d){return d.tecLoss!==null;});
+  var tecTot=tecItems.reduce(function(s,d){return s+d.tot;},0);
+  var tecAvg=tecTot?tecItems.reduce(function(s,d){return s+d.tecLoss*d.tot;},0)/tecTot:null;
   var el=document.getElementById('rx-kpis');
   if(!el)return;
-  el.innerHTML='<div class="rx-kpi total"><div class="rx-num">'+n+'</div><div class="rx-lbl">Assuntos</div></div><div class="rx-kpi crit"><div class="rx-num">'+c.crit+'</div><div class="rx-lbl">\ud83d\udea8 Cr\u00edticos</div></div><div class="rx-kpi warn"><div class="rx-num">'+c.warn+'</div><div class="rx-lbl">\u26a0\ufe0f Aten\u00e7\u00e3o</div></div><div class="rx-kpi good"><div class="rx-num">'+c.good+'</div><div class="rx-lbl">\u2705 Bom</div></div><div class="rx-kpi great"><div class="rx-num">'+c.great+'</div><div class="rx-lbl">\ud83c\udfc6 Excelente</div></div><div class="rx-kpi total"><div class="rx-num">'+avg.toFixed(0)+'%</div><div class="rx-lbl">Acerto m\u00e9dio</div></div><div class="rx-kpi total"><div class="rx-num">'+tQ.toLocaleString("pt-BR")+'</div><div class="rx-lbl">Quest\u00f5es</div></div>';
+  el.innerHTML='<div class="rx-kpi total"><div class="rx-num">'+n+'</div><div class="rx-lbl">Assuntos</div></div><div class="rx-kpi crit"><div class="rx-num">'+c.crit+'</div><div class="rx-lbl">\ud83d\udea8 Cr\u00edticos</div></div><div class="rx-kpi warn"><div class="rx-num">'+c.warn+'</div><div class="rx-lbl">\u26a0\ufe0f Aten\u00e7\u00e3o</div></div><div class="rx-kpi good"><div class="rx-num">'+c.good+'</div><div class="rx-lbl">\u2705 Bom</div></div><div class="rx-kpi great"><div class="rx-num">'+c.great+'</div><div class="rx-lbl">\ud83c\udfc6 Excelente</div></div><div class="rx-kpi total"><div class="rx-num">'+avg.toFixed(0)+'%</div><div class="rx-lbl">Acerto m\u00e9dio</div></div><div class="rx-kpi total"><div class="rx-num">'+(tecAvg===null?'\u2014':tecAvg.toFixed(0))+'</div><div class="rx-lbl">Erro TEC</div></div><div class="rx-kpi total"><div class="rx-num">'+tQ.toLocaleString("pt-BR")+'</div><div class="rx-lbl">Quest\u00f5es</div></div>';
 }
 
 function rxSimilarFor(disc,subject){
@@ -5850,24 +5944,25 @@ function rxSimilarLinks(disc,subject,limit){
 
 function rxRenderRecs() {
   var el=document.getElementById('rx-recs'); if(!el)return;
-  var cr=rxData.filter(function(d){return d.status==='crit';}).sort(function(a,b){return a.acc-b.acc;}).slice(0,4);
-  var wr=rxData.filter(function(d){return d.status==='warn';}).sort(function(a,b){return a.acc-b.acc;}).slice(0,3);
+  var cr=rxData.filter(function(d){return d.status==='crit';}).sort(function(a,b){return b.priority-a.priority;}).slice(0,4);
+  var wr=rxData.filter(function(d){return d.status==='warn';}).sort(function(a,b){return b.priority-a.priority;}).slice(0,3);
   var items=[];
   cr.forEach(function(d){items.push({d:d,cc:'crit'});});
   wr.forEach(function(d){items.push({d:d,cc:'warn'});});
   if(!items.length){el.innerHTML='<div class="rx-rec" style="border-color:rgba(29,185,106,.3)"><div class="rx-rec-title">\ud83c\udf89 Nenhum assunto cr\u00edtico!</div><div class="rx-rec-body">Todos os assuntos est\u00e3o com desempenho aceit\u00e1vel.</div></div>';return;}
   el.innerHTML=items.map(function(i){
     var d=i.d,ico=i.cc==='crit'?'\ud83d\udea8':'\u26a0\ufe0f';
-    var tag=d.tot<10?'\ud83d\udcdd Resolver mais quest\u00f5es':d.acc<60?'\ud83d\udcd6 Revisar teoria':'\ud83d\udd04 Praticar recentemente';
+    var tag=d.tecLoss!==null&&d.tecLoss>=45?'Prioridade m\u00e1xima TEC':d.tot<10?'\ud83d\udcdd Resolver mais quest\u00f5es':d.acc<60?'\ud83d\udcd6 Revisar teoria':'\ud83d\udd04 Praticar recentemente';
     var ago=d.days<999?(d.days===0?'hoje':d.days===1?'ontem':'h\u00e1 '+d.days+' dias'):'';
-    return '<div class="rx-rec '+i.cc+'"><div class="rx-rec-title">'+ico+' '+rxE(d.subject)+'</div><div class="rx-rec-body"><strong>'+rxE(d.disc)+'</strong> \u2014 '+rxE(d.reason)+'.'+(ago?'<br>\u00daltima pr\u00e1tica: '+ago+'.':'')+'</div><span class="rx-rec-tag">'+tag+'</span>'+rxSimilarLinks(d.disc,d.subject,3)+'</div>';
+    var tec=d.tecLoss!==null?'<br>Erro TEC: <strong>'+d.tecLoss.toFixed(0)+' pts</strong>'+(d.tecWrongEase!==null?' em erradas de '+d.tecWrongEase.toFixed(0)+'% de acerto geral.':'.'):'';
+    return '<div class="rx-rec '+i.cc+'"><div class="rx-rec-title">'+ico+' '+rxE(d.subject)+'</div><div class="rx-rec-body"><strong>'+rxE(d.disc)+'</strong> \u2014 '+rxE(d.reason)+'.'+tec+(ago?'<br>\u00daltima pr\u00e1tica: '+ago+'.':'')+'</div><span class="rx-rec-tag">'+tag+'</span>'+rxSimilarLinks(d.disc,d.subject,3)+'</div>';
   }).join('');
 }
 
 window.rxRenderTable = function(){
   var el=document.getElementById('rx-tbl'); if(!el)return;
   var search=((document.getElementById('rx-search')||{}).value||'').toLowerCase();
-  var sv=((document.getElementById('rx-sort')||{}).value||'status-asc');
+  var sv=((document.getElementById('rx-sort')||{}).value||'priority-desc');
   var filtered=rxData.filter(function(d){
     if(rxFilter!=='all'&&d.status!==rxFilter)return false;
     if(search&&d.disc.toLowerCase().indexOf(search)<0&&d.subject.toLowerCase().indexOf(search)<0)return false;
@@ -5875,8 +5970,10 @@ window.rxRenderTable = function(){
   });
   var p=sv.split('-'),sk=p[0],dir=p[1]==='asc'?1:-1;
   filtered.sort(function(a,b){
-    if(sk==='status')return(a.statusOrder-b.statusOrder)*dir;
+    if(sk==='priority')return(a.priority-b.priority)*dir;
+    if(sk==='status')return((a.statusOrder-b.statusOrder)||(b.priority-a.priority))*dir;
     if(sk==='acc')return(a.acc-b.acc)*dir;
+    if(sk==='tec')return(((a.tecLoss===null?-1:a.tecLoss)-(b.tecLoss===null?-1:b.tecLoss)))*dir;
     if(sk==='vol')return(a.tot-b.tot)*dir;
     if(sk==='date')return((a.lastDate||new Date(0))-(b.lastDate||new Date(0)))*dir;
     return 0;
@@ -5886,16 +5983,16 @@ window.rxRenderTable = function(){
   filtered.forEach(function(d){if(!groups[d.discId])groups[d.discId]={disc:d.disc,color:d.discColor,items:[]};groups[d.discId].items.push(d);});
   var lbl={crit:'Cr\u00edtico',warn:'Aten\u00e7\u00e3o',good:'Bom',great:'Excelente'};
   var col={crit:'#ef4444',warn:'#f97316',good:'#3b82f6',great:'#10b981'};
-  var h='<table><thead><tr><th style="width:20px"></th><th>Assunto</th><th>Qtd</th><th>Acerto</th><th>Barra</th><th>\u00daltima</th><th>Status</th><th>Diagn\u00f3stico</th><th>Similares da extens\u00e3o</th></tr></thead><tbody>';
+  var h='<table><thead><tr><th style="width:20px"></th><th>Assunto</th><th>Qtd</th><th>Acerto</th><th>Barra</th><th>Erro TEC</th><th>\u00daltima</th><th>Status</th><th>Diagn\u00f3stico</th><th>Similares da extens\u00e3o</th></tr></thead><tbody>';
   Object.values(groups).forEach(function(g){
     var gT=g.items.reduce(function(s,d){return s+d.tot;},0);
     var gC=g.items.reduce(function(s,d){return s+d.cer;},0);
     var gA=gT>0?(gC/gT*100).toFixed(0):'\u2014';
-    h+='<tr class="rx-disc-row"><td colspan="9"><span class="rx-dot" style="background:'+g.color+'"></span>'+rxE(g.disc)+' <span style="color:var(--t3);font-weight:400;font-size:.66rem;margin-left:.4rem">'+g.items.length+' assuntos \u00b7 '+gT+'q \u00b7 '+gA+'%</span></td></tr>';
+    h+='<tr class="rx-disc-row"><td colspan="10"><span class="rx-dot" style="background:'+g.color+'"></span>'+rxE(g.disc)+' <span style="color:var(--t3);font-weight:400;font-size:.66rem;margin-left:.4rem">'+g.items.length+' assuntos \u00b7 '+gT+'q \u00b7 '+gA+'%</span></td></tr>';
     g.items.forEach(function(d){
       var accStr=d.tot>0?d.acc.toFixed(0)+'%':'\u2014';
       var dateStr=d.lastDate?rxD(d.lastDate):'\u2014';
-      h+='<tr><td><span class="rx-dot" style="background:'+g.color+';width:5px;height:5px"></span></td><td style="font-weight:500">'+rxE(d.subject)+'</td><td><span style="font-family:var(--fh);font-size:.72rem">'+d.tot+'</span> <span style="color:var(--t3);font-size:.62rem">('+d.cer+'\u2713)</span></td><td style="font-family:var(--fh);font-weight:700;color:'+col[d.status]+'">'+accStr+'</td><td><div class="rx-bar"><div class="rx-bar-fill '+d.status+'" style="width:'+Math.min(d.acc,100)+'%"></div></div></td><td style="font-size:.68rem;color:var(--t3)">'+dateStr+'</td><td><span class="rx-badge '+d.status+'"><span class="bdot"></span>'+lbl[d.status]+'</span></td><td style="font-size:.66rem;color:var(--t3);max-width:180px">'+rxE(d.reason)+'</td><td style="min-width:160px">'+rxSimilarLinks(d.disc,d.subject,2)+'</td></tr>';
+      h+='<tr><td><span class="rx-dot" style="background:'+g.color+';width:5px;height:5px"></span></td><td style="font-weight:500">'+rxE(d.subject)+'</td><td><span style="font-family:var(--fh);font-size:.72rem">'+d.tot+'</span> <span style="color:var(--t3);font-size:.62rem">('+d.cer+'\u2713)</span></td><td style="font-family:var(--fh);font-weight:700;color:'+col[d.status]+'">'+accStr+'</td><td><div class="rx-bar"><div class="rx-bar-fill '+d.status+'" style="width:'+Math.min(d.acc,100)+'%"></div></div></td><td style="font-size:.66rem;min-width:125px">'+rxTecCell(d)+'</td><td style="font-size:.68rem;color:var(--t3)">'+dateStr+'</td><td><span class="rx-badge '+d.status+'"><span class="bdot"></span>'+lbl[d.status]+'</span></td><td style="font-size:.66rem;color:var(--t3);max-width:180px">'+rxE(d.reason)+'</td><td style="min-width:160px">'+rxSimilarLinks(d.disc,d.subject,2)+'</td></tr>';
     });
   });
   h+='</tbody></table>';
