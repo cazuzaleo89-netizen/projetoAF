@@ -38,14 +38,25 @@ Regras obrigatórias:
    errada testa uma nuance ("imposto X é municipal, não estadual"), essa
    nuance entra no resumo.
 3. Extraia conteúdo **das alternativas erradas também**: cada erro plantado
-   pela banca vira uma pegadinha documentada ou uma linha de tabela.
-4. Se um tópico foi cobrado de formas ligeiramente diferentes em questões
+   pela banca vira uma pegadinha documentada ou uma linha de tabela — além de
+   aparecer no Raio-X das alternativas da questão (ver abaixo).
+4. **Raio-X das alternativas (obrigatório para TODAS as questões):** cada
+   questão do caderno deve ter um bloco resumindo **todas as suas
+   alternativas**, uma a uma, explicando **por que cada errada está errada e
+   por que a certa está certa, de acordo com os comentários do fórum** (dos
+   professores e dos mais votados). Em forma de resumo: uma ou duas linhas
+   por alternativa, direto ao ponto — o erro exato que a banca plantou
+   ("trocou estadual por municipal", "restringiu o sentido do fluxo",
+   "confundiu PIB com PNB"), não a transcrição do comentário inteiro.
+   Marque o gabarito com ✔ e as erradas com ✘.
+5. Se um tópico foi cobrado de formas ligeiramente diferentes em questões
    diferentes, registre **as duas redações** — a variação de literalidade é
    exatamente o que derruba candidato.
-5. Ao final, faça uma **auto-conferência**: percorra a lista de IDs das
-   questões e verifique que todos os IDs aparecem no HTML. Liste no chat
-   qualquer questão que tenha ficado de fora e corrija antes de entregar.
-6. Na dúvida entre incluir ou cortar, **inclua**. O limite é a redundância,
+6. Ao final, faça uma **auto-conferência**: percorra a lista de IDs das
+   questões e verifique que todos os IDs aparecem no HTML **e que cada um
+   tem seu Raio-X das alternativas**. Liste no chat qualquer questão que
+   tenha ficado de fora e corrija antes de entregar.
+7. Na dúvida entre incluir ou cortar, **inclua**. O limite é a redundância,
    não o tamanho.
 
 ## Estrutura do documento
@@ -78,7 +89,14 @@ Regras obrigatórias:
      circular, escadas de agregados, curvas) — recriados a partir dos
      esquemas dos comentários, nunca imagens externas;
    - Ao final da seção, a linha **"Questões desta seção:"** com um botão
-     `⚡ Q<id>` para cada questão usada.
+     `⚡ Q<id>` para cada questão usada;
+   - Logo abaixo, o bloco **`RAIO-X DAS ALTERNATIVAS`** da seção: para cada
+     questão (identificada pelo Q<id> + banca/ano/concurso), a lista das
+     alternativas A–E com ✔/✘ e a explicação-resumo de cada uma extraída dos
+     comentários (regra de ouro, item 4). Use `<details>/<summary>`
+     (recolhível, um `<details>` por questão) para o resumo continuar fluido
+     na leitura corrida — mas garanta que os blocos saiam **abertos na
+     impressão** (`@media print`).
 4. **Rodapé:** "Resumo gerado a partir do caderno '[nome]' ([N] questões, TEC
    Concursos) · Esquemas recriados a partir dos comentários mais votados do
    fórum · Estude, revise, aprove. 🦁"
@@ -116,6 +134,7 @@ Regras obrigatórias:
 
 1. O arquivo HTML completo;
 2. No chat: a lista de seções, o total de questões mapeadas e o resultado da
-   auto-conferência de cobertura (item 5 da regra de ouro);
+   auto-conferência de cobertura (item 6 da regra de ouro), confirmando que
+   toda questão tem seu Raio-X das alternativas;
 3. Se alguma questão não couber em nenhuma seção, crie uma seção "Tópicos
    adjuntos cobrados junto" em vez de descartá-la.
