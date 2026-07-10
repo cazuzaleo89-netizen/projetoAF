@@ -1120,15 +1120,7 @@ option{background:var(--s3)}
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>
       <span>Cronômetro</span>
     </div>
-    <div class="ni" id="ni-q" onclick="go('q',this)">
-      <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
-      <span>Questões</span>
-    </div>
     <div class="nlbl">Planejamento</div>
-    <div class="ni" id="ni-m" onclick="go('m',this)">
-      <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-      <span>Metas Semanais</span>
-    </div>
     <div class="ni" id="ni-a" onclick="go('a',this)">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/><path d="M16 8l5-5M17 3h4v4"/></svg>
       <span>Plano de Ataque</span>
@@ -1416,64 +1408,6 @@ option{background:var(--s3)}
           <div class="fg"><label class="fl">Fim</label><input type="date" class="fi" id="ts-end" onchange="renderTSess()"></div>
         </div>
         <div id="tsess"></div>
-      </div>
-    </div>
-
-    <!-- QUESTOES -->
-    <div class="tab" id="tab-q">
-      <div class="card mb">
-        <div class="ch"><div class="ct">📝 Registrar Questões</div></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px">
-          <div class="fg"><label class="fl">Disciplina</label><select class="fi" id="qdisc"><option value="">— selecione —</option></select></div>
-          <div class="fg"><label class="fl">Resolvidas</label><input type="number" class="fi" id="qtot" min="1" placeholder="10"/></div>
-          <div class="fg"><label class="fl">Corretas</label><input type="number" class="fi" id="qcer" min="0" placeholder="7"/></div>
-          <div class="fg"><label class="fl">Assunto</label><input type="text" class="fi" id="qass" placeholder="Opcional"/></div>
-          <div class="fg"><label class="fl">Data</label><input type="date" class="fi" id="qdate"/></div>
-          <div class="fg"><label class="fl">Fonte</label><input type="text" class="fi" id="qfonte" placeholder="TEC, CEBRASPE…"/></div>
-        </div>
-        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-          <button class="btn bp sm" onclick="saveQ()">✔ Salvar</button>
-          <label class="btn bg2 sm" style="cursor:pointer;display:inline-flex;align-items:center;gap:5px">📥 Importar TEC<input type="file" accept=".csv,.xlsx,.xls,.tsv,.txt" onchange="importTEC(this)" style="display:none"/></label>
-        </div>
-        <div style="font-size:11px;color:var(--t3);margin-top:8px;line-height:1.5">Use o botão <b>Importar TEC</b> para importar dados de desempenho do TEC Concursos (Estatísticas → Exportar para planilha). Aceita <b>.csv</b>, <b>.xlsx</b> e <b>.tsv</b>.</div>
-      </div>
-      <div class="card">
-        <div class="ch">
-          <div class="ct">📋 Histórico</div>
-          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-            <select class="fi" style="width:auto;padding:5px 10px;font-size:12px" id="qfdisc" onchange="renderQ()"><option value="">Todas</option></select>
-            <span style="font-size:12px;color:var(--t3)">Total: <b id="qcnt" style="color:var(--t2)">0</b> · Acerto: <b id="qavg" style="color:var(--green)">—</b></span>
-            <button class="btn bg2 xs" onclick="exportCSV()">📤 CSV</button>
-          </div>
-        </div>
-        <div class="tblw" id="qtblw"></div>
-      </div>
-    </div>
-
-    <!-- METAS -->
-    <div class="tab" id="tab-m">
-      <div class="card mb">
-        <div class="weekly-command-head">
-          <div>
-            <div class="weekly-command-kicker">Comando semanal</div>
-            <div class="weekly-command-title">Sua semana, organizada em uma única decisão</div>
-            <div class="weekly-command-sub">Distribuição automática de inéditas, erros, revisões e assuntos prioritários conforme o seu ritmo disponível.</div>
-          </div>
-          <div class="weekly-command-actions">
-            <button class="btn bp sm" onclick="wqGenerateWeek()">Gerar semana automaticamente</button>
-            <button class="btn bg2 sm" onclick="wqSetActivePlanDay(String(wqTodayPlanDay()))">Ir para hoje</button>
-            <input id="wq-pdf-input" type="file" accept="application/pdf,.pdf,.txt" multiple style="display:none" onchange="wqImportPdf(event)">
-          </div>
-        </div>
-        <div id="wqgoals"></div>
-        <details class="weekly-support">
-          <summary>Plano diário, desempenho e histórico</summary>
-          <div class="weekly-support-body">
-            <div class="card"><div class="ch"><div class="ct">Plano do Dia</div><div style="display:flex;gap:8px;align-items:center"><span style="font-size:12px;color:var(--t3)" id="plan-pct">0% concluído</span><button class="btn bgo xs" onclick="genPlan()">Gerar plano diário</button></div></div><div class="plan-list" id="planlist"></div></div>
-            <div class="card"><div class="ch"><div class="ct">Semana Atual</div><span style="font-size:12px;color:var(--t3)"><span id="md1">—</span> a <span id="md2">—</span></span></div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px" id="mtstats"></div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px" id="mtdisc"></div></div>
-            <div class="card"><div class="ch"><div class="ct">Histórico Semanal</div></div><div class="tblw" id="histtbl"></div></div>
-          </div>
-        </details>
       </div>
     </div>
 
@@ -1838,7 +1772,7 @@ option{background:var(--s3)}
 
 <script>
 const COLS=['#4f72ff','#1db96a','#e8a020','#e84545','#8b5cf6','#06b6d4','#ec4899','#f97316','#84cc16','#14b8a6'];
-const TABS=['d','t','q','m','a','r','p','c'];
+const TABS=['d','t','a','r','p','c'];
 let ST=lSt();
 // Migração compatível: garante estruturas novas sem afetar dados existentes
 if(!ST.edital) ST.edital={};   // { discId: [ {id,name,done} ] }
@@ -2319,7 +2253,7 @@ function toggleTheme(){
 }
 
 // NAVIGATION
-const TIT={d:'Dashboard',t:'Cronômetro',q:'Questões',m:'Metas Semanais',r:'Edital & Revisão',p:'Painel de Recuperação',c:'Configurações'};
+const TIT={d:'Dashboard',t:'Cronômetro',a:'Plano de Ataque',r:'Edital & Revisão',p:'Painel de Recuperação',c:'Configurações'};
 let curTab='d';
 TIT.a='Plano de Ataque';
 function go(id,el){
@@ -2671,6 +2605,7 @@ function saveQ(){
   renderQ();renderD();if(curTab==='t')renderTSess();
 }
 function renderQ(){
+  if(!document.getElementById('qtblw'))return;
   const f=document.getElementById('qfdisc')?.value||'';
   const data=(ST.qs||[]).filter(q=>!f||q.discId===f);
   const w=document.getElementById('qtblw');
@@ -3846,6 +3781,7 @@ function renderWeeklyQuestionGoals(){
   }
 }
 function renderM(){
+  if(!document.getElementById('wqgoals'))return;
   renderPlan();
   renderWeeklyQuestionGoals();
   const now=new Date();
@@ -5694,14 +5630,6 @@ if('serviceWorker' in navigator){
     <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>
     <span>Timer</span>
   </button>
-  <button class="mni" data-tab="q" onclick="goM('q')" aria-label="Questões">
-    <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
-    <span>Questões</span>
-  </button>
-  <button class="mni" data-tab="m" onclick="goM('m')" aria-label="Metas Semanais">
-    <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-    <span>Metas</span>
-  </button>
   <button class="mni" data-tab="a" onclick="goM('a')" aria-label="Plano de Ataque">
     <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg>
     <span>Ataque</span>
@@ -6053,6 +5981,9 @@ function rxE(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace
 (function(){
 'use strict';
 
+/* Interface legada de flashcards desativada; os dados salvos continuam intactos. */
+return;
+
 function fcEsc(s){return String(s||'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
 function fcNorm(s){return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();}
 function fcPlain(value){
@@ -6306,6 +6237,8 @@ setTimeout(function(){
 <script>
 /* Sala de Dominio — treino adaptativo, deliberado e orientado por evidencias. */
 (function(){
+/* Interface legada da Sala de Domínio desativada; os dados salvos continuam intactos. */
+return;
 var dmStyle=document.createElement('style');
 dmStyle.textContent=`
 .dm-shell{--dm-cyan:#22d3ee;--dm-violet:#8b5cf6;--dm-lime:#a3e635;display:grid;gap:16px}.dm-hero{position:relative;overflow:hidden;border:1px solid rgba(34,211,238,.22);border-radius:24px;padding:24px;background:radial-gradient(circle at 82% 0,rgba(139,92,246,.22),transparent 38%),radial-gradient(circle at 0 100%,rgba(34,211,238,.12),transparent 34%),linear-gradient(135deg,#081426,#0b1020 62%,#11102b);box-shadow:0 22px 60px rgba(0,0,0,.28)}.dm-hero:after{content:'';position:absolute;right:-50px;top:-70px;width:240px;height:240px;border:1px solid rgba(34,211,238,.16);border-radius:50%;box-shadow:0 0 0 32px rgba(34,211,238,.035),0 0 0 64px rgba(139,92,246,.025)}.dm-top{position:relative;z-index:1;display:flex;justify-content:space-between;align-items:flex-start;gap:20px}.dm-eyebrow{display:flex;align-items:center;gap:8px;color:#67e8f9;font-size:10px;font-weight:900;letter-spacing:.14em;text-transform:uppercase}.dm-live{width:7px;height:7px;border-radius:50%;background:var(--dm-lime);box-shadow:0 0 12px var(--dm-lime)}.dm-hero h2{font:900 30px/1.05 var(--fh);letter-spacing:-.035em;margin:8px 0 7px;color:#f8fafc}.dm-hero p{max-width:720px;color:#94a3b8;font-size:12px;line-height:1.65}.dm-score{position:relative;z-index:1;min-width:142px;text-align:right}.dm-score b{display:block;font:900 38px/1 var(--fh);color:#f8fafc}.dm-score span{font-size:9px;color:#94a3b8;text-transform:uppercase;letter-spacing:.1em}.dm-pulse{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-top:20px;position:relative;z-index:1}.dm-kpi{padding:12px;border:1px solid rgba(148,163,184,.13);border-radius:14px;background:rgba(15,23,42,.58);backdrop-filter:blur(8px)}.dm-kpi b{display:block;font:800 18px var(--fh);color:#f8fafc}.dm-kpi span{font-size:9px;color:#7f8da4;text-transform:uppercase;letter-spacing:.08em}.dm-layout{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(290px,.75fr);gap:14px}.dm-card{background:var(--s2);border:1px solid var(--border);border-radius:18px;padding:16px}.dm-card-head{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:13px}.dm-card-head h3{font:800 15px var(--fh)}.dm-card-head span{font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.08em}.dm-topic{display:grid;grid-template-columns:40px minmax(0,1fr) auto;gap:11px;align-items:center;padding:11px 0;border-bottom:1px solid var(--border)}.dm-topic:last-child{border-bottom:0}.dm-rank{width:36px;height:36px;display:grid;place-items:center;border-radius:11px;background:rgba(34,211,238,.08);border:1px solid rgba(34,211,238,.15);font:800 11px var(--fh);color:#67e8f9}.dm-topic-name{font-size:12px;font-weight:800}.dm-topic-meta{font-size:9px;color:var(--t3);margin-top:3px}.dm-risk{min-width:58px;text-align:right}.dm-risk b{font:800 13px var(--fh)}.dm-risk span{display:block;font-size:8px;color:var(--t3);text-transform:uppercase}.dm-bar{height:4px;background:var(--s4);border-radius:9px;margin-top:6px;overflow:hidden}.dm-bar i{display:block;height:100%;border-radius:9px;background:linear-gradient(90deg,var(--dm-cyan),var(--dm-violet))}.dm-controls{display:grid;gap:9px}.dm-choice{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.dm-choice button{border:1px solid var(--border);border-radius:11px;background:var(--s3);color:var(--t3);padding:9px 7px;font:800 10px var(--fb);cursor:pointer}.dm-choice button.on{color:#cffafe;border-color:rgba(34,211,238,.38);background:rgba(34,211,238,.1)}.dm-primary{width:100%;border:0;border-radius:12px;padding:12px;color:#06101c;background:linear-gradient(135deg,#67e8f9,#a78bfa);font:900 11px var(--fb);cursor:pointer;box-shadow:0 10px 25px rgba(34,211,238,.15)}.dm-why{margin-top:10px;padding:11px;border-radius:12px;background:rgba(139,92,246,.07);border:1px solid rgba(139,92,246,.15);font-size:10px;color:var(--t3);line-height:1.55}.dm-why b{color:#c4b5fd}.dm-roadmap{display:grid;gap:8px}.dm-step{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:9px;align-items:center;padding:10px;border:1px solid var(--border);border-radius:13px;background:var(--s3)}.dm-step.done{opacity:.55}.dm-step.done .dm-step-no{background:rgba(163,230,53,.13);color:#bef264}.dm-step-no{width:28px;height:28px;border-radius:9px;display:grid;place-items:center;background:rgba(34,211,238,.09);color:#67e8f9;font:900 10px var(--fh)}.dm-step b{display:block;font-size:11px}.dm-step small{display:block;color:var(--t3);font-size:9px;margin-top:2px}.dm-step em{font-style:normal;font:800 10px var(--fh);color:var(--t2)}.dm-session{display:none}.dm-session.on{display:grid;gap:14px}.dm-session-head{display:flex;justify-content:space-between;gap:14px;align-items:center}.dm-session-title small{display:block;color:#67e8f9;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.12em}.dm-session-title h3{font:900 22px var(--fh);margin-top:5px}.dm-timer{font:900 26px var(--fh);font-variant-numeric:tabular-nums;color:#f8fafc}.dm-progress{height:7px;border-radius:10px;background:var(--s4);overflow:hidden}.dm-progress i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--dm-cyan),var(--dm-violet),var(--dm-lime));transition:width .35s}.dm-active{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:14px}.dm-prompt{min-height:240px;padding:21px;border:1px solid rgba(34,211,238,.2);border-radius:18px;background:linear-gradient(145deg,rgba(34,211,238,.055),rgba(139,92,246,.045))}.dm-prompt-tag{font-size:9px;color:#67e8f9;font-weight:900;letter-spacing:.12em;text-transform:uppercase}.dm-prompt h4{font:900 20px/1.25 var(--fh);margin:12px 0 9px}.dm-prompt p{font-size:12px;color:var(--t2);line-height:1.65}.dm-note{width:100%;min-height:105px;margin-top:15px;padding:12px;border:1px solid var(--border);border-radius:12px;background:rgba(2,6,23,.18);color:var(--t1);resize:vertical;font:500 12px var(--fb)}.dm-coach{display:grid;align-content:start;gap:9px}.dm-coach-box{padding:13px;border:1px solid var(--border);border-radius:14px;background:var(--s3)}.dm-coach-box span{display:block;color:var(--t3);font-size:8px;text-transform:uppercase;letter-spacing:.1em}.dm-coach-box b{display:block;font-size:11px;line-height:1.45;margin-top:5px}.dm-confidence{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-top:7px}.dm-confidence button{border:1px solid var(--border);border-radius:8px;padding:7px 0;background:var(--s2);color:var(--t3);cursor:pointer;font-size:10px}.dm-confidence button.on{background:rgba(163,230,53,.11);color:#bef264;border-color:rgba(163,230,53,.32)}.dm-session-actions{display:flex;justify-content:space-between;gap:9px;flex-wrap:wrap}.dm-ghost{border:1px solid var(--border);border-radius:11px;padding:10px 13px;background:var(--s3);color:var(--t2);font:800 10px var(--fb);cursor:pointer}.dm-empty{padding:20px;border:1px dashed var(--border2);border-radius:15px;text-align:center;color:var(--t3);font-size:11px}@media(max-width:980px){.dm-layout,.dm-active{grid-template-columns:1fr}.dm-pulse{grid-template-columns:1fr 1fr}.dm-score{text-align:left}.dm-top{flex-direction:column}}@media(max-width:560px){.dm-hero{padding:17px}.dm-hero h2{font-size:24px}.dm-pulse{grid-template-columns:1fr 1fr}.dm-topic{grid-template-columns:34px minmax(0,1fr)}.dm-risk{grid-column:2;text-align:left}.dm-choice{grid-template-columns:1fr}.dm-session-head{align-items:flex-start;flex-direction:column}}
