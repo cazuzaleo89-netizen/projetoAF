@@ -344,10 +344,12 @@ input,select,textarea{font-family:inherit;outline:none}
 .wq-import-status{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;background:linear-gradient(145deg,rgba(16,185,129,.10),rgba(15,23,42,.62));border:1px solid rgba(16,185,129,.18);border-radius:var(--r2);padding:10px;margin:0 0 12px}.wq-import-status .mini{background:rgba(15,23,42,.45);border:1px solid var(--border);border-radius:10px;padding:8px}.wq-import-status b{display:block;font-family:var(--fh);font-size:17px;color:var(--t1)}.wq-import-status span{font-size:9px;color:var(--t3);font-weight:800;text-transform:uppercase;letter-spacing:.07em}
 .wq-lote-head{display:flex;align-items:center;justify-content:space-between;gap:12px;background:linear-gradient(145deg,rgba(34,211,238,.09),rgba(15,23,42,.65));border:1px solid rgba(34,211,238,.18);border-radius:var(--r2);padding:12px;margin:0 0 10px}.wq-lote-head h4{font-family:var(--fh);font-size:15px;margin:0;color:var(--t1)}.wq-lote-head p{font-size:11px;color:var(--t3);margin:4px 0 0}.wq-lote-head .pill{font-size:11px;font-weight:900;color:#67e8f9;background:rgba(34,211,238,.1);border:1px solid rgba(34,211,238,.22);border-radius:999px;padding:6px 10px;white-space:nowrap}
 .wq-disc-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.wq-dif-badge{display:inline-flex;align-items:center;gap:4px;border-radius:999px;border:1px solid rgba(96,165,250,.28);background:rgba(79,114,255,.1);color:#c4b5fd;font-size:10px;font-weight:900;padding:2px 7px;margin-left:6px;white-space:nowrap}
+.weekly-command-head{position:relative;overflow:hidden;display:flex;align-items:flex-start;justify-content:space-between;gap:18px;padding:18px;margin-bottom:12px;border:1px solid rgba(34,211,238,.24);border-radius:18px;background:radial-gradient(circle at 88% 0,rgba(79,114,255,.18),transparent 34%),linear-gradient(145deg,rgba(34,211,238,.07),rgba(15,23,42,.62))}.weekly-command-head:before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:linear-gradient(#22d3ee,#6366f1)}.weekly-command-kicker{font-size:9px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:#67e8f9}.weekly-command-title{font-family:var(--fh);font-size:22px;font-weight:900;letter-spacing:-.025em;color:var(--t1);margin-top:5px}.weekly-command-sub{font-size:11px;color:var(--t3);line-height:1.5;margin-top:5px;max-width:720px}.weekly-command-actions{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}.wq-advanced{border:1px solid var(--border);border-radius:15px;background:rgba(15,23,42,.34);overflow:hidden;margin-bottom:12px}.wq-advanced summary{cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;color:var(--t2);font-size:11px;font-weight:900}.wq-advanced summary::-webkit-details-marker{display:none}.wq-advanced summary:after{content:"+";font-family:var(--fh);font-size:16px;color:#67e8f9}.wq-advanced[open] summary:after{content:"−"}.wq-advanced-body{padding:0 12px 12px}.wq-week-strip{grid-template-columns:repeat(5,minmax(120px,1fr))}.wq-day-grid{grid-template-columns:repeat(5,1fr)}.wq-day:nth-child(n+6){opacity:.62}.weekly-support{margin-top:14px}.weekly-support>summary{cursor:pointer;color:var(--t2);font-size:12px;font-weight:900;padding:12px 2px}.weekly-support-body{display:grid;gap:12px;padding-top:4px}
 @media(max-width:1050px){.wq-cockpit{grid-template-columns:1fr}.wq-toolbar{grid-template-columns:1fr 1fr 1fr}.wq-filter-note{grid-column:1/-1}.wq-week-strip{grid-template-columns:repeat(5,1fr)}.wq-day-planner{grid-template-columns:1fr}}
 @media(max-width:1050px){.wq-toolbar.consult{grid-template-columns:1fr}.wq-consult-grid.rhythm{grid-template-columns:repeat(4,1fr)}.wq-consult-grid.content{grid-template-columns:1fr 1fr}}
 @media(max-width:1050px){.wq-plan-summary{grid-template-columns:repeat(2,1fr)}.wq-day-grid{grid-template-columns:repeat(4,1fr)}}
 @media(max-width:640px){.rescue-summary{grid-template-columns:repeat(2,1fr)}.rescue-item{grid-template-columns:28px minmax(0,1fr)}.rescue-actions{grid-column:1/-1;justify-content:flex-start}.wq-focus-card{grid-template-columns:1fr;text-align:center}.wq-ring{margin:auto}.wq-toolbar,.wq-kpis,.wq-plan-summary{grid-template-columns:1fr 1fr}.wq-toolbar.consult,.wq-consult-grid.content,.wq-consult-grid.rhythm,.wq-exec-grid{grid-template-columns:1fr}.wq-toolbar label:first-child{grid-column:1/-1}.wq-mix{grid-template-columns:1fr}.wq-week-strip{grid-template-columns:repeat(2,1fr)}.wq-day-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:720px){.weekly-command-head{flex-direction:column}.weekly-command-actions{justify-content:flex-start}.wq-day-grid{grid-template-columns:1fr 1fr}}
 .sdot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
 .smain{flex:1}
 .sname{font-size:13px;font-weight:500;color:var(--t1)}
@@ -1451,41 +1453,27 @@ option{background:var(--s3)}
     <!-- METAS -->
     <div class="tab" id="tab-m">
       <div class="card mb">
-        <div class="ch">
-          <div class="ct">📋 Plano do Dia</div>
-          <div style="display:flex;gap:8px;align-items:center">
-            <span style="font-size:12px;color:var(--t3)" id="plan-pct">0% concluído</span>
-            <button class="btn bgo xs" onclick="genPlan()">⚡ Gerar</button>
-          </div>
-        </div>
-        <div class="plan-list" id="planlist"></div>
-      </div>
-      <div class="card mb">
-        <div class="ch">
+        <div class="weekly-command-head">
           <div>
-            <div class="ct">Metas automaticas de questoes</div>
-            <div style="font-size:10.5px;color:var(--t3);margin-top:3px">erros da semana, revisoes vencidas, similares e assuntos antigos entram automaticamente</div>
+            <div class="weekly-command-kicker">Comando semanal</div>
+            <div class="weekly-command-title">Sua semana, organizada em uma única decisão</div>
+            <div class="weekly-command-sub">Distribuição automática de inéditas, erros, revisões e assuntos prioritários conforme o seu ritmo disponível.</div>
           </div>
-          <div style="display:flex;gap:7px;flex-wrap:wrap">
-            <button class="btn bp xs" onclick="wqRefresh()">Atualizar metas</button>
-            <button class="btn bg2 xs" onclick="wqFetchLibraryPending()">Buscar ineditas</button>
-            <button class="btn bg2 xs" onclick="document.getElementById('wq-pdf-input').click()">Importar PDF TEC</button>
-            <button class="btn bg2 xs" onclick="wqCopyTec()">Copiar TEC</button>
-            <button class="btn bg2 xs" onclick="wqOpenBatch()">Abrir lote</button>
-            <button class="btn bd xs" onclick="wqReset()">Refazer</button>
+          <div class="weekly-command-actions">
+            <button class="btn bp sm" onclick="wqGenerateWeek()">Gerar semana automaticamente</button>
+            <button class="btn bg2 sm" onclick="wqSetActivePlanDay(String(wqTodayPlanDay()))">Ir para hoje</button>
             <input id="wq-pdf-input" type="file" accept="application/pdf,.pdf,.txt" multiple style="display:none" onchange="wqImportPdf(event)">
           </div>
         </div>
         <div id="wqgoals"></div>
-      </div>
-      <div class="card mb">
-        <div class="ch"><div class="ct">📆 Semana Atual</div><span style="font-size:12px;color:var(--t3)"><span id="md1">—</span> a <span id="md2">—</span></span></div>
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px" id="mtstats"></div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px" id="mtdisc"></div>
-      </div>
-      <div class="card">
-        <div class="ch"><div class="ct">📊 Histórico Semanal</div></div>
-        <div class="tblw" id="histtbl"></div>
+        <details class="weekly-support">
+          <summary>Plano diário, desempenho e histórico</summary>
+          <div class="weekly-support-body">
+            <div class="card"><div class="ch"><div class="ct">Plano do Dia</div><div style="display:flex;gap:8px;align-items:center"><span style="font-size:12px;color:var(--t3)" id="plan-pct">0% concluído</span><button class="btn bgo xs" onclick="genPlan()">Gerar plano diário</button></div></div><div class="plan-list" id="planlist"></div></div>
+            <div class="card"><div class="ch"><div class="ct">Semana Atual</div><span style="font-size:12px;color:var(--t3)"><span id="md1">—</span> a <span id="md2">—</span></span></div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px" id="mtstats"></div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px" id="mtdisc"></div></div>
+            <div class="card"><div class="ch"><div class="ct">Histórico Semanal</div></div><div class="tblw" id="histtbl"></div></div>
+          </div>
+        </details>
       </div>
     </div>
 
@@ -3300,6 +3288,13 @@ function wqRefresh(silent=false,reset=false){
   }
 }
 function wqReset(){if(confirm('Refazer o lote semanal automatico? Itens marcados como feitos nesta semana serao limpos.'))wqRefresh(false,true);}
+function wqGenerateWeek(){
+  const st=wqState(),keptDone={...(st.done||{})};
+  st.planDays={};st.dayDiscSelections={};st.dayDiscCounts={};st.pickedItems={};st.activePlanDay='all';st.activePlanDisc='all';st.updatedAt=0;
+  wqRefresh(true,false);
+  st.done=keptDone;st.generatedWeekAt=Date.now();sSt();renderWeeklyQuestionGoals();
+  nfy('Semana gerada automaticamente sem apagar o que já foi concluído','ok');
+}
 function wqToggle(id){const st=wqState();st.done[id]=!st.done[id];const item=st.items.find(x=>x.id===id);if(item)item.done=st.done[id];sSt();renderWeeklyQuestionGoals();}
 function wqSetPlanDay(id,value){
   const st=wqState();
@@ -3832,12 +3827,13 @@ function renderWeeklyQuestionGoals(){
     const allItems=safeList(st.items),items=wqFilteredItems(allItems),campaignObj=wqBuildCampaign(items),dayItems=wqPlanItemsForDay(items,st.activePlanDay||'all',campaignObj),visibleItems=wqVisibleItemsForDay(items,dayItems,st),done=visibleItems.filter(x=>st.done?.[x.id]).length,target=st.target||24,pct=Math.min(100,Math.round(done/Math.max(1,visibleItems.length)*100));
     const codes=visibleItems.filter(x=>x.qid&&!st.done?.[x.id]).length,topics=visibleItems.filter(x=>!x.qid&&!st.done?.[x.id]).length;
     const jsArg=v=>escapeHtml(String(v??'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/[\r\n]+/g,' '));
-    const head=wqGoalCockpit(allItems,visibleItems,done,codes,topics,pct,campaignObj),campaign=wqCampaignPlanHtml(items,campaignObj),planner=wqDayPlannerHtml(dayItems,visibleItems,items),importStatus=wqImportStatusHtml(),lote=wqLoteHeadHtml(visibleItems),win=wqListWindow(visibleItems),pager=wqPagerHtml(win);
-    if(!allItems.length){host.innerHTML=wqFilterBar(allItems,items)+importStatus+head+campaign+planner+'<div class="empty"><div class="eico">🎯</div><div class="etxt">Sem dados suficientes. Sincronize a extensao, importe um PDF TEC ou registre questoes.</div></div>';return;}
-    if(!items.length){host.innerHTML=wqFilterBar(allItems,items)+importStatus+head+campaign+planner+'<div class="empty"><div class="eico">🔎</div><div class="etxt">Nenhuma meta encontrada nesse filtro.</div></div>';return;}
-    if(!dayItems.length){host.innerHTML=wqFilterBar(allItems,dayItems)+importStatus+head+campaign+planner+'<div class="empty"><div class="eico">📅</div><div class="etxt">Nenhuma meta neste dia. Clique em outro dia ou em Todas.</div></div>';return;}
-    if(!visibleItems.length){host.innerHTML=wqFilterBar(allItems,visibleItems)+importStatus+head+campaign+planner+lote+'<div class="empty"><div class="eico">📚</div><div class="etxt">Nenhuma questao dessa disciplina neste dia. Escolha outra disciplina ou volte para Todas disciplinas.</div></div>';return;}
-    host.innerHTML=wqFilterBar(allItems,visibleItems)+importStatus+head+campaign+planner+lote+pager+'<div class="slist">'+win.items.map((x,i)=>{
+    const campaign=wqCampaignPlanHtml(items,campaignObj),planner=wqDayPlannerHtml(dayItems,visibleItems,items),importStatus=wqImportStatusHtml(),lote=wqLoteHeadHtml(visibleItems),win=wqListWindow(visibleItems),pager=wqPagerHtml(win);
+    const advanced='<details class="wq-advanced"><summary><span>Ajustes, filtros e fontes da semana</span><span>'+items.length+' metas no recorte</span></summary><div class="wq-advanced-body">'+wqFilterBar(allItems,visibleItems)+importStatus+'<div class="weekly-command-actions" style="justify-content:flex-start"><button class="btn bg2 xs" onclick="wqFetchLibraryPending()">Buscar inéditas</button><button class="btn bg2 xs" onclick="document.getElementById(\'wq-pdf-input\').click()">Importar PDF TEC</button><button class="btn bg2 xs" onclick="wqCopyTec()">Copiar TEC</button><button class="btn bg2 xs" onclick="wqOpenBatch()">Abrir lote</button><button class="btn bd xs" onclick="wqReset()">Refazer tudo</button></div></div></details>';
+    if(!allItems.length){host.innerHTML=campaign+advanced+planner+'<div class="empty"><div class="eico">🎯</div><div class="etxt">Sem dados suficientes. Sincronize a extensao, importe um PDF TEC ou registre questoes.</div></div>';return;}
+    if(!items.length){host.innerHTML=campaign+advanced+planner+'<div class="empty"><div class="eico">🔎</div><div class="etxt">Nenhuma meta encontrada nesse filtro.</div></div>';return;}
+    if(!dayItems.length){host.innerHTML=campaign+advanced+planner+'<div class="empty"><div class="eico">📅</div><div class="etxt">Nenhuma meta neste dia. Clique em outro dia ou em Todas.</div></div>';return;}
+    if(!visibleItems.length){host.innerHTML=campaign+advanced+planner+lote+'<div class="empty"><div class="eico">📚</div><div class="etxt">Nenhuma questao dessa disciplina neste dia. Escolha outra disciplina ou volte para Todas disciplinas.</div></div>';return;}
+    host.innerHTML=campaign+advanced+planner+lote+pager+'<div class="slist">'+win.items.map((x,i)=>{
       const kind=x.kind==='erro'?'Erro':x.kind==='similar'?'Similar':x.kind==='revisao'?'Revisao':x.kind==='inedita'?'Inedita':'Assunto';
       const open=x.url?'<button class="btn bg2 xs" onclick="wqOpenMeta(\''+jsArg(x.id)+'\')">Ver aqui</button>':'';
       const picked=!!st.pickedItems?.[x.id];
