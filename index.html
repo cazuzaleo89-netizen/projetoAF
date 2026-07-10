@@ -579,6 +579,10 @@ option{background:var(--s3)}
 .tec-goal{display:grid;grid-template-columns:minmax(190px,1.4fr) minmax(160px,1fr) 105px 105px 145px 42px;gap:10px;align-items:center;padding:13px 0;border-bottom:1px solid var(--border)}.tec-goal:last-child{border-bottom:0}.tec-goal-subject{font-size:12px;font-weight:800}.tec-goal-book{font-size:10px;color:var(--t3);margin-top:3px}.tec-goal-book a{color:var(--accent)}.tec-goal-progress{height:6px;margin-top:8px;border-radius:8px;overflow:hidden;background:var(--s4)}.tec-goal-progress i{display:block;height:100%;border-radius:8px;background:linear-gradient(90deg,var(--accent),#8b5cf6)}.tec-goal-field label{display:block;font-size:8px;color:var(--t3);text-transform:uppercase;margin-bottom:4px}.tec-goal-field input{width:100%;padding:7px 8px}.tec-goal-time b{display:block;font:800 14px var(--fh);color:#67e8f9}.tec-goal-time span{display:block;font-size:9px;color:var(--t3);margin-top:3px}.tec-goal-empty{padding:28px;text-align:center;color:var(--t3);font-size:11px}
 @media(max-width:1050px){.tec-goals-form{grid-template-columns:1fr 1fr}.tec-goal{grid-template-columns:1.3fr 1fr 90px 90px 125px 38px}}
 @media(max-width:700px){.tec-goals-hero{align-items:flex-start;flex-direction:column}.tec-goals-week{text-align:left}.tec-goals-summary{grid-template-columns:1fr 1fr}.tec-goals-form{grid-template-columns:1fr}.tec-goal{grid-template-columns:1fr 1fr}.tec-goal-main,.tec-goal-time{grid-column:1/-1}}
+.c90-shell{margin-bottom:14px;padding:20px;border:1px solid rgba(103,232,249,.2);border-radius:22px;background:radial-gradient(circle at 90% 0,rgba(139,92,246,.14),transparent 34%),linear-gradient(145deg,#081321,#0b1020);box-shadow:0 20px 55px rgba(0,0,0,.22)}
+.c90-head{display:flex;justify-content:space-between;gap:18px;align-items:flex-start}.c90-kicker{color:#67e8f9;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.14em}.c90-head h2{font:900 24px/1.1 var(--fh);margin:7px 0}.c90-head p{max-width:690px;color:var(--t2);font-size:11px;line-height:1.6}.c90-day{min-width:120px;text-align:right}.c90-day span,.c90-day small{display:block;color:var(--t3);font-size:8px;text-transform:uppercase}.c90-day b{display:block;color:#e0f2fe;font:900 27px var(--fh);margin:4px 0}
+.c90-grid{display:grid;grid-template-columns:1.2fr .8fr;gap:12px;margin-top:17px}.c90-card{padding:15px;border:1px solid rgba(148,163,184,.14);border-radius:16px;background:rgba(15,23,42,.62)}.c90-label{color:var(--t3);font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.1em}.c90-energy{display:flex;gap:7px;margin:10px 0}.c90-energy button{flex:1;padding:9px;border:1px solid var(--border);border-radius:10px;background:var(--s3);color:var(--t2);font-weight:800;cursor:pointer}.c90-energy button.on{border-color:rgba(103,232,249,.42);background:rgba(34,211,238,.1);color:#cffafe}.c90-mission{min-height:53px;padding:11px;border-radius:12px;background:rgba(79,114,255,.08);font-size:12px;line-height:1.5}.c90-mission b{display:block;color:#fff;margin-bottom:3px}.c90-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}.c90-kind{color:var(--t3);font-size:9px;margin-top:8px}.c90-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:12px}.c90-metrics div{padding:9px;border-radius:11px;background:rgba(2,6,23,.28)}.c90-metrics b{display:block;font:900 19px var(--fh)}.c90-metrics span{font-size:8px;color:var(--t3);text-transform:uppercase}.c90-progress{height:7px;border-radius:9px;background:rgba(255,255,255,.07);overflow:hidden;margin:14px 0 9px}.c90-progress i{display:block;height:100%;width:0;border-radius:9px;background:linear-gradient(90deg,#22d3ee,#6366f1,#a855f7)}.c90-card p{font-size:10px;color:var(--t2);line-height:1.5}.c90-map{display:grid;grid-template-columns:repeat(30,1fr);gap:4px;margin-top:14px}.c90-dot{aspect-ratio:1;border-radius:4px;background:rgba(148,163,184,.12);border:1px solid rgba(148,163,184,.08)}.c90-dot.done{background:#22d3ee;border-color:#67e8f9}.c90-dot.minimum{background:#8b5cf6;border-color:#a78bfa}.c90-dot.today{box-shadow:0 0 0 2px #fbbf24}.c90-foot{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-top:10px;color:var(--t3);font-size:9px}
+@media(max-width:760px){.c90-head{flex-direction:column}.c90-day{text-align:left}.c90-grid{grid-template-columns:1fr}.c90-map{grid-template-columns:repeat(15,1fr)}}
 </style>
 <style id="float-timer-styles">
 #painelFlutuante {
@@ -1623,6 +1627,37 @@ option{background:var(--s3)}
         <div class="rc-title">Painel de Recuperação</div>
         <div class="rc-note">Observe padrões, celebre avanços e escolha apenas o próximo passo possível. Este painel apoia seu acompanhamento, mas não substitui psicólogo, psiquiatra ou atendimento de saúde.</div>
       </div>
+
+      <section class="c90-shell">
+        <div class="c90-head">
+          <div><div class="c90-kicker">Modo Constância</div><h2>Seu ciclo gentil de 90 dias</h2><p>O objetivo é voltar com facilidade, não executar perfeitamente. Um passo mínimo mantém o vínculo com o estudo.</p></div>
+          <div class="c90-day"><span>Dia do ciclo</span><b id="c90-day">1/90</b><small id="c90-period">—</small></div>
+        </div>
+        <div class="c90-grid">
+          <div class="c90-card c90-today">
+            <div class="c90-label">Como está sua energia agora?</div>
+            <div class="c90-energy" id="c90-energy">
+              <button data-level="low" onclick="c90Choose('low')">Baixa</button>
+              <button data-level="medium" onclick="c90Choose('medium')">Média</button>
+              <button data-level="good" onclick="c90Choose('good')">Boa</button>
+            </div>
+            <div class="c90-mission" id="c90-mission"></div>
+            <div class="c90-actions">
+              <button class="btn bp sm" id="c90-done" onclick="c90Complete(false)">Concluí minha ação</button>
+              <button class="btn bg2 sm" onclick="c90Complete(true)">Hoje fiz só o mínimo</button>
+            </div>
+            <div class="c90-kind" id="c90-kind">Começar pequeno ainda é começar.</div>
+          </div>
+          <div class="c90-card">
+            <div class="c90-label">Ritmo sustentável</div>
+            <div class="c90-metrics"><div><b id="c90-active">0</b><span>dias ativos</span></div><div><b id="c90-week">0/7</b><span>nesta semana</span></div><div><b id="c90-return">0</b><span>retomadas</span></div></div>
+            <div class="c90-progress"><i id="c90-progress"></i></div>
+            <p id="c90-message">Seu primeiro passo pode levar apenas dois minutos.</p>
+          </div>
+        </div>
+        <div class="c90-map" id="c90-map" aria-label="Mapa dos 90 dias"></div>
+        <div class="c90-foot"><span>Dias vazios não apagam os dias feitos. A retomada é parte do plano.</span><button class="btn bg2 xs" onclick="c90Restart()">Reiniciar ciclo</button></div>
+      </section>
 
       <div class="rc-kpis">
         <div class="rc-kpi"><b id="rc-k-mood">—</b><span>Humor médio · 14 dias</span></div>
@@ -5331,7 +5366,36 @@ function rcState(){
   if(!Array.isArray(ST.recovery.entries))ST.recovery.entries=[];
   if(!Array.isArray(ST.recovery.missions))ST.recovery.missions=[];
   if(!ST.recovery.plan)ST.recovery.plan={};
+  if(!ST.recovery.consistency90)ST.recovery.consistency90={start:td(),level:'low',days:{}};
+  if(!ST.recovery.consistency90.days)ST.recovery.consistency90.days={};
   return ST.recovery;
+}
+function c90State(){return rcState().consistency90}
+function c90DateDiff(a,b){return Math.round((new Date(b+'T12:00:00')-new Date(a+'T12:00:00'))/86400000)}
+function c90Mission(level){
+  return level==='good'?{title:'Bloco de foco confortável',text:'25 minutos ou 10 questões. Pare ao final do bloco, mesmo se sentir que poderia continuar.'}:level==='medium'?{title:'Bloco curto e definido',text:'15 minutos ou 5 questões. Deixe apenas uma aba aberta e silencie as notificações.'}:{title:'Ação de entrada',text:'5 minutos ou 1 questão. A meta de hoje é manter contato com o estudo, sem cobrança de rendimento.'};
+}
+function c90Choose(level){const st=c90State();st.level=['low','medium','good'].includes(level)?level:'low';sSt();c90Render()}
+function c90Complete(minimum){
+  const st=c90State();st.days[td()]={kind:minimum?'minimum':'done',level:st.level||'low',ts:Date.now()};sSt();c90Render();
+  nfy(minimum?'Vínculo mantido. Isso conta.':'Ação de hoje concluída','ok');
+}
+function c90Restart(){
+  if(!confirm('Iniciar um novo ciclo de 90 dias? O histórico atual será substituído.'))return;
+  rcState().consistency90={start:td(),level:'low',days:{}};sSt();c90Render();
+}
+function c90Render(){
+  const host=document.getElementById('c90-map');if(!host)return;
+  const st=c90State(),today=td(),rawDay=c90DateDiff(st.start,today)+1,day=Math.max(1,Math.min(90,rawDay)),end=new Date(st.start+'T12:00:00');end.setDate(end.getDate()+89);
+  const dates=Object.keys(st.days).filter(d=>c90DateDiff(st.start,d)>=0&&c90DateDiff(st.start,d)<90).sort(),last7=dates.filter(d=>c90DateDiff(d,today)>=0&&c90DateDiff(d,today)<7).length;
+  let returns=0;for(let i=1;i<dates.length;i++)if(c90DateDiff(dates[i-1],dates[i])>1)returns++;
+  document.getElementById('c90-day').textContent=(rawDay>90?'90/90':day+'/90');document.getElementById('c90-period').textContent=new Date(st.start+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})+' a '+end.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
+  document.getElementById('c90-active').textContent=dates.length;document.getElementById('c90-week').textContent=last7+'/7';document.getElementById('c90-return').textContent=returns;document.getElementById('c90-progress').style.width=Math.round(dates.length/90*100)+'%';
+  document.querySelectorAll('#c90-energy button').forEach(b=>b.classList.toggle('on',b.dataset.level===(st.level||'low')));
+  const mission=c90Mission(st.level||'low'),done=st.days[today];document.getElementById('c90-mission').innerHTML='<b>'+mission.title+'</b>'+mission.text;document.getElementById('c90-done').disabled=!!done;
+  document.getElementById('c90-kind').textContent=done?(done.kind==='minimum'?'Hoje você protegeu o vínculo com uma ação mínima.':'Ação de hoje registrada. Pode encerrar sem culpa.'):(rawDay>90?'Ciclo concluído. Observe o que funcionou antes de reiniciar.':'Começar pequeno ainda é começar.');
+  document.getElementById('c90-message').textContent=dates.length?'Você apareceu em '+dates.length+' dias. A próxima retomada vale mais que uma sequência perfeita.':'Seu primeiro passo pode levar apenas dois minutos.';
+  host.innerHTML=Array.from({length:90},(_,i)=>{const d=new Date(st.start+'T12:00:00');d.setDate(d.getDate()+i);const key=ymd(d),entry=st.days[key];return '<i class="c90-dot '+(entry?entry.kind:'')+(key===today?' today':'')+'" title="Dia '+(i+1)+' · '+d.toLocaleDateString('pt-BR')+(entry?' · realizado':'')+'"></i>'}).join('');
 }
 function rcEntry(date){return rcState().entries.find(e=>e.date===date)}
 function rcScaleValue(id){return Number(document.getElementById(id)?.dataset.value)||3}
@@ -5425,7 +5489,7 @@ function rcRender(){
   document.getElementById('rc-k-energy').textContent=energy?energy.toFixed(1).replace('.',','):'—';
   document.getElementById('rc-k-action').textContent=actionCount+'/7';
   document.getElementById('rc-k-study').textContent=fH(studySec);
-  rcRenderChart(entries14);rcRenderHelp(entries7);rcRenderEvidence();rcLoadPlan();rcLoadDay();
+  rcRenderChart(entries14);rcRenderHelp(entries7);rcRenderEvidence();rcLoadPlan();rcLoadDay();c90Render();
 }
 function rcTimerMission(){const label=document.getElementById('rc-mission-label'),sel=document.getElementById('rc-mission');if(label&&sel)label.textContent=sel.value}
 function rcTimerPaint(){
