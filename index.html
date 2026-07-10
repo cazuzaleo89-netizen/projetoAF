@@ -570,6 +570,15 @@ option{background:var(--s3)}
   .signal-grid,.risk-list,.hour-grid{grid-template-columns:1fr}
   .mobnav .mni span{font-size:9px}
 }
+.tec-goals-hero{display:flex;justify-content:space-between;gap:20px;align-items:center;padding:22px;margin-bottom:14px;border:1px solid rgba(79,114,255,.22);border-radius:18px;background:linear-gradient(135deg,rgba(79,114,255,.12),rgba(139,92,246,.07))}
+.tec-goals-kicker{font-size:9px;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
+.tec-goals-hero h2{font:900 25px/1.1 var(--fh);margin:7px 0 5px}.tec-goals-hero p,.tec-goals-help{font-size:10px;color:var(--t3);line-height:1.5}
+.tec-goals-week{min-width:155px;padding:13px 15px;border:1px solid var(--border);border-radius:13px;background:var(--s2);text-align:right}.tec-goals-week span{display:block;font-size:8px;text-transform:uppercase;color:var(--t3)}.tec-goals-week b{display:block;margin-top:5px;font:800 12px var(--fh)}
+.tec-goals-form{display:grid;grid-template-columns:1.1fr 1.1fr 1.6fr .7fr .7fr;gap:10px;align-items:end;margin-bottom:12px}
+.tec-goals-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}.tec-goals-stat{padding:14px;border:1px solid var(--border);border-radius:14px;background:var(--s2)}.tec-goals-stat span{display:block;font-size:9px;color:var(--t3);text-transform:uppercase}.tec-goals-stat b{display:block;margin-top:5px;font:900 21px var(--fh)}
+.tec-goal{display:grid;grid-template-columns:minmax(190px,1.4fr) minmax(160px,1fr) 105px 105px 145px 42px;gap:10px;align-items:center;padding:13px 0;border-bottom:1px solid var(--border)}.tec-goal:last-child{border-bottom:0}.tec-goal-subject{font-size:12px;font-weight:800}.tec-goal-book{font-size:10px;color:var(--t3);margin-top:3px}.tec-goal-book a{color:var(--accent)}.tec-goal-progress{height:6px;margin-top:8px;border-radius:8px;overflow:hidden;background:var(--s4)}.tec-goal-progress i{display:block;height:100%;border-radius:8px;background:linear-gradient(90deg,var(--accent),#8b5cf6)}.tec-goal-field label{display:block;font-size:8px;color:var(--t3);text-transform:uppercase;margin-bottom:4px}.tec-goal-field input{width:100%;padding:7px 8px}.tec-goal-time b{display:block;font:800 14px var(--fh);color:#67e8f9}.tec-goal-time span{display:block;font-size:9px;color:var(--t3);margin-top:3px}.tec-goal-empty{padding:28px;text-align:center;color:var(--t3);font-size:11px}
+@media(max-width:1050px){.tec-goals-form{grid-template-columns:1fr 1fr}.tec-goal{grid-template-columns:1.3fr 1fr 90px 90px 125px 38px}}
+@media(max-width:700px){.tec-goals-hero{align-items:flex-start;flex-direction:column}.tec-goals-week{text-align:left}.tec-goals-summary{grid-template-columns:1fr 1fr}.tec-goals-form{grid-template-columns:1fr}.tec-goal{grid-template-columns:1fr 1fr}.tec-goal-main,.tec-goal-time{grid-column:1/-1}}
 </style>
 <style id="float-timer-styles">
 #painelFlutuante {
@@ -1121,6 +1130,10 @@ option{background:var(--s3)}
       <span>Cronômetro</span>
     </div>
     <div class="nlbl">Planejamento</div>
+    <div class="ni" id="ni-m" onclick="go('m',this)">
+      <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/><path d="M7 12h4M7 16h7"/></svg>
+      <span>Metas Semanais</span>
+    </div>
     <div class="ni" id="ni-a" onclick="go('a',this)">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/><path d="M16 8l5-5M17 3h4v4"/></svg>
       <span>Plano de Ataque</span>
@@ -1408,6 +1421,30 @@ option{background:var(--s3)}
           <div class="fg"><label class="fl">Fim</label><input type="date" class="fi" id="ts-end" onchange="renderTSess()"></div>
         </div>
         <div id="tsess"></div>
+      </div>
+    </div>
+
+    <!-- METAS SEMANAIS TEC -->
+    <div class="tab" id="tab-m">
+      <section class="tec-goals-hero">
+        <div><div class="tec-goals-kicker">Planejamento semanal</div><h2>Metas de cadernos TEC</h2><p>Organize as questões por matéria e acompanhe quanto falta para concluir cada caderno.</p></div>
+        <div class="tec-goals-week"><span>Semana atual</span><b id="tw-week">—</b></div>
+      </section>
+      <div class="tec-goals-summary" id="tw-summary"></div>
+      <div class="card mb">
+        <div class="ch"><div><div class="ct">Adicionar meta</div><div class="tec-goals-help">Use de 2 a 3 minutos por questão para obter uma estimativa realista.</div></div></div>
+        <div class="tec-goals-form">
+          <div class="fg"><label class="fl">Matéria</label><input class="fi" id="tw-subject" placeholder="Ex.: Direito Tributário"></div>
+          <div class="fg"><label class="fl">Caderno do TEC</label><input class="fi" id="tw-book" placeholder="Nome ou número do caderno"></div>
+          <div class="fg"><label class="fl">Link do caderno (opcional)</label><input class="fi" id="tw-url" type="url" placeholder="https://www.tecconcursos.com.br/..."></div>
+          <div class="fg"><label class="fl">Quantidade de questões</label><input class="fi" id="tw-total" type="number" min="1" value="50"></div>
+          <div class="fg"><label class="fl">Minutos por questão</label><input class="fi" id="tw-minutes" type="number" min="1" max="10" step="0.5" value="2.5"></div>
+        </div>
+        <button class="btn bp sm" onclick="twAddGoal()">+ Adicionar meta semanal</button>
+      </div>
+      <div class="card">
+        <div class="ch"><div><div class="ct">Acompanhamento das metas</div><div class="tec-goals-help">Atualize acertos e erros conforme avançar no caderno.</div></div></div>
+        <div id="tw-list"></div>
       </div>
     </div>
 
@@ -1772,7 +1809,7 @@ option{background:var(--s3)}
 
 <script>
 const COLS=['#4f72ff','#1db96a','#e8a020','#e84545','#8b5cf6','#06b6d4','#ec4899','#f97316','#84cc16','#14b8a6'];
-const TABS=['d','t','a','r','p','c'];
+const TABS=['d','t','m','a','r','p','c'];
 let ST=lSt();
 // Migração compatível: garante estruturas novas sem afetar dados existentes
 if(!ST.edital) ST.edital={};   // { discId: [ {id,name,done} ] }
@@ -2253,7 +2290,7 @@ function toggleTheme(){
 }
 
 // NAVIGATION
-const TIT={d:'Dashboard',t:'Cronômetro',a:'Plano de Ataque',r:'Edital & Revisão',p:'Painel de Recuperação',c:'Configurações'};
+const TIT={d:'Dashboard',t:'Cronômetro',m:'Metas Semanais',a:'Plano de Ataque',r:'Edital & Revisão',p:'Painel de Recuperação',c:'Configurações'};
 let curTab='d';
 TIT.a='Plano de Ataque';
 function go(id,el){
@@ -2265,7 +2302,7 @@ function go(id,el){
   curTab=id;
   const floatingTimer=document.getElementById('painelFlutuante');
   if(floatingTimer)floatingTimer.classList.toggle('tab-hidden',id==='t');
-  const rf={d:renderD,t:renderTSess,q:renderQ,m:renderM,a:atkRender,r:renderRev,p:rcRender,c:renderCfg};
+  const rf={d:renderD,t:renderTSess,q:renderQ,m:renderWeeklyTecGoals,a:atkRender,r:renderRev,p:rcRender,c:renderCfg};
   if(rf[id]) rf[id]();
   if(id==='t'||id==='q'||id==='m'||id==='a') popSel();
 }
@@ -5409,12 +5446,71 @@ function rcTimerToggle(){
 function rcInit(){
   rcBuildScales();const date=document.getElementById('rc-date');if(date&&!date.value)date.value=td();rcTimerPaint();rcTimerMission();rcRender();
 }
+
+// METAS SEMANAIS DE CADERNOS TEC
+function twWeekInfo(){
+  const now=new Date(),day=now.getDay()||7,mon=new Date(now);mon.setHours(12,0,0,0);mon.setDate(now.getDate()-day+1);
+  const sun=new Date(mon);sun.setDate(mon.getDate()+6);
+  return {key:ymd(mon),label:mon.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})+' a '+sun.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})};
+}
+function twState(){
+  const week=twWeekInfo();
+  if(!ST.weeklyTecGoals)ST.weeklyTecGoals={week:week.key,items:[]};
+  if(!Array.isArray(ST.weeklyTecGoals.items))ST.weeklyTecGoals.items=[];
+  if(ST.weeklyTecGoals.week!==week.key){
+    ST.weeklyTecGoals.week=week.key;
+    ST.weeklyTecGoals.items=ST.weeklyTecGoals.items.map(x=>({...x,correct:0,wrong:0}));
+    sSt();
+  }
+  return ST.weeklyTecGoals;
+}
+function twDuration(minutes){
+  const value=Math.max(0,Math.round(Number(minutes)||0));
+  if(!value)return 'Concluída';
+  const h=Math.floor(value/60),m=value%60;
+  return h?(h+'h'+(m?' '+m+'min':'')):(m+' min');
+}
+function twSafeUrl(value){
+  try{const u=new URL(String(value||''));return /^https?:$/.test(u.protocol)?u.href:''}catch(e){return ''}
+}
+function twAddGoal(){
+  const subject=document.getElementById('tw-subject').value.trim(),book=document.getElementById('tw-book').value.trim();
+  const url=twSafeUrl(document.getElementById('tw-url').value),total=Math.max(1,Math.round(Number(document.getElementById('tw-total').value)||0));
+  const minutes=Math.min(10,Math.max(1,Number(document.getElementById('tw-minutes').value)||2.5));
+  if(!subject||!book){nfy('Informe a matéria e o caderno do TEC','err');return}
+  twState().items.unshift({id:uid(),subject,book,url,total,correct:0,wrong:0,minutes});sSt();
+  ['tw-subject','tw-book','tw-url'].forEach(id=>document.getElementById(id).value='');
+  renderWeeklyTecGoals();nfy('Meta semanal adicionada','ok');
+}
+function twUpdateGoal(id,field,value){
+  const item=twState().items.find(x=>x.id===id);if(!item)return;
+  if(field==='minutes')item.minutes=Math.min(10,Math.max(1,Number(value)||2.5));
+  else item[field]=Math.max(0,Math.round(Number(value)||0));
+  item.total=Math.max(1,item.total||1);item.correct=Math.min(item.correct||0,item.total);item.wrong=Math.min(item.wrong||0,item.total-item.correct);
+  sSt();renderWeeklyTecGoals();
+}
+function twDeleteGoal(id){
+  if(!confirm('Excluir esta meta semanal?'))return;
+  ST.weeklyTecGoals.items=twState().items.filter(x=>x.id!==id);sSt();renderWeeklyTecGoals();
+}
+function renderWeeklyTecGoals(){
+  const list=document.getElementById('tw-list');if(!list)return;
+  const state=twState(),items=state.items,week=twWeekInfo();document.getElementById('tw-week').textContent=week.label;
+  const total=items.reduce((s,x)=>s+(Number(x.total)||0),0),correct=items.reduce((s,x)=>s+(Number(x.correct)||0),0),wrong=items.reduce((s,x)=>s+(Number(x.wrong)||0),0),done=correct+wrong;
+  const remainingMinutes=items.reduce((s,x)=>s+Math.max(0,(x.total-x.correct-x.wrong))*x.minutes,0),accuracy=done?Math.round(correct/done*100):0;
+  document.getElementById('tw-summary').innerHTML=[['Questões planejadas',total],['Resolvidas',done],['Taxa de acerto',done?accuracy+'%':'—'],['Tempo restante',twDuration(remainingMinutes)]].map(x=>'<div class="tec-goals-stat"><span>'+x[0]+'</span><b>'+x[1]+'</b></div>').join('');
+  if(!items.length){list.innerHTML='<div class="tec-goal-empty">Nenhuma meta cadastrada. Adicione o primeiro caderno acima.</div>';return}
+  list.innerHTML=items.map(x=>{
+    const completed=Math.min(x.total,(x.correct||0)+(x.wrong||0)),remaining=Math.max(0,x.total-completed),pct=Math.round(completed/x.total*100),url=twSafeUrl(x.url);
+    return '<div class="tec-goal"><div class="tec-goal-main"><div class="tec-goal-subject">'+escapeHtml(x.subject)+'</div><div class="tec-goal-book">'+(url?'<a href="'+escapeHtml(url)+'" target="_blank" rel="noopener">'+escapeHtml(x.book)+' ↗</a>':escapeHtml(x.book))+' · '+completed+'/'+x.total+' questões</div><div class="tec-goal-progress"><i style="width:'+pct+'%"></i></div></div><div class="tec-goal-field"><label>Questões da meta</label><input class="fi" type="number" min="1" value="'+x.total+'" onchange="twUpdateGoal(\''+x.id+'\',\'total\',this.value)"></div><div class="tec-goal-field"><label>Acertos</label><input class="fi" type="number" min="0" value="'+(x.correct||0)+'" onchange="twUpdateGoal(\''+x.id+'\',\'correct\',this.value)"></div><div class="tec-goal-field"><label>Erros</label><input class="fi" type="number" min="0" value="'+(x.wrong||0)+'" onchange="twUpdateGoal(\''+x.id+'\',\'wrong\',this.value)"></div><div class="tec-goal-time"><b>'+twDuration(remaining*x.minutes)+'</b><span>'+remaining+' restantes · '+String(x.minutes).replace('.',',')+' min/questão</span><input class="fi" style="margin-top:6px;padding:6px 8px" type="number" min="1" max="10" step="0.5" value="'+x.minutes+'" aria-label="Minutos por questão" onchange="twUpdateGoal(\''+x.id+'\',\'minutes\',this.value)"></div><button class="btn bd xs" onclick="twDeleteGoal(\''+x.id+'\')" title="Excluir meta">✕</button></div>';
+  }).join('');
+}
 // INIT
 document.addEventListener('DOMContentLoaded',()=>{
   const erd=document.getElementById('er-date'); if(erd) erd.value=td();
   const t=td();
   document.getElementById('mdate').value=t;
-  document.getElementById('qdate').value=t;
+  const qdate=document.getElementById('qdate');if(qdate)qdate.value=t;
   if(!discs().length){pfEnsureDisc('Sem disciplina');sSt();}
   renderSW();applyMeta();popSel();renderD();renderTSess();rcInit();
   if(ST.plan&&ST.plan.date===t) renderPlan();
@@ -5629,6 +5725,10 @@ if('serviceWorker' in navigator){
   <button class="mni" data-tab="t" onclick="goM('t')" aria-label="Cronômetro">
     <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>
     <span>Timer</span>
+  </button>
+  <button class="mni" data-tab="m" onclick="goM('m')" aria-label="Metas Semanais">
+    <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/><path d="M7 12h4M7 16h7"/></svg>
+    <span>Metas</span>
   </button>
   <button class="mni" data-tab="a" onclick="goM('a')" aria-label="Plano de Ataque">
     <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg>
