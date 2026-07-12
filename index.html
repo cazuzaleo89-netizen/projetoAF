@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-BR" data-build="similar-native-e953866">
+<html lang="pt-BR" data-build="light-ice-blue-20260712">
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
@@ -34,10 +34,35 @@
   --ease:cubic-bezier(.4,0,.2,1);
 }
 html[data-theme="light"]{
-  --bg:#f0f4fa;--s1:#ffffff;--s2:#f8fafc;--s3:#edf2f8;--s4:#e2eaf5;
-  --border:#d0daea;--border2:#b8ccdf;
-  --t1:#0f1e2e;--t2:#3a5572;--t3:#7a99b5;--t4:#a8c0d4;
+  color-scheme:light;
+  --bg:#f4f8fd;--s1:#ffffff;--s2:#ffffff;--s3:#eef5ff;--s4:#e2edfb;
+  --border:#d9e5f3;--border2:#bed2e8;
+  --accent:#2563eb;--accent2:#0ea5e9;--abg:rgba(37,99,235,.07);--abg2:rgba(37,99,235,.12);
+  --gold:#d8870b;--gbg:rgba(216,135,11,.09);
+  --green:#0f9f68;--grbg:rgba(15,159,104,.08);
+  --red:#e5484d;--rbg:rgba(229,72,77,.08);--purple:#7657f6;
+  --t1:#0b1f3a;--t2:#365574;--t3:#7592b2;--t4:#a5bad0;
 }
+html[data-theme="light"] body{background:linear-gradient(145deg,#f8fbff 0,#f2f7fd 52%,#edf5ff 100%)}
+html[data-theme="light"] .sidebar,html[data-theme="light"] .topbar{background:rgba(255,255,255,.96);box-shadow:0 1px 0 rgba(55,104,154,.04)}
+html[data-theme="light"] .ni.on{background:linear-gradient(135deg,rgba(37,99,235,.12),rgba(14,165,233,.07));color:#1d5fd1;border-color:rgba(37,99,235,.2)}
+html[data-theme="light"] .bmark,html[data-theme="light"] .uav{background:linear-gradient(135deg,#2563eb,#7657f6);box-shadow:0 7px 18px rgba(37,99,235,.22)}
+html[data-theme="light"] .uchip{background:linear-gradient(145deg,#f8fbff,#edf5ff);box-shadow:0 8px 20px rgba(56,105,155,.08)}
+html[data-theme="light"] .pill,html[data-theme="light"] .theme-btn,html[data-theme="light"] .sync-pill{background:#f5f9ff}
+html[data-theme="light"] .dash-brief{background:radial-gradient(circle at 88% 8%,rgba(14,165,233,.16),transparent 28%),linear-gradient(120deg,#eaf3ff 0,#f7fbff 56%,#edfaff 100%);border-color:#c9def3;box-shadow:0 13px 30px rgba(46,96,148,.1)}
+html[data-theme="light"] .dash-kicker{color:#1688cf}html[data-theme="light"] .dash-brief .cmd-btn.secondary{background:#fff;border-color:#c7d9eb;color:#365574}html[data-theme="light"] .dash-readiness strong{color:#1769d2}
+html[data-theme="light"] .dash-card{background:linear-gradient(145deg,#ffffff,#f5f9ff);border-color:#d5e3f1;box-shadow:0 12px 28px rgba(42,88,136,.11)}
+html[data-theme="light"] .dash-card:hover{border-color:#b8d1e9;box-shadow:0 15px 34px rgba(42,88,136,.14)}
+html[data-theme="light"] .dash-ring{background:conic-gradient(#159bd7 var(--focus-pct),#deebf8 0);box-shadow:0 12px 28px rgba(37,99,235,.12),inset 0 0 0 1px #d6e5f3}
+html[data-theme="light"] .dash-ring::before{background:linear-gradient(180deg,#fff,#edf5ff);box-shadow:inset 0 0 20px rgba(65,111,158,.08)}
+html[data-theme="light"] .dash-progress{background:#dce9f7}html[data-theme="light"] .dash-progress .mfill{background:linear-gradient(90deg,#0ea5e9,#2563eb,#7657f6);box-shadow:none}
+html[data-theme="light"] .dash-focus-note b{color:#1769d2}html[data-theme="light"] .dash-chart i{box-shadow:none;opacity:.72}
+html[data-theme="light"] .dash-spark path.line{stroke:#0ea5e9;filter:none}html[data-theme="light"] .dash-spark path.glow{stroke:#0ea5e9;opacity:.1}
+html[data-theme="light"] .dash-consistency{--dash-accent:linear-gradient(90deg,#2563eb,#7657f6);--dash-glow:#7657f6}html[data-theme="light"] .dash-consistency .dash-chart i{background:linear-gradient(180deg,#8b72f8,#5078ed)}
+html[data-theme="light"] .dash-kpi{background:#f2f7fd;border-color:#d8e5f2}
+html[data-theme="light"] .command-card{background:linear-gradient(145deg,#effaff,#fff 48%,#f0fbf7);border-color:#cbe5ed;box-shadow:0 10px 25px rgba(51,102,151,.08)}html[data-theme="light"] .command-card::before{opacity:.42}html[data-theme="light"] .command-kicker{color:#1688cf}
+html[data-theme="light"] .signal-card,html[data-theme="light"] .sc,html[data-theme="light"] .card{box-shadow:0 8px 22px rgba(45,91,139,.07)}
+html[data-theme="light"] .focus-rank{background:#e7f3ff;color:#1769d2}html[data-theme="light"] .risk-box,html[data-theme="light"] .focus-row,html[data-theme="light"] .hour-cell{background:#f5f9ff}
 html,body{height:100%;background:var(--bg);color:var(--t1);font-family:var(--fb);font-size:14px;line-height:1.6;-webkit-font-smoothing:antialiased}
 a{color:inherit;text-decoration:none}
 button{cursor:pointer;border:none;outline:none;background:none;font-family:inherit;transition:.15s var(--ease)}
