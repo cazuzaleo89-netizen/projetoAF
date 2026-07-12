@@ -1885,6 +1885,12 @@ function mergeById(primary,backup){
 function lSt(){
   let st={};
   try{st=JSON.parse(localStorage.getItem('pf4')||'{}')||{}}catch{st={}}
+  /* A captura de comentários/resumos do TEC foi aposentada. Remove também
+     qualquer acervo legado salvo localmente para não voltar em backups. */
+  if(st.flashResumo){
+    delete st.flashResumo;
+    try{localStorage.setItem('pf4',JSON.stringify(st));}catch{}
+  }
   try{
     const core=JSON.parse(localStorage.getItem('pf4_core')||'{}')||{};
     if(core.sess)st.sess=mergeById(st.sess,core.sess);
@@ -1908,11 +1914,6 @@ function lSt(){
 }
 function compactStateForStorage(state){
   const copy=JSON.parse(JSON.stringify(state||{}));
-  if(copy.flashResumo){
-    copy.flashResumo.db=null;
-    copy.flashResumo.dbPrunedAt=Date.now();
-    if(Array.isArray(copy.flashResumo.cards))copy.flashResumo.cards=copy.flashResumo.cards.slice(0,700);
-  }
   if(copy.extSync){
     if(Array.isArray(copy.extSync.reviewQueue))copy.extSync.reviewQueue=copy.extSync.reviewQueue.slice(0,500);
     if(Array.isArray(copy.extSync.similarEvents))copy.extSync.similarEvents=copy.extSync.similarEvents.slice(0,40);
