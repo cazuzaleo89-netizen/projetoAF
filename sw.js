@@ -1,7 +1,7 @@
 /* Painel Fiscal — Service Worker
    Estratégia: app shell em cache, navegação network-first com fallback offline,
    estáticos cache-first, e fontes (Google) cacheadas após o primeiro acesso. */
-const CACHE = 'painel-fiscal-v7-modo-consultoria';
+const CACHE = 'painel-fiscal-v8-centro-comando';
 const SHELL = [
   './',
   './index.html',

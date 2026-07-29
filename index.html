@@ -7070,5 +7070,182 @@ window.cyRender=cyRender;window.smRender=smRender;
 })();
 </script>
 
+<style id="gamemode-styles">
+/* ===== CENTRO DE COMANDO: missão do dia + parecer do mentor ===== */
+#tab-d .dash-brief{display:none!important}
+.gm-hero{position:relative;overflow:hidden;display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:22px;border:1px solid var(--border2);border-radius:var(--r3);padding:24px 26px;margin-bottom:14px;background:linear-gradient(120deg,rgba(79,114,255,.13),rgba(139,92,246,.09) 55%,rgba(232,160,32,.07));}
+.gm-hero::before{content:"";position:absolute;right:-80px;top:-90px;width:290px;height:290px;border-radius:50%;background:radial-gradient(circle,rgba(79,114,255,.22),transparent 68%);pointer-events:none}
+.gm-kicker{font-size:9px;font-weight:900;letter-spacing:.18em;text-transform:uppercase;color:var(--accent2)}
+.gm-kicker .gm-gold{color:var(--gold)}
+.gm-title{margin:9px 0 4px;font:900 27px/1.15 var(--fh);color:var(--t1)}
+.gm-title em{font-style:normal;background:linear-gradient(90deg,var(--accent2),var(--purple));-webkit-background-clip:text;background-clip:text;color:transparent}
+.gm-mentor{margin-top:10px;padding:12px 14px;border:1px solid rgba(232,160,32,.32);border-radius:12px;background:var(--gbg);font-size:11.5px;line-height:1.6;color:var(--t2)}
+.gm-mentor b{color:var(--gold);font-weight:900}
+.gm-mentor strong{color:var(--t1);font-weight:800}
+.gm-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.gm-right{position:relative;display:flex;align-items:center;justify-content:flex-end;gap:20px;min-width:0}
+.gm-ring{--p:0;flex:0 0 auto;width:132px;height:132px;border-radius:50%;background:conic-gradient(var(--accent) calc(var(--p)*1%),var(--s3) 0);display:grid;place-items:center;box-shadow:0 12px 34px rgba(79,114,255,.22)}
+.gm-ring>div{width:104px;height:104px;border-radius:50%;background:var(--s1);display:grid;place-items:center;text-align:center}
+.gm-ring b{display:block;font:900 25px var(--fh);color:var(--t1)}
+.gm-ring span{display:block;font-size:8px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--t3);margin-top:2px}
+.gm-thermo{min-width:0;flex:1;max-width:230px;padding:13px 15px;border:1px solid var(--border);border-radius:13px;background:var(--s2);cursor:pointer;transition:.15s var(--ease)}
+.gm-thermo:hover{border-color:var(--gold);transform:translateY(-2px)}
+.gm-thermo>span{display:block;font-size:8px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:var(--t3)}
+.gm-thermo-val{display:flex;align-items:baseline;gap:7px;margin:5px 0 8px}
+.gm-thermo-val b{font:900 22px var(--fh);color:var(--t1)}
+.gm-thermo-val i{font-style:normal;font-size:9px;font-weight:900}
+.gm-tbar{position:relative;height:9px;border-radius:99px;background:var(--s3)}
+.gm-tbar i{position:absolute;inset:0 auto 0 0;border-radius:99px;background:linear-gradient(90deg,var(--gold),var(--green))}
+.gm-tbar u{position:absolute;top:-4px;bottom:-4px;width:2.5px;border-radius:2px;background:var(--t1)}
+.gm-tbar-note{display:block;margin-top:7px;font-size:8px;color:var(--t3)}
+.gm-plan{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
+.gm-step{position:relative;padding:15px 17px;border:1px solid var(--border);border-radius:15px;background:var(--s2)}
+.gm-step .gm-num{position:absolute;top:13px;right:15px;font:900 11px var(--fh);color:var(--t4)}
+.gm-step-tag{font-size:8.5px;font-weight:900;letter-spacing:.15em;text-transform:uppercase;color:var(--t3)}
+.gm-step-name{margin-top:6px;font:900 15px var(--fh);color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gm-step-sub{margin-top:4px;font-size:10.5px;color:var(--t2);min-height:28px}
+.gm-badge{display:inline-flex;align-items:center;gap:5px;margin-top:10px;padding:5px 10px;border-radius:99px;font:800 9.5px var(--fb);cursor:default}
+.gm-step.done{border-color:rgba(29,185,106,.4)}
+.gm-step.done .gm-step-tag{color:var(--green)}
+.gm-step.done .gm-badge{background:var(--grbg);color:var(--green)}
+.gm-step.cur{border-color:var(--gold);background:linear-gradient(150deg,var(--gbg),var(--s2));box-shadow:0 10px 26px rgba(0,0,0,.18)}
+.gm-step.cur .gm-step-tag{color:var(--gold)}
+.gm-step.cur .gm-badge{background:var(--gold);color:#161005;cursor:pointer}
+.gm-step.pend .gm-badge{background:var(--s3);color:var(--t3)}
+@media(max-width:1000px){.gm-hero{grid-template-columns:1fr}.gm-right{justify-content:flex-start}}
+@media(max-width:620px){.gm-hero{padding:17px}.gm-title{font-size:21px}.gm-plan{grid-template-columns:1fr}.gm-right{flex-wrap:wrap}.gm-ring{width:110px;height:110px}.gm-ring>div{width:86px;height:86px}}
+</style>
+<script>
+/* ===== CENTRO DE COMANDO (Game Mode + Mentoria Premium) =====
+   Substitui o hero "Painel de decisão" por: missão do dia, parecer do
+   mentor gerado dos dados reais, anel de progresso, termômetro de
+   aprovação e plano do dia em 3 passos (feito → agora → depois). */
+(function(){
+'use strict';
+function esc(s){return (typeof escapeHtml==='function')?escapeHtml(s):String(s==null?'':s);}
+function simsSafe(){var s=ST.sims;return (s&&Array.isArray(s.list))?s:{corte:75,list:[]};}
+function simPct(sim){var ac=0,tot=0;(sim.rows||[]).forEach(function(r){ac+=Number(r.ac)||0;tot+=Number(r.tot)||0;});return tot?Math.round(ac/tot*1000)/10:0;}
+function cicloSafe(){var c=ST.ciclo;return (c&&Array.isArray(c.blocks))?c:{blocks:[],pos:0,laps:0,hist:[]};}
+
+function gmEnsure(){
+  var tab=document.getElementById('tab-d');if(!tab)return null;
+  var hero=document.getElementById('gm-hero');
+  if(hero)return hero;
+  var anchor=tab.querySelector('.dash-brief')||tab.querySelector('.dash-cockpit')||tab.firstElementChild;
+  if(!anchor)return null;
+  hero=document.createElement('section');hero.className='gm-hero';hero.id='gm-hero';
+  var plan=document.createElement('div');plan.className='gm-plan';plan.id='gm-plan';
+  anchor.parentNode.insertBefore(hero,anchor);
+  anchor.parentNode.insertBefore(plan,anchor);
+  return hero;
+}
+
+function gmMentorText(d){
+  var parts=[];
+  if(d.lastSim!==null){
+    var gap=Math.round((d.lastSim-d.corte)*10)/10;
+    parts.push(gap>=0
+      ?'Seu último simulado ficou <strong>'+gap+' pts acima do corte ('+d.corte+'%)</strong> — a rotina está funcionando, não mexa no que dá certo.'
+      :'Faltam <strong>'+Math.abs(gap)+' pts para o corte ('+d.corte+'%)</strong> — volume de questões é o caminho mais curto até lá.');
+  }
+  if(d.target&&d.target.ac!==null){
+    parts.push('O ponto de ataque é <strong>'+esc(d.target.name)+' ('+d.target.ac+'% de acerto)</strong>; é onde cada hora rende mais.');
+  }else if(d.target){
+    parts.push('Ainda estou calibrando seu ponto fraco — registre questões de <strong>'+esc(d.target.name)+'</strong> para eu medir.');
+  }
+  if(d.remMin>0||d.remQ>0){
+    parts.push('Hoje restam <strong>'+(d.remMin>0?d.remMin+' min':'')+(d.remMin>0&&d.remQ>0?' e ':'')+(d.remQ>0?d.remQ+' questões':'')+'</strong> para fechar a missão.');
+  }else{
+    parts.push('<strong>Missão do dia cumprida.</strong> Uma revisão curta agora blinda o que você ganhou.');
+  }
+  if(d.streak>=3)parts.push('E sua sequência de '+d.streak+' dias está viva — não a quebre hoje. 🔥');
+  return parts.join(' ');
+}
+
+function gmRender(){
+  var hero=gmEnsure();if(!hero)return;
+  var plan=document.getElementById('gm-plan');
+  var S=sess(),Q=qs(),c=cfg(),today=td();
+  var tSecs=S.filter(function(s){return s.date===today;}).reduce(function(a,s){return a+s.sec;},0);
+  var qT=Q.filter(function(q){return q.date===today;}).reduce(function(a,q){return a+q.tot;},0);
+  var hPct=Math.min(100,Math.round((tSecs/3600)/(c.dh||4)*100));
+  var qPct=Math.min(100,Math.round(qT/(c.dq||20)*100));
+  var dayPct=Math.min(100,Math.round(hPct*.6+qPct*.4));
+  var remMin=Math.max(0,Math.ceil(((c.dh||4)-tSecs/3600)*60));
+  var remQ=Math.max(0,(c.dq||20)-qT);
+  var streak=(typeof calcStreak==='function')?calcStreak(S):0;
+  var xp=Math.floor(S.reduce(function(a,s){return a+s.sec;},0)/3600*10)+Math.floor(Q.reduce(function(a,q){return a+q.cer;},0)*2);
+  var lvl=Math.floor(xp/100)+1;
+  var model=(typeof advDisciplineModel==='function')?advDisciplineModel(S,Q):[];
+  var target=model.find(function(x){return x.tot||x.sec;})||model[0]||null;
+  var sims=simsSafe(),lastSim=sims.list.length?simPct(sims.list[0]):null;
+  var ciclo=cicloSafe(),dm={};discs().forEach(function(d){dm[d.id]=d;});
+
+  var titleHtml=target
+    ?'Derrote <em>'+esc(target.name)+'</em> hoje'
+    :'Derrote a <em>inércia</em> hoje';
+  var mentor=gmMentorText({lastSim:lastSim,corte:sims.corte||75,target:target,remMin:remMin,remQ:remQ,streak:streak});
+
+  var thermo;
+  if(lastSim!==null){
+    var ok=lastSim>=(sims.corte||75);
+    thermo='<div class="gm-thermo" onclick="go(\'sm\',document.getElementById(\'ni-sm\'))" title="Abrir Simulados">'+
+      '<span>Termômetro de aprovação</span>'+
+      '<div class="gm-thermo-val"><b>'+lastSim+'%</b><i style="color:'+(ok?'var(--green)':'var(--gold)')+'">'+(ok?'🎯 zona de aprovação':'⚠ abaixo do corte')+'</i></div>'+
+      '<div class="gm-tbar"><i style="width:'+Math.min(100,lastSim)+'%"></i><u style="left:'+Math.min(100,sims.corte||75)+'%"></u></div>'+
+      '<span class="gm-tbar-note">corte '+(sims.corte||75)+'% · último simulado · toque para abrir</span></div>';
+  }else{
+    thermo='<div class="gm-thermo" onclick="go(\'sm\',document.getElementById(\'ni-sm\'))" title="Abrir Simulados">'+
+      '<span>Termômetro de aprovação</span>'+
+      '<div class="gm-thermo-val"><b>—</b><i style="color:var(--t3)">sem simulados</i></div>'+
+      '<div class="gm-tbar"><i style="width:0%"></i><u style="left:75%"></u></div>'+
+      '<span class="gm-tbar-note">registre um simulado para ligar o termômetro</span></div>';
+  }
+
+  hero.innerHTML='<div class="gm-left">'+
+    '<div class="gm-kicker">⚔ Missão do dia · Nível '+lvl+' · Streak '+streak+' 🔥 · <span class="gm-gold">★ parecer do mentor</span></div>'+
+    '<h2 class="gm-title">'+titleHtml+'</h2>'+
+    '<div class="gm-mentor"><b>★ Mentor:</b> '+mentor+'</div>'+
+    '<div class="gm-actions">'+
+    '<button class="btn bp" onclick="go(\'t\',document.getElementById(\'ni-t\'))">▶ Iniciar missão</button>'+
+    '<button class="btn bg2" onclick="go(\'cy\',document.getElementById(\'ni-cy\'))">🔁 Ver ciclo</button>'+
+    '<button class="btn bg2" onclick="go(\'r\',document.getElementById(\'ni-r\'))">Revisar erros</button>'+
+    '</div></div>'+
+    '<div class="gm-right"><div class="gm-ring" style="--p:'+dayPct+'"><div><b>'+dayPct+'%</b><span>missão do dia</span></div></div>'+thermo+'</div>';
+
+  if(plan){
+    var doneToday=(ciclo.hist||[]).filter(function(h){
+      var d=new Date(h.ts);return (typeof ymd==='function'?ymd(d):d.toISOString().slice(0,10))===today;
+    });
+    var doneMin=doneToday.reduce(function(a,h){return a+(Number(h.min)||0);},0);
+    var cur=ciclo.blocks.length?ciclo.blocks[ciclo.pos]:null;
+    var nxt=ciclo.blocks.length>1?ciclo.blocks[(ciclo.pos+1)%ciclo.blocks.length]:null;
+    var s1=doneToday.length
+      ?{name:doneToday.length+' bloco'+(doneToday.length>1?'s':'')+' do ciclo',sub:doneMin+' min concluídos hoje · volta '+(ciclo.laps+1),badge:'✔ Feito'}
+      :(tSecs>0
+        ?{name:Math.round(tSecs/60)+' min estudados',sub:'registrados no cronômetro hoje',badge:'✔ Em andamento'}
+        :{name:'Vitória rápida',sub:'10 questões para destravar o dia',badge:'a caminho'});
+    var s2=cur
+      ?{name:esc((dm[cur.discId]||{}).name||'Bloco do ciclo'),sub:cur.min+' min de foco · bloco '+(ciclo.pos+1)+' de '+ciclo.blocks.length,act:'cyStudy()',badge:'▶ Começar agora'}
+      :(target
+        ?{name:esc(target.name),sub:'50 min + questões no seu ponto fraco',act:'go(\'t\',document.getElementById(\'ni-t\'))',badge:'▶ Começar agora'}
+        :{name:'Montar o ciclo',sub:'defina seus blocos em Ciclo de Estudos',act:'go(\'cy\',document.getElementById(\'ni-cy\'))',badge:'▶ Montar'});
+    var s3=nxt
+      ?{name:esc((dm[nxt.discId]||{}).name||'Próximo bloco'),sub:nxt.min+' min · próximo bloco do ciclo',badge:'na fila'}
+      :{name:'Revisão de erros',sub:'blindar o que você já acertou',badge:'na fila'};
+    plan.innerHTML=
+      '<div class="gm-step '+(doneToday.length||tSecs>0?'done':'pend')+'"><span class="gm-num">1</span><div class="gm-step-tag">'+(doneToday.length||tSecs>0?'Concluído':'Primeiro passo')+'</div><div class="gm-step-name">'+s1.name+'</div><div class="gm-step-sub">'+s1.sub+'</div><span class="gm-badge">'+s1.badge+'</span></div>'+
+      '<div class="gm-step cur"><span class="gm-num">2</span><div class="gm-step-tag">Agora</div><div class="gm-step-name">'+s2.name+'</div><div class="gm-step-sub">'+s2.sub+'</div><span class="gm-badge" onclick="'+s2.act+'">'+s2.badge+'</span></div>'+
+      '<div class="gm-step pend"><span class="gm-num">3</span><div class="gm-step-tag">Depois</div><div class="gm-step-name">'+s3.name+'</div><div class="gm-step-sub">'+s3.sub+'</div><span class="gm-badge">'+s3.badge+'</span></div>';
+  }
+}
+
+var gmOldRenderD=renderD;
+renderD=function(){gmOldRenderD();try{gmRender();}catch(e){}};
+window.gmRender=gmRender;
+setTimeout(function(){try{gmRender();}catch(e){}},350);
+})();
+</script>
+
 </body>
 </html>
